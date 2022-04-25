@@ -16,7 +16,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 import numpy as np
 import pandas as pd
-from address_distance_feasibility import dataset_dir, results_mace_dir
+from support import dataset_dir, results_mace_dir
 
 def euclidean(x1,x2):
     """

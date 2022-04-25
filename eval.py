@@ -9,7 +9,7 @@ Imports
 import numpy as np
 import pandas as pd
 from naj import verify_justification
-from address_distance_feasibility import euclidean, sort_data_distance
+from support import euclidean, sort_data_distance
 
 class Evaluator():
     """
@@ -47,6 +47,7 @@ class Evaluator():
         self.feat_mutable = data_obj.feat_mutable
         self.feat_cost = data_obj.feat_cost
         self.feat_step = data_obj.feat_step
+        self.feat_dir = data_obj.feat_dir
         self.n_feat = n_feat
         self.data_cols = data_obj.jce_all_cols
         self.eval_columns = ['index','x','normal_x','x_label',
@@ -143,6 +144,16 @@ class Evaluator():
                 if self.cf[i] < 0-toler or self.cf[i] > 1+toler:
                     feasibility = False
                     break
+            vector = self.normal_cf - self.normal_x
+            if self.feat_dir[i] == 0 and vector[i] != 0:
+                feasibility = False
+                break
+            elif self.feat_dir[i] == 'pos' and vector[i] < 0:
+                feasibility = False
+                break
+            elif self.feat_dir[i] == 'neg' and vector[i] > 0:
+                feasibility = False
+                break
         # print(f'after for: {feasibility}, {not np.array_equal(x[np.where(mutable_feat == 0)],cf[np.where(mutable_feat == 0)])}')
         if not np.array_equal(self.x[np.where(self.feat_mutable == 0)],self.cf[np.where(self.feat_mutable == 0)]):
             feasibility = False

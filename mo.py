@@ -7,8 +7,8 @@ Imports
 """
 import numpy as np
 import time
-from address_distance_feasibility import verify_feasibility
-from address_distance_feasibility import sort_data_distance
+from support import verify_feasibility
+from support import sort_data_distance
 
 #Minimum Observable method
 def min_obs(x,x_label,data):
@@ -26,7 +26,7 @@ def min_obs(x,x_label,data):
     all_labels = np.hstack((data.train_target,data.test_undesired_target))
     data_distance_mo = sort_data_distance(x,all_data,all_labels)
     for i in data_distance_mo:
-        if i[2] != x_label and verify_feasibility(x,i[0],data.feat_mutable,data.feat_type,data.feat_step) and not np.array_equal(x,i[0]):
+        if i[2] != x_label and verify_feasibility(x,i[0],data.feat_mutable,data.feat_type,data.feat_step,data.feat_dir) and not np.array_equal(x,i[0]):
             mo_cf = i[0]
             break
     if mo_cf is None:

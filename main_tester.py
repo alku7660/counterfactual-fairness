@@ -9,7 +9,7 @@ from nt import nn
 from mo import min_obs
 from rt import rf_tweak
 from ft import feat_tweak
-from jce import JCE
+from juice import JUICE
 from eval import Evaluator
 from data_load import load_model_dataset
 import pickle
@@ -19,7 +19,7 @@ from carla import DataCatalog, MLModelCatalog
 from carla.recourse_methods import Face, Dice, CCHVAE, GrowingSpheres
 import tensorflow as tf
 from carla_adapter import MyOwnDataSet, MyOwnModel
-from address_distance_feasibility import path_here, results_cf_obj_dir, results_mace_dir
+from support import path_here, results_cf_obj_dir
 
 def save_obj(evaluator_obj,file_name):
     """
@@ -36,7 +36,8 @@ def load_obj(file_name):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-datasets = ['heart']  # Name of the dataset to be analyzed ['synthetic_severe_disease','synthetic_athlete','ionosphere','compass','credit','adult','german','heart']
+datasets = ['synthetic_severe_disease','synthetic_athlete','ionosphere','compass','credit','adult','german','heart']  # Name of the dataset to be analyzed ['synthetic_severe_disease','synthetic_athlete','ionosphere','compass','credit','adult','german','heart']
+models_to_run = ['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -67,7 +68,6 @@ for data_str in datasets:
     save_obj(model,data_str+'_model.pkl')
     save_obj(data,data_str+'_data.pkl')
     evaluator_list = []
-    models_to_run = ['nn','mo','ft','rt','gs','face','dice','mace','cchvae','jce'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','jce']
     test_undesired_index = data.test_undesired_pd.index.to_list()
 
     for i in range(int(len(test_undesired_index)*perc)):
@@ -219,13 +219,13 @@ for data_str in datasets:
             print(f'  CCHVAE (time (s): {np.round_(cchvae_time,2)})')
             print(f'---------------------------')
 
-        if 'jce' in models_to_run:
-            jce_prox_cf, instance_jce_prox, just_jce_prox, found_justifiable_jce_prox, jce_prox_time = JCE(x_jce_np,x_label,data,model.jce_sel,'proximity') # Refer to jce.py for details
+        if 'juice' in models_to_run:
+            jce_prox_cf, instance_jce_prox, just_jce_prox, found_justifiable_jce_prox, jce_prox_time = JUICE(x_jce_np,x_label,data,model.jce_sel,'proximity') # Refer to jce.py for details
             cf_evaluator.add_specific_cf_data(data,'jce_prox',jce_prox_cf,jce_prox_time,model.jce_sel,instance_jce_prox,just_jce_prox,found_justifiable_jce_prox)
             print(f'  P-JCE (time (s): {np.round_(jce_prox_time,2)})')
             print(f'---------------------------')
 
-            jce_spar_cf, instance_jce_spar, just_jce_spar, found_justifiable_jce_spar, jce_spar_time = JCE(x_jce_np,x_label,data,model.jce_sel,'sparsity') # Refer to jce.py for details
+            jce_spar_cf, instance_jce_spar, just_jce_spar, found_justifiable_jce_spar, jce_spar_time = JUICE(x_jce_np,x_label,data,model.jce_sel,'sparsity') # Refer to jce.py for details
             sparsity_changed_feat, jce_spar_cf = jce_spar_cf[1], jce_spar_cf[0]
             cf_evaluator.add_specific_cf_data(data,'jce_spar',jce_spar_cf,jce_spar_time,model.jce_sel,instance_jce_spar,just_jce_spar,found_justifiable_jce_spar)
             print(f'  S-JCE (time (s): {np.round_(jce_spar_time,2)})')
