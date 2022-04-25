@@ -1,5 +1,6 @@
 """
 Imports
+horrible
 """
 import warnings
 warnings.filterwarnings("ignore")
@@ -36,7 +37,7 @@ def load_obj(file_name):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-datasets = ['synthetic_severe_disease','synthetic_athlete','ionosphere','compass','credit','adult','german','heart']  # Name of the dataset to be analyzed ['synthetic_severe_disease','synthetic_athlete','ionosphere','compass','credit','adult','german','heart']
+datasets = ['compass','credit','adult','german','heart']  # Name of the dataset to be analyzed ['synthetic_severe_disease','synthetic_athlete','ionosphere','compass','credit','adult','german','heart']
 models_to_run = ['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training

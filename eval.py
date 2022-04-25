@@ -48,6 +48,7 @@ class Evaluator():
         self.feat_cost = data_obj.feat_cost
         self.feat_step = data_obj.feat_step
         self.feat_dir = data_obj.feat_dir
+        self.feat_protected = data_obj.feat_protected
         self.n_feat = n_feat
         self.data_cols = data_obj.jce_all_cols
         self.eval_columns = ['index','x','normal_x','x_label',
@@ -112,8 +113,8 @@ class Evaluator():
             self.justifier_instance_pd = np.nan
             self.normal_justifier_instance = np.nan
         self.found_justifiable_cf = found_justifiable_jcf
-        df_cf_row = pd.DataFrame(data = [[self.idx,self.x,self.normal_x,self.x_label,
-                                 self.cf_method_name,self.cf,self.normal_cf,self.cf_proximity,
+        df_cf_row = pd.DataFrame(data = [[self.idx,self.x_pd,self.normal_x,self.x_label,
+                                 self.cf_method_name,self.cf_pd,self.normal_cf,self.cf_proximity,
                                  self.cf_feasibility,self.cf_sparsity,self.cf_justification,self.justifier_instance,self.normal_justifier_instance,self.cf_time]],
                                  columns = self.eval_columns)
         self.all_cf_data = self.all_cf_data.append(df_cf_row)
@@ -144,7 +145,7 @@ class Evaluator():
                 if self.cf[i] < 0-toler or self.cf[i] > 1+toler:
                     feasibility = False
                     break
-            vector = self.normal_cf - self.normal_x
+            vector = self.cf - self.x
             if self.feat_dir[i] == 0 and vector[i] != 0:
                 feasibility = False
                 break

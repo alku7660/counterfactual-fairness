@@ -24,7 +24,7 @@ class MyOwnDataSet(Data):
     # should not be changed by the recourse method
     @property
     def immutables(self):
-        if self._name == 'synthetic_severe_disease':
+        if self._name == 'synthetic_disease':
             immutable = ['Age']
         elif self._name == 'synthetic_simple':
             immutable = ['x2']
@@ -47,7 +47,7 @@ class MyOwnDataSet(Data):
     def target(self):
         if self._name in ['synthetic_simple','adult','ionosphere']:
             label = 'label'
-        elif self._name in ['synthetic_severe_disease','synthetic_athlete']:
+        elif self._name in ['synthetic_disease','synthetic_athlete']:
             label = 'Label'
         elif self._name == 'compass':
             label = 'TwoYearRecid (label)'

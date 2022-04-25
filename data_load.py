@@ -112,6 +112,7 @@ class Dataset:
         self.feat_cost = self.define_feat_cost()
         self.feat_step = self.define_feat_step()
         self.feat_cat = self.define_category_groups()
+        self.feat_protected = self.define_protected()
         self.train_sorted = None
 
     def unique_values(self):
@@ -241,7 +242,7 @@ class Dataset:
                                 enc_cat_data[self.oh_jce_cat_enc_cols[7:]]),axis=1)
         elif self.name == 'german':
             enc_jce_data_pd = pd.concat((enc_bin_data,num_data),axis=1)
-        elif self.name in ['heart','synthetic_severe_disease','synthetic_athlete']:
+        elif self.name in ['heart','synthetic_disease','synthetic_athlete']:
             enc_jce_data_pd = pd.concat((enc_bin_data,num_data,enc_cat_data),axis=1)
         elif self.name in ['synthetic_simple','ionosphere']:
             enc_jce_data_pd = num_data
@@ -294,7 +295,7 @@ class Dataset:
         """
         Method to obtain the undesired class
         """
-        if self.name in ['compass','credit','german','heart','cervical','synthetic_simple','synthetic_severe_disease']:
+        if self.name in ['compass','credit','german','heart','cervical','synthetic_simple','synthetic_disease']:
             undesired_class = 1
         elif self.name in ['ionosphere','adult','synthetic_athlete']:
             undesired_class = 0
@@ -338,7 +339,7 @@ class Dataset:
         elif self.name == 'cervical':
             output_columns = ['Smokes','Hormonal Contraceptives','IUD','STDs:HIV','Age','Number of sexual partners','First sexual intercourse',
                               'Smokes (years)','Hormonal Contraceptives (years)','IUD (years)']
-        elif self.name == 'synthetic_severe_disease':
+        elif self.name == 'synthetic_disease':
             output_columns = ['Smokes','Age','ExerciseMinutes','SleepHours','Weight_ord_0','Weight_ord_1','Weight_ord_2','Weight_ord_3',
                               'Diet_1','Diet_2','Diet_3','Diet_4','Stress_1','Stress_2','Stress_3']
         elif self.name == 'synthetic_athlete':
@@ -450,7 +451,7 @@ class Dataset:
         if self.name in ['synthetic_simple','ionosphere']:
             for i in feat_list:
                 feat_type_2.loc[i] = 'num-con'
-        elif self.name == 'synthetic_severe_disease':
+        elif self.name == 'synthetic_disease':
             for i in feat_list:
                 if i in ['Age','ExerciseMinutes','SleepHours']:
                     feat_type_2.loc[i] = 'num-con'
@@ -521,7 +522,7 @@ class Dataset:
                     feat_mutable[i] = 1
                 elif '2' in i:
                     feat_mutable[i] = 0
-        elif self.name == 'synthetic_severe_disease':
+        elif self.name == 'synthetic_disease':
             for i in feat_list:
                 if i == 'Age':
                     feat_mutable[i] = 0
@@ -588,7 +589,7 @@ class Dataset:
         if self.name in ['synthetic_simple']:
             for i in feat_list:
                 feat_dir[i] = 'any'
-        elif self.name == 'synthetic_severe_disease':
+        elif self.name == 'synthetic_disease':
             for i in feat_list:
                 if 'Age' in i:
                     feat_dir[i] = 0
@@ -673,7 +674,7 @@ class Dataset:
                     feat_cost[i] = 0
                 else:
                     feat_cost[i] = 1
-        elif self.name == 'synthetic_severe_disease':
+        elif self.name == 'synthetic_disease':
             for i in feat_list:
                 if 'Age' in i:
                     feat_cost[i] = 0
@@ -769,17 +770,14 @@ class Dataset:
     def define_category_groups(self):
         """
         Method that assigns categorical groups to different one-hot encoded categorical features
-        Output feat_cat: Theoretical unit cost of changing each feature
+        Output feat_cat: Category groups for each of the features
         """
         feat_cat = copy.deepcopy(self.feat_type)
         feat_list = self.feat_type.index.tolist()
         if self.name in ['synthetic_simple','ionosphere']:
             for i in feat_list:
                 feat_cat[i] = 'non'
-        elif self.name == 'Ionosphere':
-            for i in feat_list:
-                feat_cat.loc[i] = 'non'
-        elif self.name == 'synthetic_sever_disease':
+        elif self.name == 'synthetic_disease':
             for i in feat_list:
                 if 'Age' in i or 'Smokes' in i or 'ExerciseMinutes' in i or 'SleepHours' in i or 'Weight' in i:
                     feat_cat.loc[i] = 'non'
@@ -831,6 +829,34 @@ class Dataset:
                 feat_cat.loc[i] = 'non'
         return feat_cat
 
+    def define_protected(self):
+        """
+        Method that defines which features are sensitive / protected and the groups or categories in each of them
+        Output feat_protected: Protected set of features per dataset
+        """
+        feat_protected_values = {}
+        if self.name == 'compass':
+            feat_protected_values['Race'] = {0.00:'African-American', 1.00:'Caucasian'}
+            feat_protected_values['Sex'] = {0.00:'Male', 1.00:'Female'}
+            feat_protected_values['AgeGroup'] = {0.00:'< 25', 0.50:'25 - 45', 1.00:'> 45'}
+        elif self.name == 'credit':
+            feat_protected_values['isMale'] = {1.00:'True', 0.00:'False'}
+            feat_protected_values['isMarried'] = {1.00:'True', 0.00:'False'}
+            feat_protected_values['AgeGroup'] = {0.00:'<25', 0.33:'25-40', 0.67:'40-59', 1.00:'>59'}
+            feat_protected_values['EducationLevel'] = {0.00:'Other', 0.33:'HS', 0.67:'University', 1.00:'Graduate'}
+        elif self.name == 'adult':
+            feat_protected_values['Sex'] = {0.00:'Male', 1.00:'Female'}
+            feat_protected_values['NativeCountry'] = {0.00:'USA', 1.00:'Non-USA'}
+            feat_protected_values['MaritalStatus'] = {0:'Divor.', 1:'Married-AF-spouse', 2:'Married-civ-spouse', 3:'Married-spouse-absent', 4:'Never-married', 5:'Separat.', 6:'Widow'}
+            feat_protected_values['Relationship'] = {0:'Husband', 1:'Not-in-family', 2:'Other-relative', 3:'Own-child', 4:'Unmarried', 5:'Wife'}
+        elif self.name == 'german':
+            feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
+            feat_protected_values['Age'] = 'hist'
+        elif self.name == 'heart':
+            feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
+            feat_protected_values['Age'] = 'hist'
+        return feat_protected_values
+
 class Model:
     """
     Class that contains the trained models for JCE and CARLA frameworks
@@ -843,7 +869,7 @@ class Model:
         """
         Method that trains the classifier model according to the data object received
         """
-        grid_search_results = pd.read_csv(str(self.model_params_path)+'/Results/grid_search/grid_search_5.csv',index_col = ['dataset','model'])
+        grid_search_results = pd.read_csv(str(self.model_params_path)+'/Results/grid_search/grid_search_final.csv',index_col = ['dataset','model'])
         sel_model_str, params_best, params_rf = best_model_params(grid_search_results,data_obj.name)
         self.jce_sel, self.jce_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.jce_train_pd,data_obj.train_target)
         self.carla_sel, self.carla_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.carla_train_pd,data_obj.train_target)
@@ -940,7 +966,7 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df = pd.read_csv(dataset_dir+'synthetic_simple/synthetic_simple.csv')
         data = np.genfromtxt(dataset_dir+'/'+data_str+'/'+data_str+'.csv',delimiter=',')
         processed_df = pd.DataFrame(data = data, columns=numerical+label)
-    elif data_str == 'synthetic_severe_disease':
+    elif data_str == 'synthetic_disease':
         binary = ['Smokes']
         categorical = ['Diet','Stress']
         numerical = ['Age','ExerciseMinutes','SleepHours','Weight']
@@ -948,7 +974,7 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         mace_cols = ['Weight']
         carla_categorical = ['Smokes','Diet','Stress']
         carla_continuous = ['Age','ExerciseMinutes','SleepHours','Weight']
-        processed_df = pd.read_csv(dataset_dir+'synthetic_severe_disease/synthetic_severe_disease.csv',index_col=0)
+        processed_df = pd.read_csv(dataset_dir+'synthetic_disease/synthetic_disease.csv',index_col=0)
     elif data_str == 'synthetic_athlete':
         binary = ['Sex']
         categorical = ['Diet','Sport','TrainingTime']
