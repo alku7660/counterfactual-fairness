@@ -37,7 +37,7 @@ def load_obj(file_name):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-datasets = ['compass','german']  # Name of the dataset to be analyzed ['compass','credit','adult','german','heart']
+datasets = ['compass','credit','adult','german','heart'] # Name of the dataset to be analyzed ['compass','credit','adult','german','heart']
 models_to_run = ['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -46,7 +46,7 @@ k = 50                     # Number of training dataset neighbors to consider fo
 epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feature tweaking algorithm
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
-perc = 0.3             # Percentage of test samples to consider for the counterfactuals search
+perc = 1             # Percentage of test samples to consider for the counterfactuals search
 np.random.seed(seed_int)
 
 for data_str in datasets:
