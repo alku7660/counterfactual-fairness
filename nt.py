@@ -84,7 +84,7 @@ def nn_model(prev_nn,x,x_label,data,model):
     """
     nt_cf = prev_nn
     for i in data.train_sorted:
-        if i[2] != x_label and model.predict(i[0].reshape(1,-1)) != x_label and verify_feasibility(x,i[0],data.feat_mutable,data.feat_type,data.feat_step) and not np.array_equal(x,i[0]):
+        if i[2] != x_label and model.predict(i[0].reshape(1,-1)) != x_label and verify_feasibility(x,i[0],data.feat_mutable,data.feat_type,data.feat_step,data.feat_dir) and not np.array_equal(x,i[0]):
             nt_cf = i[0]
             break
     return nt_cf

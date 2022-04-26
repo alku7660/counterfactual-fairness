@@ -51,12 +51,15 @@ class Evaluator():
         self.feat_protected = data_obj.feat_protected
         self.n_feat = n_feat
         self.data_cols = data_obj.jce_all_cols
-        self.eval_columns = ['index','x','normal_x','x_label',
-                             'cf_method','cf','normal_cf','proximity',
-                             'feasibility','sparsity','justification','justifier','normal_justifier','time']
+        self.x_columns = ['index','x','normal_x',
+                          'x_pred','x_target','accuracy']
+        self.eval_columns = ['cf_method','cf','normal_cf',
+                             'proximity','feasibility','sparsity',
+                             'justification','justifier','normal_justifier','time']
+        self.all_x_data = pd.DataFrame(columns=self.x_columns)
         self.all_cf_data = pd.DataFrame(columns=self.eval_columns)
     
-    def add_specific_x_data(self,idx,x,x_label,data_obj):
+    def add_specific_x_data(self,idx,x,x_label,x_target,data_obj):
         """
         Method that calculates and stores x data found in the Evaluator
         """
@@ -65,6 +68,12 @@ class Evaluator():
         self.x_pd = pd.DataFrame(data = [self.x], index = [idx], columns = data_obj.jce_all_cols)
         self.normal_x = data_obj.adjust_to_mace_format(self.x_pd)
         self.x_label = x_label
+        self.x_target = x_target
+        self.x_accuracy = self.accuracy()[0]
+        df_x_row = pd.DataFrame(data = [[self.idx, self.x_pd, self.normal_x,
+                                         self.x_label, self.x_target, self.x_accuracy]],
+                                         columns = self.x_columns)
+        self.all_x_data = self.all_x_data.append(df_x_row)
 
     def add_specific_cf_data(self,data_obj,cf_method_name,cf,cf_time,model,justifier_instance = None,cf_justification = None,found_justifiable_jcf = None):
         """
@@ -113,17 +122,23 @@ class Evaluator():
             self.justifier_instance_pd = np.nan
             self.normal_justifier_instance = np.nan
         self.found_justifiable_cf = found_justifiable_jcf
-        df_cf_row = pd.DataFrame(data = [[self.idx,self.x_pd,self.normal_x,self.x_label,
-                                 self.cf_method_name,self.cf_pd,self.normal_cf,self.cf_proximity,
-                                 self.cf_feasibility,self.cf_sparsity,self.cf_justification,self.justifier_instance,self.normal_justifier_instance,self.cf_time]],
-                                 columns = self.eval_columns)
+        df_cf_row = pd.DataFrame(data = [[self.cf_method_name, self.cf_pd, self.normal_cf,
+                                          self.cf_proximity, self.cf_feasibility, self.cf_sparsity,
+                                          self.cf_justification, self.justifier_instance, self.normal_justifier_instance, self.cf_time]],
+                                          columns = self.eval_columns)
         self.all_cf_data = self.all_cf_data.append(df_cf_row)
+
+    def accuracy(self):
+        """
+        Method that estimates accuracy between the target and the predicted label of x
+        """
+        return self.x_target == self.x_label
 
     def proximity(self):
         """
         Method that calculates the distance between the instance of interest and the counterfactual given
         """
-        self.cf_proximity = np.round_(euclidean(self.normal_x.to_numpy(),self.normal_cf.to_numpy()),3)
+        self.cf_proximity = np.round_(euclidean(self.x,self.cf_pd.to_numpy()),3)
 
     def feasibility(self):
         """

@@ -37,7 +37,7 @@ def load_obj(file_name):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-datasets = ['compass','credit','adult','german','heart']  # Name of the dataset to be analyzed ['synthetic_severe_disease','synthetic_athlete','ionosphere','compass','credit','adult','german','heart']
+datasets = ['compass','credit']  # Name of the dataset to be analyzed ['compass','credit','adult','german','heart']
 models_to_run = ['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -46,7 +46,7 @@ k = 50                     # Number of training dataset neighbors to consider fo
 epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feature tweaking algorithm
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
-perc = 1             # Percentage of test samples to consider for the counterfactuals search
+perc = 0.1             # Percentage of test samples to consider for the counterfactuals search
 np.random.seed(seed_int)
 
 for data_str in datasets:
@@ -81,11 +81,12 @@ for data_str in datasets:
         # i = 3
         idx = test_undesired_index[i]
         x_jce_pd = data.jce_test_undesired_pd.loc[idx]
+        x_target = data.test_undesired_target[i]
         x_jce_np = x_jce_pd.to_numpy()
         x_carla_pd = data.test_undesired_pd.loc[idx].to_frame().T
         x_label = model.jce_sel.predict(x_jce_np.reshape(1,-1))
         data.add_sorted_train_data(x_jce_pd)
-        cf_evaluator.add_specific_x_data(idx,x_jce_np,x_label,data)
+        cf_evaluator.add_specific_x_data(idx,x_jce_np,x_label,x_target,data)
         
         if 'nn' in models_to_run:
             nn_cf, nn_time = nn(x_jce_np,x_label,data)
