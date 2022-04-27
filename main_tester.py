@@ -132,25 +132,25 @@ for data_str in datasets:
             print(f'  GS (time (s): {np.round_(gs_time,2)})')
             print(f'---------------------------')
 
-        if 'face' in models_to_run:
-            start_time = time.time()
-            face_model = Face(carla_model, {'mode':'knn','fraction':0.2})
-            face_knn_cf_pd = face_model.get_counterfactuals(x_carla_pd)
-            if isinstance(face_knn_cf_pd, pd.Series) or isinstance(face_knn_cf_pd, pd.DataFrame):
-                if face_knn_cf_pd.isnull().values.any():
-                    face_knn_cf = None
-                    print(f'FACE-knn: Could not find feasible CF!')
-                else:
-                    face_knn_cf_pd = data.from_carla_to_jce(face_knn_cf_pd)
-                    face_knn_cf = np.array(face_knn_cf_pd)[0]
-            elif np.isnan(np.sum(face_knn_cf_pd)):
-                face_knn_cf = None
-                print(f'FACE-knn: Could not find feasible CF!')
-            end_time = time.time() 
-            face_time = end_time - start_time
-            cf_evaluator.add_specific_cf_data(data,'face_knn',face_knn_cf,face_time,model.jce_sel)
-            print(f'  FACE (time (s): {np.round_(face_time,2)})')
-            print(f'---------------------------')
+        # if 'face' in models_to_run:
+        #     start_time = time.time()
+        #     face_model = Face(carla_model, {'mode':'knn','fraction':0.2})
+        #     face_knn_cf_pd = face_model.get_counterfactuals(x_carla_pd)
+        #     if isinstance(face_knn_cf_pd, pd.Series) or isinstance(face_knn_cf_pd, pd.DataFrame):
+        #         if face_knn_cf_pd.isnull().values.any():
+        #             face_knn_cf = None
+        #             print(f'FACE-knn: Could not find feasible CF!')
+        #         else:
+        #             face_knn_cf_pd = data.from_carla_to_jce(face_knn_cf_pd)
+        #             face_knn_cf = np.array(face_knn_cf_pd)[0]
+        #     elif np.isnan(np.sum(face_knn_cf_pd)):
+        #         face_knn_cf = None
+        #         print(f'FACE-knn: Could not find feasible CF!')
+        #     end_time = time.time() 
+        #     face_time = end_time - start_time
+        #     cf_evaluator.add_specific_cf_data(data,'face_knn',face_knn_cf,face_time,model.jce_sel)
+        #     print(f'  FACE (time (s): {np.round_(face_time,2)})')
+        #     print(f'---------------------------')
 
         if 'dice' in models_to_run:
             start_time = time.time()

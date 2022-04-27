@@ -85,7 +85,7 @@ def get_metric_names(metrics):
     metric_dict = {}
     for i in metrics:
         if i == 'proximity':
-            metric_dict[i] = 'Proximity (Lower is better)'
+            metric_dict[i] = 'Burden (Distance: Lower is better)'
         elif i == 'sparsity':
             metric_dict[i] = 'Sparsity (Higher is better)'
     return metric_dict
@@ -165,11 +165,61 @@ def metric_differences_plot(datasets, methods_to_run, cf_metrics, colors):
                     ax.bar(xaxis_pos_bars, metric_feat_mean_list, yerr=metric_feat_std_list, color = colors_plot)
                     ax.set_xticks(xaxis_pos_labels, labels=metric_feat_labels)
                     ax.legend(handles=legend_elements)
-                    ax.set_title(f'{dataset_names[data_str]} {metric_names[metric]} {feat_name}')
+                    ax.set_title(f'{dataset_names[data_str]}: {metric_names[metric]} by {feat_name}')
+                    ax.set_ylabel('CF Distance to Instance of Interest (Euclidean)')
+                    ax.set_xlabel('Counterfactual Generation Method')
                     plt.savefig(results_cf_plots_dir+f'{data_str}_{feat_name}_{metric}_fairness.png',dpi=400)
 
 
-datasets = ['compass']  # Name of the dataset to be analyzed ['compass','credit','adult','german','heart']
+def accuracy_differences_plot(datasets, methods_to_run, cf_metrics, colors):
+    """
+    Method that plots the accuracy differences among features, datasets and methods
+    """
+    methods_names = get_methods_names(methods_to_run)
+    dataset_names = get_data_names(datasets)
+    metric_names = get_metric_names(cf_metrics)
+    for data_str in datasets:
+        eval_obj = load_obj(data_str)
+        eval_x_df = eval_obj.all_x_data
+        eval_cf_df = eval_obj.all_cf_data
+        protected_feat = eval_obj.feat_protected
+        protected_feat_keys = list(protected_feat.keys())
+        x_df, cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, cf_metrics)
+        for feat in x_df.columns:
+            feat_unique_val = x_df[feat].unique()
+            xaxis_pos_labels = np.arange((len(feat_unique_val)-1)/2,len(methods_to_run)*len(feat_unique_val),len(feat_unique_val))
+            xaxis_pos_bars = np.arange(len(methods_to_run)*len(feat_unique_val))
+            for metric in cf_metrics:
+                metric_feat_mean_list = []
+                metric_feat_std_list = []
+                metric_feat_labels = []
+                colors_plot = []
+                prot_feat_found = False
+                if feat in protected_feat_keys:
+                    feat_name = feat
+                    prot_feat_found = True
+                elif feat[:-4] in protected_feat_keys:
+                    feat_name = feat[:-4]
+                    prot_feat_found = True
+                if prot_feat_found:
+                    for method in methods_to_run:
+                        for feat_idx in range(len(feat_unique_val)):
+                            feat_metric_method_values = extract_values_labels(cf_df, method, feat_name, feat, feat_unique_val[feat_idx], metric, protected_feat)
+                            metric_feat_mean_list.append(np.mean(feat_metric_method_values))
+                            metric_feat_std_list.append(np.std(feat_metric_method_values,ddof=1))
+                            colors_plot.append(colors[feat_idx])
+                        metric_feat_labels.append(methods_names[method])
+                    legend_elements = create_handles(feat_name, feat_unique_val, colors, protected_feat)
+                    fig, ax = plt.subplots(figsize=(8,4))
+                    ax.bar(xaxis_pos_bars, metric_feat_mean_list, yerr=metric_feat_std_list, color = colors_plot)
+                    ax.set_xticks(xaxis_pos_labels, labels=metric_feat_labels)
+                    ax.legend(handles=legend_elements)
+                    ax.set_title(f'{dataset_names[data_str]}: {metric_names[metric]} by {feat_name}')
+                    ax.set_ylabel('CF Distance to Instance of Interest (Euclidean)')
+                    ax.set_xlabel('Counterfactual Generation Method')
+                    plt.savefig(results_cf_plots_dir+f'{data_str}_{feat_name}_{metric}_fairness.png',dpi=400)
+
+datasets = ['compass','credit','adult']  # Name of the dataset to be analyzed ['compass','credit','adult','german','heart']
 methods_to_run = ['nn','mo','ft','rt','gs','dice','cchvae','jce_prox','jce_spar'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 colors = ['red', 'green', 'blue', 'pink', 'gold', 'cyan']
 cf_metrics = ['proximity']

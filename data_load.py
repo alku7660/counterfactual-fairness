@@ -847,8 +847,8 @@ class Dataset:
         elif self.name == 'adult':
             feat_protected_values['Sex'] = {0.00:'Male', 1.00:'Female'}
             feat_protected_values['NativeCountry'] = {0.00:'USA', 1.00:'Non-USA'}
-            feat_protected_values['MaritalStatus'] = {0:'Divor.', 1:'Married-AF-spouse', 2:'Married-civ-spouse', 3:'Married-spouse-absent', 4:'Never-married', 5:'Separat.', 6:'Widow'}
-            feat_protected_values['Relationship'] = {0:'Husband', 1:'Not-in-family', 2:'Other-relative', 3:'Own-child', 4:'Unmarried', 5:'Wife'}
+            feat_protected_values['MaritalStatus'] = {0.00:'Divor.', 1.00:'Married-AF-spouse', 2.00:'Married-civ-spouse', 3.00:'Married-spouse-absent', 4.00:'Never-married', 5.00:'Separat.', 6.00:'Widow'}
+            feat_protected_values['Relationship'] = {0.00:'Husband', 1.00:'Not-in-family', 2.00:'Other-relative', 3.00:'Own-child', 4.00:'Unmarried', 5.00:'Wife'}
         elif self.name == 'german':
             feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
             feat_protected_values['Age'] = 'hist'
