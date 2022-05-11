@@ -37,8 +37,8 @@ def load_obj(file_name):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-datasets = ['compass','credit','adult','german','heart'] # Name of the dataset to be analyzed ['compass','credit','adult','german','heart']
-models_to_run = ['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
+datasets = ['compass','adult'] # Name of the dataset to be analyzed ['compass','credit','adult','german','heart']
+models_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt','juice','mutable-juice'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -71,8 +71,8 @@ for data_str in datasets:
     evaluator_list = []
     test_undesired_index = data.test_undesired_pd.index.to_list()
 
-    for i in range(int(len(test_undesired_index)*perc)):
-    # for i in range(3):
+    # for i in range(int(len(test_undesired_index)*perc)):
+    for i in range(10):
 
         print(f'---------------------------')
         print(f'     Dataset: {data_str}')
@@ -94,10 +94,22 @@ for data_str in datasets:
             print(f'  NN (time (s): {np.round_(nn_time,2)})')
             print(f'---------------------------')
 
+        if 'mutable-nn' in models_to_run:
+            mutable_nn_cf, mutable_nn_time = nn(x_jce_np,x_label,data,mutability_check=False)
+            cf_evaluator.add_specific_cf_data(data,'mutable-nn',mutable_nn_cf,mutable_nn_time,model.jce_sel,mutable_nn_cf,1,1)
+            print(f'  Mutable NN (time (s): {np.round_(mutable_nn_time,2)})')
+            print(f'---------------------------')
+
         if 'mo' in models_to_run:
             mo_cf, mo_time = min_obs(x_jce_np,x_label,data)
             cf_evaluator.add_specific_cf_data(data,'mo',mo_cf,mo_time,model.jce_sel)
             print(f'  MO (time (s): {np.round_(mo_time,2)})')
+            print(f'---------------------------')
+
+        if 'mutable-mo' in models_to_run:
+            mutable_mo_cf, mutable_mo_time = min_obs(x_jce_np,x_label,data,mutability_check=False)
+            cf_evaluator.add_specific_cf_data(data,'mutable-mo',mutable_mo_cf,mutable_mo_time,model.jce_sel)
+            print(f'  Mutable MO (time (s): {np.round_(mutable_mo_time,2)})')
             print(f'---------------------------')
 
         if 'ft' in models_to_run:
@@ -111,7 +123,13 @@ for data_str in datasets:
             cf_evaluator.add_specific_cf_data(data,'rt',rt_cf,rt_time,model.jce_rf)
             print(f'  RT (time (s): {np.round_(rt_time,2)})')
             print(f'---------------------------')
-        
+
+        if 'mutable-rt' in models_to_run:
+            mutable_rt_cf, mutable_rt_time = rf_tweak(x_jce_np,x_label,model.jce_rf,data,feasibility_check=True,mutability_check=False)
+            cf_evaluator.add_specific_cf_data(data,'mutable-rt',mutable_rt_cf,mutable_rt_time,model.jce_rf)
+            print(f'  Mutable RT (time (s): {np.round_(mutable_rt_time,2)})')
+            print(f'---------------------------')
+
         if 'gs' in models_to_run:
             start_time = time.time()
             gs_model = GrowingSpheres(carla_model)
@@ -232,13 +250,25 @@ for data_str in datasets:
             cf_evaluator.add_specific_cf_data(data,'jce_spar',jce_spar_cf,jce_spar_time,model.jce_sel,instance_jce_spar,just_jce_spar,found_justifiable_jce_spar)
             print(f'  S-JCE (time (s): {np.round_(jce_spar_time,2)})')
             print(f'---------------------------')
+        
+        if 'mutable-juice' in models_to_run:
+            mutable_jce_prox_cf, mutable_instance_jce_prox, mutable_just_jce_prox, mutable_found_justifiable_jce_prox, mutable_jce_prox_time = JUICE(x_jce_np,x_label,data,model.jce_sel,'proximity',mutability_check=False) # Refer to jce.py for details
+            cf_evaluator.add_specific_cf_data(data,'mutable_jce_prox',mutable_jce_prox_cf,mutable_jce_prox_time,model.jce_sel,mutable_instance_jce_prox,mutable_just_jce_prox,mutable_found_justifiable_jce_prox)
+            print(f'  Mutable P-JCE (time (s): {np.round_(mutable_jce_prox_time,2)})')
+            print(f'---------------------------')
+
+            mutable_jce_spar_cf, mutable_instance_jce_spar, mutable_just_jce_spar, mutable_found_justifiable_jce_spar, mutable_jce_spar_time = JUICE(x_jce_np,x_label,data,model.jce_sel,'sparsity',mutability_check=False) # Refer to jce.py for details
+            mutable_sparsity_changed_feat, mutable_jce_spar_cf = mutable_jce_spar_cf[1], mutable_jce_spar_cf[0]
+            cf_evaluator.add_specific_cf_data(data,'mutable_jce_spar',mutable_jce_spar_cf,mutable_jce_spar_time,model.jce_sel,mutable_instance_jce_spar,mutable_just_jce_spar,mutable_found_justifiable_jce_spar)
+            print(f'  Mutable S-JCE (time (s): {np.round_(mutable_jce_spar_time,2)})')
+            print(f'---------------------------')
 
         print(f'---------------------------')
         print(f'  DONE: {data_str} CF Evaluation')
         print(f'---------------------------')
         print(f'---------------------------')
 
-    save_obj(cf_evaluator,data_str+'_eval.pkl')
+    save_obj(cf_evaluator,data_str+'_mutability_eval.pkl')
 
 print(f'---------------------------')
 print(f'  DONE: All CFs and Datasets')

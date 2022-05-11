@@ -33,7 +33,7 @@ def verify_diff_label(label,model,v):
         different = True
     return different
 
-def JUICE(x,x_label,data,model,priority):
+def JUICE(x,x_label,data,model,priority,mutability_check=True):
     """
     Direct justified NN counterfactual generation method:
     Input x: Instance of interest
@@ -68,12 +68,12 @@ def JUICE(x,x_label,data,model,priority):
         else:
             justifiable = 1
     if justifiable:
-        jcf, justified = justified_search(x,x_label,closest_train,model,data,priority), 1
+        jcf, justified = justified_search(x,x_label,closest_train,model,data,priority,mutability_check), 1
     end_time = time.time()
     jcf_time = end_time - start_time 
     return jcf, closest_train, justified, justifiable, jcf_time
 
-def justified_search(x,x_label,nn_cf,model,data,priority):
+def justified_search(x,x_label,nn_cf,model,data,priority,mutability_check=True):
     """
     Search for instances justified by t (train instance), closer to instance x
     Input x: Instance of interest
@@ -85,7 +85,7 @@ def justified_search(x,x_label,nn_cf,model,data,priority):
     Output closest_to_x: Instance that is justified by t
     """
 
-    def get_indices_vector(x,closest_to_x,f_type_str=None):
+    def get_indices_vector(x,closest_to_x,f_type_str=None,mutability_check=True):
         """
         Sub method that gets indices of the features to be changed, for any method
         Input closest_to_x: Closest instance to x that is justified by t
@@ -97,10 +97,16 @@ def justified_search(x,x_label,nn_cf,model,data,priority):
         vector = x - closest_to_x
         closest_to_x_cost = cost(x,closest_to_x,data.feat_cost)
         directionality_condition = ((vector > 0) & (data.feat_dir == 'pos') | (vector < 0) & (data.feat_dir == 'neg') | (vector != 0) & (data.feat_dir == 'any'))
-        if f_type_str is not None:
-            diff_index = np.where(directionality_condition & (data.feat_type == f_type_str) & (data.feat_mutable == 1))[0].tolist()
+        if mutability_check:
+            if f_type_str is not None:
+                diff_index = np.where(directionality_condition & (data.feat_type == f_type_str) & (data.feat_mutable == 1))[0].tolist()
+            else:
+                diff_index = np.where(directionality_condition & (data.feat_mutable == 1))[0].tolist()
         else:
-            diff_index = np.where(directionality_condition & (data.feat_mutable == 1))[0].tolist()
+            if f_type_str is not None:
+                diff_index = np.where(directionality_condition & (data.feat_type == f_type_str))[0].tolist()
+            else:
+                diff_index = np.where(directionality_condition)[0].tolist()
         return vector, closest_to_x_cost, diff_index 
 
     def order_by_cost(perm_list,len_diff_index):
@@ -122,7 +128,7 @@ def justified_search(x,x_label,nn_cf,model,data,priority):
         perm_list_sorted = [k[0] for k in perm_feat_cost_list]
         return perm_list_sorted
 
-    def sparse_optimize(close_to_x_list):
+    def sparse_optimize(close_to_x_list,mutability_check=True):
         """
         Method that selects the best sparse counterfactual and brings it closer to x
         Input close_to_x_list: List of sparse counterfactuals
@@ -133,9 +139,9 @@ def justified_search(x,x_label,nn_cf,model,data,priority):
         closest_to_x = tuple_close_to_x_cost[0][0]
         closest_to_x_sparse_idx = tuple_close_to_x_cost[0][1]
         prio = 'proximity'
-        closest_to_x = binary_search(x,closest_to_x,'bin',prio)
-        closest_to_x = numerical_search(x,closest_to_x,'num-ord',prio)
-        closest_to_x = numerical_search(x,closest_to_x,'num-con',prio)
+        closest_to_x = binary_search(x,closest_to_x,'bin',prio,mutability_check)
+        closest_to_x = numerical_search(x,closest_to_x,'num-ord',prio,mutability_check)
+        closest_to_x = numerical_search(x,closest_to_x,'num-con',prio,mutability_check)
         return (closest_to_x,closest_to_x_sparse_idx)
 
     def perturbation_cf(instance,j,direction,step_size):
@@ -174,7 +180,7 @@ def justified_search(x,x_label,nn_cf,model,data,priority):
         permutation_remaining = [idx for idx in permutation if idx in idx_in_group and idx != j]
         return result_instance, permutation_remaining
 
-    def binary_search(x,closest_to_x,f_type_str,priority):
+    def binary_search(x,closest_to_x,f_type_str,priority,mutability_check=True):
         """
         Method that searches for instances closer to x by modifying only binary features
         Input closest_to_x: Closest instance to x that is justified by t
@@ -183,7 +189,7 @@ def justified_search(x,x_label,nn_cf,model,data,priority):
         Output closest_to_x: Updated closest instance to x that is justified by t
         """
 
-        vector, closest_to_x_cost, bin_diff_index = get_indices_vector(x,closest_to_x,f_type_str)
+        vector, closest_to_x_cost, bin_diff_index = get_indices_vector(x,closest_to_x,f_type_str,mutability_check)
         len_bin_diff_index = len(bin_diff_index)
         perm_list = list(permutations(bin_diff_index,len_bin_diff_index))
 
@@ -224,7 +230,7 @@ def justified_search(x,x_label,nn_cf,model,data,priority):
                 break
         return closest_to_x
 
-    def numerical_search(x,closest_to_x,f_type_str,priority):
+    def numerical_search(x,closest_to_x,f_type_str,priority,mutability_check=True):
         """
         Search for instances closer to x by modifying only binary features
         Input closest_to_x: Closest instance to x that is justified by t
@@ -246,7 +252,7 @@ def justified_search(x,x_label,nn_cf,model,data,priority):
             step_j = data.feat_step.iloc[j]
             return direc_j, step_j
 
-        vector, closest_to_x_cost, num_diff_index = get_indices_vector(x,closest_to_x,f_type_str)
+        vector, closest_to_x_cost, num_diff_index = get_indices_vector(x,closest_to_x,f_type_str,mutability_check)
         len_num_diff_index = len(num_diff_index)
         perm_list = list(permutations(num_diff_index,len_num_diff_index))
         
@@ -298,27 +304,27 @@ def justified_search(x,x_label,nn_cf,model,data,priority):
 
     # Must be run in this order: (1) Binary search, (2) Ordinal search (3) Continuous search
     if priority == 'proximity':
-        closest_to_x = binary_search(x,nn_cf,'bin',priority)
-        closest_to_x = numerical_search(x,closest_to_x,'num-ord',priority)
-        closest_to_x = numerical_search(x,closest_to_x,'num-con',priority)
+        closest_to_x = binary_search(x,nn_cf,'bin',priority,mutability_check)
+        closest_to_x = numerical_search(x,closest_to_x,'num-ord',priority,mutability_check)
+        closest_to_x = numerical_search(x,closest_to_x,'num-con',priority,mutability_check)
     elif priority == 'sparsity':
-        vector, closest_to_x_dist, diff_index = get_indices_vector(x,nn_cf)
+        vector, closest_to_x_dist, diff_index = get_indices_vector(x,nn_cf,f_type_str=None,mutability_check=True)
         close_to_x_list = []
         for i in diff_index:
             changed_x = np.copy(x)
             changed_x[i] = nn_cf[i]
-            closest_to_x = binary_search(changed_x,nn_cf,'bin',priority)
-            closest_to_x = numerical_search(changed_x,closest_to_x,'num-ord',priority)
-            closest_to_x = numerical_search(changed_x,closest_to_x,'num-con',priority)
+            closest_to_x = binary_search(changed_x,nn_cf,'bin',priority,mutability_check)
+            closest_to_x = numerical_search(changed_x,closest_to_x,'num-ord',priority,mutability_check)
+            closest_to_x = numerical_search(changed_x,closest_to_x,'num-con',priority,mutability_check)
             if len(np.where(closest_to_x != x)[0]) == 1 and np.where(closest_to_x != x)[0][0] == i:
                 close_to_x_list.append((closest_to_x,i))
         if len(close_to_x_list) > 0:
-            closest_to_x = sparse_optimize(close_to_x_list)
+            closest_to_x = sparse_optimize(close_to_x_list,mutability_check)
         else:
             # Run proximity method if sparse solution not found
             prio = 'proximity'
-            closest_to_x = binary_search(x,nn_cf,'bin',prio)
-            closest_to_x = numerical_search(x,closest_to_x,'num-ord',prio)
-            closest_to_x = numerical_search(x,closest_to_x,'num-con',prio)
+            closest_to_x = binary_search(x,nn_cf,'bin',prio,mutability_check)
+            closest_to_x = numerical_search(x,closest_to_x,'num-ord',prio,mutability_check)
+            closest_to_x = numerical_search(x,closest_to_x,'num-con',prio,mutability_check)
             closest_to_x = (closest_to_x,'null')
     return closest_to_x

@@ -92,11 +92,8 @@ class Dataset:
         self.carla_categorical = carla_categorical
         self.carla_continuous = carla_continuous
         self.unique_val = self.unique_values()
-
-        self.balanced_df, self.balanced_df_label = self.data_balancing() 
-
-        self.train_pd, self.test_pd, self.train_target, self.test_target = train_test_split(self.balanced_df,self.balanced_df_label,train_size=self.train_fraction,random_state=self.seed)
-
+        self.train_pd, self.test_pd, self.train_target, self.test_target = train_test_split(self.raw_df,self.raw_df[self.label_str],train_size=self.train_fraction,random_state=self.seed)
+        self.data_balancing_target_filter() 
         self.mace_df, self.mace_cf, self.mace_time = self.load_mace()
         # self.mace_prox_df, self.mace_prox_cf, self.mace_prox_time = self.load_prox_mace()
 
@@ -125,21 +122,20 @@ class Dataset:
             dict_num_unique_val[col_name] = num_unique_values
         return dict_num_unique_val
 
-    def data_balancing(self):
+    def data_balancing_target_filter(self):
         """
         Method that balances the dataset (Adapted from MACE algorithm methodology (please, see: https://github.com/amirhk/mace))
         """
-        data_label = self.raw_df[self.label_str]
-        unique_values_and_count = data_label.value_counts()
+        unique_values_and_count = self.train_target.value_counts()
         if self.name in ['heart','ionosphere']:
             number_of_subsamples_per_class = unique_values_and_count.min() // 50 * 50
         else:
             number_of_subsamples_per_class = unique_values_and_count.min() // 250 * 250
-        balanced_df = pd.concat([self.raw_df[(data_label == 0).to_numpy()].sample(number_of_subsamples_per_class, random_state = self.seed),
-        self.raw_df[(data_label == 1).to_numpy()].sample(number_of_subsamples_per_class, random_state = self.seed),]).sample(frac = 1, random_state = self.seed)
-        balanced_df_label = balanced_df[self.label_str]
-        del balanced_df[self.label_str[0]]
-        return balanced_df, balanced_df_label
+        self.train_pd = pd.concat([self.train_pd[(self.train_pd[self.label_str] == 0).to_numpy()].sample(number_of_subsamples_per_class, random_state = self.seed),
+        self.train_pd[(self.train_pd[self.label_str] == 1).to_numpy()].sample(number_of_subsamples_per_class, random_state = self.seed),]).sample(frac = 1, random_state = self.seed)
+        self.train_target = self.train_pd[self.label_str]
+        del self.train_pd[self.label_str[0]]
+        del self.test_pd[self.label_str[0]]
 
     def load_mace(self):
         """
@@ -248,23 +244,31 @@ class Dataset:
             enc_jce_data_pd = num_data
         return enc_jce_data_pd
 
-    def filter_undesired_class(self,model):
+    def filter_undesired_class(self,model,mace_prediction_consideration=True):
         """
         Method that obtains the undesired class instances according to the JCE selected model
         Input model: Model object containing the trained models for both JCE and CARLA frameworks
         """
-        pred = []
-        for i in range(self.mace_df.shape[0]):
-            pred.append(model.jce_sel.predict(self.from_mace_to_jce(self.mace_df.iloc[i,:].to_frame().T)[0])[0])
-        self.mace_df['pred'] = pred
-        indices_undesired_class_mace = self.mace_df.loc[self.mace_df['pred'] == self.undesired_class].index.to_list()
-        # self.jce_test_pd['pred'] = model.jce_sel.predict(self.jce_test_pd)
-        self.jce_test_undesired_pd, self.test_undesired_target = self.jce_test_pd.loc[indices_undesired_class_mace,:], self.test_target.loc[indices_undesired_class_mace,:]
-        self.test_undesired_pd = self.test_pd.loc[indices_undesired_class_mace,:]
-        del self.mace_df['pred']
-        # del self.jce_test_undesired_pd['pred']
-        self.jce_test_undesired_np = self.jce_test_undesired_pd.to_numpy()
-        self.test_undesired_np = self.test_undesired_pd.to_numpy()
+        if mace_prediction_consideration:
+            pred = []
+            for i in range(self.mace_df.shape[0]):
+                pred.append(model.jce_sel.predict(self.from_mace_to_jce(self.mace_df.iloc[i,:].to_frame().T)[0])[0])
+            self.mace_df['pred'] = pred
+            indices_undesired_class_mace = self.mace_df.loc[self.mace_df['pred'] == self.undesired_class].index.to_list()
+            self.jce_test_undesired_pd, self.test_undesired_target = self.jce_test_pd.loc[indices_undesired_class_mace,:], self.test_target.loc[indices_undesired_class_mace,:]
+            self.test_undesired_pd = self.test_pd.loc[indices_undesired_class_mace,:]
+            del self.mace_df['pred']
+            # del self.jce_test_undesired_pd['pred']
+            self.jce_test_undesired_np = self.jce_test_undesired_pd.to_numpy()
+            self.test_undesired_np = self.test_undesired_pd.to_numpy()
+        else:
+            self.jce_test_pd['pred'] = model.jce_sel.predict(self.jce_test_pd)
+            self.jce_test_undesired_pd = self.jce_test_pd.loc[self.jce_test_pd['pred'] == self.undesired_class]
+            del self.jce_test_undesired_pd['pred']
+            self.jce_test_undesired_np = self.jce_test_undesired_pd.to_numpy()
+            self.test_undesired_target = self.test_target.loc[self.jce_test_pd['pred'] == self.undesired_class]
+            self.test_undesired_pd = self.test_pd.loc[self.jce_test_pd['pred'] == self.undesired_class]
+            self.test_undesired_np = self.test_undesired_pd.to_numpy()
 
     def change_targets_to_numpy(self):
         """
@@ -554,7 +558,7 @@ class Dataset:
                     feat_mutable[i] = 1   
         elif self.name == 'adult':
             for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Native' in i:
+                if 'Age' in i or 'Sex' in i or 'Native' in i or 'Marital' in i:
                     feat_mutable[i] = 0
                 else:
                     feat_mutable[i] = 1
@@ -1243,7 +1247,7 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
                  mace_cols,carla_categorical,carla_continuous)
     if path_here is not None:
         model_obj = Model(data_obj,path_here)
-        data_obj.filter_undesired_class(model_obj)
+        data_obj.filter_undesired_class(model_obj,mace_prediction_consideration=False)
         data_obj.store_test_undesired()
         data_obj.change_targets_to_numpy()
         return data_obj, model_obj

@@ -9,7 +9,7 @@ Imports
 import numpy as np
 import time
 
-def verify_feasibility(x,cf,mutable_feat,feat_type,feat_step,feat_dir):
+def verify_feasibility(x,cf,mutable_feat,feat_type,feat_step,feat_dir,mutability_check):
     """
     Method that indicates whether cf is a feasible counterfactual with respect to x and the feature mutability
     Input x: Instance of interest
@@ -17,7 +17,8 @@ def verify_feasibility(x,cf,mutable_feat,feat_type,feat_step,feat_dir):
     Input mutable_feat: Vector indicating mutability of the features of x
     Input feat_type: Type of the features used
     Input feat_step: Feature plausible change step size
-    Input feat_dir: Directionality of the features    
+    Input feat_dir: Directionality of the features
+    Input mutability_check: Whether to check or not the mutable features    
     Output: Boolean value indicating whether cf is a feasible counterfactual with regards to x and the feature mutability vector
     """
     toler = 0.000001
@@ -46,22 +47,24 @@ def verify_feasibility(x,cf,mutable_feat,feat_type,feat_step,feat_dir):
         elif feat_dir[i] == 'neg' and vector[i] > 0:
             feasibility = False
             break
-    if not np.array_equal(x[np.where(mutable_feat == 0)],cf[np.where(mutable_feat == 0)]):
-        feasibility = False
+    if mutability_check:
+        if not np.array_equal(x[np.where(mutable_feat == 0)],cf[np.where(mutable_feat == 0)]):
+            feasibility = False
     return feasibility
 
-def nn(x,x_label,data):
+def nn(x,x_label,data,mutability_check=True):
     """
     Function that returns the nearest counterfactual with respect to instance of interest x
     Input x: Instance of interest
     Input x_label: Label of instance of interest x
     Input data: Dataset object
+    Input mutability_check: Whether to check or not the mutable features
     Output nt_cf: Minimum observable counterfactual to the instance of interest x
     """
     start_time = time.time()
     nt_cf = None
     for i in data.train_sorted:
-        if i[2] != x_label and verify_feasibility(x,i[0],data.feat_mutable,data.feat_type,data.feat_step,data.feat_dir) and not np.array_equal(x,i[0]):
+        if i[2] != x_label and verify_feasibility(x,i[0],data.feat_mutable,data.feat_type,data.feat_step,data.feat_dir,mutability_check) and not np.array_equal(x,i[0]):
             nt_cf = i[0]
             break
     if nt_cf is None:
@@ -72,7 +75,7 @@ def nn(x,x_label,data):
     nn_time = end_time - start_time
     return nt_cf, nn_time
 
-def nn_model(prev_nn,x,x_label,data,model):
+def nn_model(prev_nn,x,x_label,data,model,mutability_check=True):
     """
     Function that returns the nearest counterfactual with respect to instance of interest x
     Input prev_nn: NT instance using training dataset information and label
@@ -80,11 +83,12 @@ def nn_model(prev_nn,x,x_label,data,model):
     Input x_label: Label of instance of interest x
     Input data: Dataset model
     Input model: Trained model to verify different predicted label from the test dataset
+    Input mutability_check: Whether to check or not the mutable features
     Output nt_cf: Minimum observable counterfactual to the instance of interest x
     """
     nt_cf = prev_nn
     for i in data.train_sorted:
-        if i[2] != x_label and model.predict(i[0].reshape(1,-1)) != x_label and verify_feasibility(x,i[0],data.feat_mutable,data.feat_type,data.feat_step,data.feat_dir) and not np.array_equal(x,i[0]):
-            nt_cf = i[0]
-            break
+        if i[2] != x_label and model.predict(i[0].reshape(1,-1)) != x_label and verify_feasibility(x,i[0],data.feat_mutable,data.feat_type,data.feat_step,data.feat_dir,mutability_check) and not np.array_equal(x,i[0]):
+                nt_cf = i[0]
+                break
     return nt_cf

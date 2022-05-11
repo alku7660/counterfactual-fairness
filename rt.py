@@ -63,9 +63,52 @@ def random_forest_tweaking(clf, ex, wish_class, X_train, y_train, classified_as_
             sub_cnt = np.vstack([sub_cnt, freq])        
     return sub_cnt, sub_X, sub_y
 
+def verify_feasibility(x,cf,mutable_feat,feat_type,feat_step,feat_dir,mutability_check):
+    """
+    Method that indicates whether cf is a feasible counterfactual with respect to x and the feature mutability
+    Input x: Instance of interest
+    Input cf: Counterfactual to be evaluated
+    Input mutable_feat: Vector indicating mutability of the features of x
+    Input feat_type: Type of the features used
+    Input feat_step: Feature plausible change step size
+    Input feat_dir: Directionality of the features
+    Input mutability_check: Whether to check or not the mutable features    
+    Output: Boolean value indicating whether cf is a feasible counterfactual with regards to x and the feature mutability vector
+    """
+    toler = 0.000001
+    feasibility = True
+    for i in range(len(feat_type)):
+        if feat_type[i] == 'bin':
+            if not np.isclose(cf[i], [0,1],atol=toler).any():
+                feasibility = False
+                break
+        elif feat_type[i] == 'num-ord':
+            possible_val = np.linspace(0,1,int(1/feat_step[i]+1),endpoint=True)
+            if not np.isclose(cf[i],possible_val,atol=toler).any():
+                feasibility = False
+                break  
+        else:
+            if cf[i] < 0-toler or cf[i] > 1+toler:
+                feasibility = False
+                break
+        vector = cf - x
+        if feat_dir[i] == 0 and vector[i] != 0:
+            feasibility = False
+            break
+        elif feat_dir[i] == 'pos' and vector[i] < 0:
+            feasibility = False
+            break
+        elif feat_dir[i] == 'neg' and vector[i] > 0:
+            feasibility = False
+            break
+    if mutability_check:
+        if not np.array_equal(x[np.where(mutable_feat == 0)],cf[np.where(mutable_feat == 0)]):
+            feasibility = False
+    return feasibility
+
 # Random Forest Tweaking method (based on Lindgren et al. 2019, found in: https://github.com/tony-lind/Example-based-tweaking)
 # Added by Anonymous Author
-def rf_tweak(x,x_label,rf_model,data):
+def rf_tweak(x,x_label,rf_model,data,feasibility_check=True,mutability_check=True):
     """
     Function that returns the Random Forest tweaking counterfactual with respect to instance of interest x
     Input x: Instance of interest
@@ -82,11 +125,21 @@ def rf_tweak(x,x_label,rf_model,data):
     else:
         aim = 0
     rt_cf_freq, rt_cf_array, rt_cf_label_array = random_forest_tweaking(rf_model,x.reshape(1,-1),aim,data.jce_train_np,data.train_target) 
+    found = False
     if len(rt_cf_array) > 0:
-        rt_cf = rt_cf_array[0]
-    else:
+        if not feasibility_check:
+            rt_cf = rt_cf_array[0]
+        else:
+            cf_idx = 0
+            while not found and cf_idx < len(rt_cf_array):
+                feasible = verify_feasibility(x,rt_cf_array[cf_idx],data.feat_mutable,data.feat_type,data.feat_step,data.feat_dir,mutability_check)
+                if feasible:
+                    rt_cf = rt_cf_array[cf_idx]
+                    found = True
+                cf_idx += 1
+    if len(rt_cf_array) == 0 or not found:
         print(f'No Random Forest Tweaking solution found: Calculating NT solution')
-        rt_cf = nn(x,x_label,data.train_sorted,data.feat_mutable,data.feat_type)
+        rt_cf = nn(x,x_label,data,mutability_check)[0]
     end_time = time.time()
     rt_time = end_time - start_time
     return rt_cf, rt_time
