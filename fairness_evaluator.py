@@ -42,22 +42,38 @@ def extract_x_cd_df(eval_cf_df,eval_x_df, cf_metrics):
     x_df = pd.concat((x_df,full_x_metrics),axis=1)
     return x_df, cf_df
 
-def extract_values_labels(cf_df, method, df_feat_name, feat_val, metric):
+def extract_values_labels(cf_df, method, idx_list, metric):
     """
     Method that extracts the values of the metric and method of interest in the feature value specified
     """
-    feat_metric_method_values = cf_df[(cf_df['cf_method'] == method) & (cf_df[df_feat_name] == feat_val)][metric]
+    feat_metric_method_values = cf_df[(cf_df['cf_method'] == method) & (cf_df['instance_index'].isin(idx_list))][metric]
     return feat_metric_method_values.values
 
-def extract_number_instances_feat_val(cf_df, methods, df_feat_name, feat_unique_val):
+def extract_changed_values_ratio(x_df, cf_df, method, feat, idx_list):
+    """
+    Method that extracts the ratio of values changed for all sensitive features, for each method
+    """
+    cf_method_df = cf_df[cf_df['cf_method'] == method]
+    total_instances = len(x_idx)
+    counter_changed = 0
+    for idx in idx_list:
+        x_idx = x_df[x_df['instance_index'] == idx]
+        cf_idx = cf_method_df[cf_method_df['instance_index'] == idx]
+        if x_idx[feat] != cf_idx[feat]:
+            counter_changed += 1
+    return counter_changed / total_instances
+
+def extract_number_idx_instances_feat_val(x_df, df_feat_name, feat_unique_val):
     """
     Method that extracts the number of instances per value of a feature of interest
     """
-    len_feat_values = []
+    len_feat_values, idx_feat_values = [], []
     for i in range(len(feat_unique_val)):
-        feat_metric_method_values = cf_df[(cf_df['cf_method'] == methods[0]) & (cf_df[df_feat_name] == feat_unique_val[i])]
-        len_feat_values.append(len(feat_metric_method_values))
-    return len_feat_values
+        feat_values = x_df[x_df[df_feat_name] == feat_unique_val[i]]
+        feat_values_idx = feat_values['instance_index'].values
+        len_feat_values.append(len(feat_values))
+        idx_feat_values.append(feat_values_idx)
+    return len_feat_values, idx_feat_values
 
 def create_handles(feat, feat_unique_val, colors, protected_feat, len_feat_values):
     """
@@ -156,14 +172,16 @@ def metric_differences_plot(datasets, methods_to_run, cf_metrics, colors):
         protected_feat = eval_obj.feat_protected
         protected_feat_keys = list(protected_feat.keys())
         x_df, cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, cf_metrics)
+        x_df['instance_index'] = eval_x_df['index'].values
         for feat in x_df.columns[:-1]:
             feat_unique_val = x_df[feat].unique()
-            len_feat_unique_val = extract_number_instances_feat_val(cf_df, methods_to_run, feat, feat_unique_val)
+            len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(x_df, feat, feat_unique_val)
             xaxis_pos_labels = np.arange((len(feat_unique_val)-1)/2,len(methods_to_run)*len(feat_unique_val),len(feat_unique_val))
             xaxis_pos_bars = np.arange(len(methods_to_run)*len(feat_unique_val))
             for metric in cf_metrics:
                 metric_feat_mean_list = []
                 metric_feat_std_list = []
+                method_feat_ratio_list = []
                 metric_feat_labels = []
                 colors_plot = []
                 prot_feat_found = False
@@ -176,20 +194,27 @@ def metric_differences_plot(datasets, methods_to_run, cf_metrics, colors):
                 if prot_feat_found:
                     for method in methods_to_run:
                         for feat_idx in range(len(feat_unique_val)):
-                            feat_metric_method_values = extract_values_labels(cf_df, method, feat, feat_unique_val[feat_idx], metric)
+                            # feat_metric_method_values = extract_values_labels(cf_df, method, feat, feat_unique_val[feat_idx], idx_feat_values[feat_idx], metric)
+                            feat_metric_method_values = extract_values_labels(cf_df, method, idx_feat_values[feat_idx], metric)
+                            feat_ratio_values_changed = extract_changed_values_ratio(x_df, cf_df, method, feat, idx_feat_values[feat_idx], metric)
+                            method_feat_ratio_list.append(feat_ratio_values_changed)
                             metric_feat_mean_list.append(np.mean(feat_metric_method_values))
                             metric_feat_std_list.append(np.std(feat_metric_method_values,ddof=1))
                             colors_plot.append(colors[feat_idx])
                         metric_feat_labels.append(methods_names[method])
-                    legend_elements = create_handles(feat_name, feat_unique_val, colors, protected_feat, len_feat_unique_val)
+                    legend_elements = create_handles(feat_name, feat_unique_val, colors, protected_feat, len_feat_values)
                     fig, ax = plt.subplots(figsize=(8,6))
-                    ax.bar(xaxis_pos_bars, metric_feat_mean_list, yerr=metric_feat_std_list, color = colors_plot)
-                    ax.set_xticks(xaxis_pos_labels, labels=metric_feat_labels)
-                    ax.set_xticklabels(metric_feat_labels, rotation = 45, ha="right")
-                    ax.legend(handles=legend_elements)
-                    ax.set_title(f'{dataset_names[data_str]}: {metric_names[metric]} by {feat_name}')
-                    ax.set_ylabel('CF Distance to Instance of Interest (Euclidean)')
-                    ax.set_xlabel('Counterfactual Generation Method')
+                    ax_plot = ax.bar(xaxis_pos_bars, metric_feat_mean_list, yerr=metric_feat_std_list, color = colors_plot)
+                    counter = 0
+                    for pl in ax_plot:
+                        pl.text(x=pl.get_x() + pl.get_width()/2, y=0.1, s=f'({np.round(feat_ratio_values_changed[counter]*100,1)}%)', ha='center')
+                        counter += 1
+                    ax_plot.set_xticks(xaxis_pos_labels, labels=metric_feat_labels)
+                    ax_plot.set_xticklabels(metric_feat_labels, rotation = 45, ha="right")
+                    ax_plot.legend(handles=legend_elements)
+                    ax_plot.set_title(f'{dataset_names[data_str]}: {metric_names[metric]} by {feat_name}')
+                    ax_plot.set_ylabel('CF Distance to Instance of Interest (Euclidean)')
+                    ax_plot.set_xlabel('Counterfactual Generation Method')
                     plt.tight_layout()
                     plt.savefig(results_cf_plots_dir+f'{data_str}_{feat_name}_{metric}_fairness.png',dpi=400)
 
@@ -243,7 +268,7 @@ def accuracy_differences_plot(datasets, methods_to_run, cf_metrics, colors):
                     plt.savefig(results_cf_plots_dir+f'{data_str}_{feat_name}_{metric}_fairness.png',dpi=400)
 
 datasets = ['compass','adult']  # Name of the dataset to be analyzed ['compass','credit','adult','german','heart']
-methods_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt','jce_prox','mutable_jce_prox','jce_spar','mutable_jce_spar'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
+methods_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt','jce_prox','mutable_jce_prox'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 colors = ['red', 'green', 'blue', 'pink', 'gold', 'cyan']
 cf_metrics = ['proximity']
 

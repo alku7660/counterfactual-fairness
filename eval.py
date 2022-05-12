@@ -108,6 +108,7 @@ class Evaluator():
                 self.justifier_instance = justifier_instance
                 justifier_instance_pd = pd.DataFrame(data = [self.justifier_instance], index = [self.idx], columns = data_obj.jce_all_cols) 
                 self.normal_justifier_instance = data_obj.adjust_to_mace_format(justifier_instance_pd)
+            self.cf_pd['instance_index'] = [self.idx]
         else:
             self.cf_pd = None
             self.nn_to_cf = None
