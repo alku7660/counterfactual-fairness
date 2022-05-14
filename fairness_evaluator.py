@@ -54,12 +54,12 @@ def extract_changed_values_ratio(x_df, cf_df, method, feat, idx_list):
     Method that extracts the ratio of values changed for all sensitive features, for each method
     """
     cf_method_df = cf_df[cf_df['cf_method'] == method]
-    total_instances = len(x_idx)
+    total_instances = len(idx_list)
     counter_changed = 0
     for idx in idx_list:
         x_idx = x_df[x_df['instance_index'] == idx]
         cf_idx = cf_method_df[cf_method_df['instance_index'] == idx]
-        if x_idx[feat] != cf_idx[feat]:
+        if x_idx[feat].values != cf_idx[feat].values:
             counter_changed += 1
     return counter_changed / total_instances
 
@@ -196,7 +196,7 @@ def metric_differences_plot(datasets, methods_to_run, cf_metrics, colors):
                         for feat_idx in range(len(feat_unique_val)):
                             # feat_metric_method_values = extract_values_labels(cf_df, method, feat, feat_unique_val[feat_idx], idx_feat_values[feat_idx], metric)
                             feat_metric_method_values = extract_values_labels(cf_df, method, idx_feat_values[feat_idx], metric)
-                            feat_ratio_values_changed = extract_changed_values_ratio(x_df, cf_df, method, feat, idx_feat_values[feat_idx], metric)
+                            feat_ratio_values_changed = extract_changed_values_ratio(x_df, cf_df, method, feat, idx_feat_values[feat_idx])
                             method_feat_ratio_list.append(feat_ratio_values_changed)
                             metric_feat_mean_list.append(np.mean(feat_metric_method_values))
                             metric_feat_std_list.append(np.std(feat_metric_method_values,ddof=1))
@@ -206,15 +206,15 @@ def metric_differences_plot(datasets, methods_to_run, cf_metrics, colors):
                     fig, ax = plt.subplots(figsize=(8,6))
                     ax_plot = ax.bar(xaxis_pos_bars, metric_feat_mean_list, yerr=metric_feat_std_list, color = colors_plot)
                     counter = 0
-                    for pl in ax_plot:
-                        pl.text(x=pl.get_x() + pl.get_width()/2, y=0.1, s=f'({np.round(feat_ratio_values_changed[counter]*100,1)}%)', ha='center')
+                    for pl in ax_plot: #f'({np.round(feat_ratio_values_changed[counter]*100,1)}%)'
+                        ax.text(x=pl.get_x() + pl.get_width()/2, y=0.1, s='{}'.format(np.round(method_feat_ratio_list[counter]*100,1)), ha='center')
                         counter += 1
-                    ax_plot.set_xticks(xaxis_pos_labels, labels=metric_feat_labels)
-                    ax_plot.set_xticklabels(metric_feat_labels, rotation = 45, ha="right")
-                    ax_plot.legend(handles=legend_elements)
-                    ax_plot.set_title(f'{dataset_names[data_str]}: {metric_names[metric]} by {feat_name}')
-                    ax_plot.set_ylabel('CF Distance to Instance of Interest (Euclidean)')
-                    ax_plot.set_xlabel('Counterfactual Generation Method')
+                    ax.set_xticks(xaxis_pos_labels, labels=metric_feat_labels)
+                    ax.set_xticklabels(metric_feat_labels, rotation = 45, ha="right")
+                    ax.legend(handles=legend_elements)
+                    ax.set_title(f'{dataset_names[data_str]}: {metric_names[metric]} by {feat_name}')
+                    ax.set_ylabel('CF Distance to Instance of Interest (Euclidean)')
+                    ax.set_xlabel('Counterfactual Generation Method')
                     plt.tight_layout()
                     plt.savefig(results_cf_plots_dir+f'{data_str}_{feat_name}_{metric}_fairness.png',dpi=400)
 
@@ -267,8 +267,8 @@ def accuracy_differences_plot(datasets, methods_to_run, cf_metrics, colors):
                     ax.set_xlabel('Counterfactual Generation Method')
                     plt.savefig(results_cf_plots_dir+f'{data_str}_{feat_name}_{metric}_fairness.png',dpi=400)
 
-datasets = ['compass','adult']  # Name of the dataset to be analyzed ['compass','credit','adult','german','heart']
-methods_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt','jce_prox','mutable_jce_prox'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
+datasets = ['compass','adult']  # Name of the dataset to be analyzed ['compass','credit','adult','german','heart'] ,'jce_prox','mutable_jce_prox'
+methods_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 colors = ['red', 'green', 'blue', 'pink', 'gold', 'cyan']
 cf_metrics = ['proximity']
 
