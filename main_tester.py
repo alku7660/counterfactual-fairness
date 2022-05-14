@@ -293,7 +293,7 @@ for data_str in datasets:
                         print(f'---------------------------')
                         print(f'---------------------------')
 
-    save_obj(cf_evaluatand,data_str+'_mutability_eval.pkl')
+    save_obj(cf_evaluator,data_str+'_mutability_eval.pkl')
 
 print(f'---------------------------')
 print(f'  DONE: All CFs and Datasets')
