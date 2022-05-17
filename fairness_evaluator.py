@@ -158,6 +158,19 @@ def get_methods_names(methods):
             method_dict[i] = 'Mutable JUICES'
     return method_dict
 
+def get_feature_name(feat, protected_feat_keys):
+    """
+    Method to obtain the feature name in the original dataset
+    """
+    prot_feat_found = False
+    if feat in protected_feat_keys:
+        feat_name = feat
+        prot_feat_found = True
+    elif feat[:-4] in protected_feat_keys:
+        feat_name = feat[:-4]
+        prot_feat_found = True
+    return feat_name, prot_feat_found
+
 def metric_differences_plot(datasets, methods_to_run, cf_metrics, colors):
     """
     Method that plots the metric differences among features, datasets and methods
@@ -178,19 +191,13 @@ def metric_differences_plot(datasets, methods_to_run, cf_metrics, colors):
             len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(x_df, feat, feat_unique_val)
             xaxis_pos_labels = np.arange((len(feat_unique_val)-1)/2,len(methods_to_run)*len(feat_unique_val),len(feat_unique_val))
             xaxis_pos_bars = np.arange(len(methods_to_run)*len(feat_unique_val))
+            feat_name, prot_feat_found = get_feature_name(feat, protected_feat_keys)
             for metric in cf_metrics:
                 metric_feat_mean_list = []
                 metric_feat_std_list = []
                 method_feat_ratio_list = []
                 metric_feat_labels = []
                 colors_plot = []
-                prot_feat_found = False
-                if feat in protected_feat_keys:
-                    feat_name = feat
-                    prot_feat_found = True
-                elif feat[:-4] in protected_feat_keys:
-                    feat_name = feat[:-4]
-                    prot_feat_found = True
                 if prot_feat_found:
                     for method in methods_to_run:
                         for feat_idx in range(len(feat_unique_val)):
@@ -217,7 +224,6 @@ def metric_differences_plot(datasets, methods_to_run, cf_metrics, colors):
                     ax.set_xlabel('Counterfactual Generation Method')
                     plt.tight_layout()
                     plt.savefig(results_cf_plots_dir+f'{data_str}_{feat_name}_{metric}_fairness.png',dpi=400)
-
 
 def accuracy_differences_plot(datasets, methods_to_run, cf_metrics, colors):
     """
@@ -267,7 +273,7 @@ def accuracy_differences_plot(datasets, methods_to_run, cf_metrics, colors):
                     ax.set_xlabel('Counterfactual Generation Method')
                     plt.savefig(results_cf_plots_dir+f'{data_str}_{feat_name}_{metric}_fairness.png',dpi=400)
 
-datasets = ['compass','adult']  # Name of the dataset to be analyzed ['compass','credit','adult','german','heart'] ,'jce_prox','mutable_jce_prox'
+datasets = ['adult']  # Name of the dataset to be analyzed ['compass','credit','adult','german','heart'] ,'jce_prox','mutable_jce_prox'
 methods_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 colors = ['red', 'green', 'blue', 'pink', 'gold', 'cyan']
 cf_metrics = ['proximity']

@@ -85,7 +85,7 @@ for data_str in datasets:
 
         for feat_unique_val in feat_unique_val_list:
             instances_feat_val_evaluated = 0
-            for i in range(int(len(test_undesired_index)*perc)):
+            for i in range(1,int(len(test_undesired_index)*perc)):
                 if instances_feat_val_evaluated >= instances_per_protected_class:
                     break
                 else:

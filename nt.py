@@ -23,6 +23,7 @@ def verify_feasibility(x,cf,mutable_feat,feat_type,feat_step,feat_dir,mutability
     """
     toler = 0.000001
     feasibility = True
+    vector = cf - x
     for i in range(len(feat_type)):
         if feat_type[i] == 'bin':
             if not np.isclose(cf[i], [0,1],atol=toler).any():
@@ -37,7 +38,6 @@ def verify_feasibility(x,cf,mutable_feat,feat_type,feat_step,feat_dir,mutability
             if cf[i] < 0-toler or cf[i] > 1+toler:
                 feasibility = False
                 break
-        vector = cf - x
         if feat_dir[i] == 0 and vector[i] != 0:
             feasibility = False
             break
