@@ -37,8 +37,14 @@ def load_obj(file_name):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-datasets = ['adult'] # Name of the dataset to be analyzed ['compass','credit','adult','german','heart']
-models_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt','juice','mutable-juice'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
+def check_evaluated_pd(evaluated_instances_pd, feat, feat_unique_val):
+    """
+    Method that checks the number of checked instances for a given feature and feature value.
+    """
+    return len(evaluated_instances_pd[evaluated_instances_pd[feat] == feat_unique_val])
+
+datasets = ['adult','compass'] # Name of the dataset to be analyzed ['compass','credit','adult','german','heart']
+models_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -47,7 +53,7 @@ epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feat
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 perc = 1             # Percentage of test samples to consider for the counterfactuals search
-instances_per_protected_class = 5
+instances_per_protected_class = 20
 
 np.random.seed(seed_int)
 
@@ -57,7 +63,6 @@ for data_str in datasets:
     carla_data = MyOwnDataSet(data)
     carla_model = MyOwnModel(carla_data,data,model)
     cf_evaluator = Evaluator(data,n_feat)
-    idx_instances_evaluated = []
 
     print(f'---------------------------------------')  
     print(f'                    Dataset: {data_str}')
@@ -71,21 +76,17 @@ for data_str in datasets:
 
     save_obj(model,data_str+'_model.pkl')
     save_obj(data,data_str+'_data.pkl')
-    evaluator_list = []
-    test_undesired_index = data.test_undesired_pd.index.to_list()
     
+    evaluated_instances_pd = pd.DataFrame(columns=cf_evaluator.data_cols)
+    idx_instances_evaluated = []
+    test_undesired_index = data.test_undesired_pd.index.to_list()
     for feat in data.jce_test_pd.columns:
-        if feat in data.feat_protected.keys():
-            feat_name = feat
-        elif feat[:-4] in data.feat_protected.keys():
-            feat_name = feat[:-4]
-        else:
+        if feat not in data.feat_protected.keys() and feat[:-4] not in data.feat_protected.keys():
             continue
         feat_unique_val_list = data.jce_test_pd[feat].unique()
-
         for feat_unique_val in feat_unique_val_list:
-            instances_feat_val_evaluated = 0
             for i in range(1,int(len(test_undesired_index)*perc)):
+                instances_feat_val_evaluated = check_evaluated_pd(evaluated_instances_pd, feat, feat_unique_val)
                 if instances_feat_val_evaluated >= instances_per_protected_class:
                     break
                 else:
@@ -110,6 +111,7 @@ for data_str in datasets:
                         x_label = model.jce_sel.predict(x_jce_np.reshape(1,-1))
                         data.add_sorted_train_data(x_jce_pd)
                         cf_evaluator.add_specific_x_data(idx,x_jce_np,x_label,x_target,data)
+                        evaluated_instances_pd = evaluated_instances_pd.append(x_jce_pd.to_frame().T)
                         if 'nn' in models_to_run:
                             nn_cf, nn_time = nn(x_jce_np,x_label,data)
                             cf_evaluator.add_specific_cf_data(data,'nn',nn_cf,nn_time,model.jce_sel,nn_cf,1,1)
@@ -275,18 +277,15 @@ for data_str in datasets:
                         
                         if 'mutable-juice' in models_to_run:
                             mutable_jce_prox_cf, mutable_instance_jce_prox, mutable_just_jce_prox, mutable_found_justifiable_jce_prox, mutable_jce_prox_time = JUICE(x_jce_np,x_label,data,model.jce_sel,'proximity',mutability_check=False) # Refer to jce.py for details
-                            cf_evaluator.add_specific_cf_data(data,'mutable_jce_prox',mutable_jce_prox_cf,mutable_jce_prox_time,model.jce_sel,mutable_instance_jce_prox,mutable_just_jce_prox,mutable_found_justifiable_jce_prox)
+                            cf_evaluator.add_specific_cf_data(data,'mutable-jce_prox',mutable_jce_prox_cf,mutable_jce_prox_time,model.jce_sel,mutable_instance_jce_prox,mutable_just_jce_prox,mutable_found_justifiable_jce_prox)
                             print(f'  Mutable P-JCE (time (s): {np.round_(mutable_jce_prox_time,2)})')
                             print(f'---------------------------')
 
                             mutable_jce_spar_cf, mutable_instance_jce_spar, mutable_just_jce_spar, mutable_found_justifiable_jce_spar, mutable_jce_spar_time = JUICE(x_jce_np,x_label,data,model.jce_sel,'sparsity',mutability_check=False) # Refer to jce.py for details
                             mutable_sparsity_changed_feat, mutable_jce_spar_cf = mutable_jce_spar_cf[1], mutable_jce_spar_cf[0]
-                            cf_evaluator.add_specific_cf_data(data,'mutable_jce_spar',mutable_jce_spar_cf,mutable_jce_spar_time,model.jce_sel,mutable_instance_jce_spar,mutable_just_jce_spar,mutable_found_justifiable_jce_spar)
+                            cf_evaluator.add_specific_cf_data(data,'mutable-jce_spar',mutable_jce_spar_cf,mutable_jce_spar_time,model.jce_sel,mutable_instance_jce_spar,mutable_just_jce_spar,mutable_found_justifiable_jce_spar)
                             print(f'  Mutable S-JCE (time (s): {np.round_(mutable_jce_spar_time,2)})')
                             print(f'---------------------------')
-
-                        if nn_cf is not None and mo_cf is not None and rt_cf is not None and jce_prox_cf is not None and jce_spar_cf is not None:
-                            instances_feat_val_evaluated += 1
                             
                         print(f'---------------------------')
                         print(f'  DONE: {data_str} CF Evaluation')

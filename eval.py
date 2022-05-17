@@ -51,21 +51,34 @@ class Evaluator():
         self.feat_protected = data_obj.feat_protected
         self.n_feat = n_feat
         self.data_cols = data_obj.jce_all_cols
-        self.x_columns = ['index','x','normal_x',
+        self.undesired_class = data_obj.undesired_class
+        self.desired_class_centroid = self.search_desired_class_centroid(data_obj)
+        self.x_columns = ['instance_index','x','normal_x',
                           'x_pred','x_target','accuracy']
-        self.eval_columns = ['cf_method','cf','normal_cf',
+        # self.eval_columns = ['instance_index','cf_method','cf','normal_cf',
+        #                      'proximity','feasibility','sparsity',
+        #                      'justification','justifier','normal_justifier','time']
+        self.eval_columns = ['instance_index','cf_method','cf','normal_cf',
                              'proximity','feasibility','sparsity',
-                             'justification','justifier','normal_justifier','time']
+                             'valid','time']
         self.all_x_data = pd.DataFrame(columns=self.x_columns)
         self.all_cf_data = pd.DataFrame(columns=self.eval_columns)
     
+    def search_desired_class_centroid(self, data):
+        """
+        Method to obtain the centroid of the desired class
+        """
+        train_desired_class = data.jce_train_np[data.train_target != self.undesired_class]
+        centroid_train_desired_class = np.mean(train_desired_class, axis=0)
+        return centroid_train_desired_class
+
     def add_specific_x_data(self,idx,x,x_label,x_target,data_obj):
         """
         Method that calculates and stores x data found in the Evaluator
         """
         self.idx = idx
         self.x = x
-        self.x_pd = pd.DataFrame(data = [self.x], index = [idx], columns = data_obj.jce_all_cols)
+        self.x_pd = pd.DataFrame(data = [self.x], index = [self.idx], columns = data_obj.jce_all_cols)
         self.normal_x = data_obj.adjust_to_mace_format(self.x_pd)
         self.x_label = x_label
         self.x_target = x_target
@@ -95,38 +108,40 @@ class Evaluator():
                     nn_to_cf = i[0]
                     label_nn_to_cf = i[2]
                     break
-            self.nn_to_cf, self.cf_label  = nn_to_cf, label_nn_to_cf
-            self.normal_cf = data_obj.adjust_to_mace_format(self.cf_pd)
-            self.proximity()
-            self.feasibility()
-            self.sparsity(data_obj)
-            self.cf_time = cf_time
-            if cf_justification is None:
-                self.justification(model,data_obj)
-            else:
-                self.cf_justification = cf_justification
-                self.justifier_instance = justifier_instance
-                justifier_instance_pd = pd.DataFrame(data = [self.justifier_instance], index = [self.idx], columns = data_obj.jce_all_cols) 
-                self.normal_justifier_instance = data_obj.adjust_to_mace_format(justifier_instance_pd)
-            self.cf_pd['instance_index'] = [self.idx]
+            normal_cf = data_obj.adjust_to_mace_format(self.cf_pd)
+            self.cf_valid = True
         else:
-            self.cf_pd = None
-            self.nn_to_cf = None
-            self.label_nn_to_cf = None
-            self.normal_cf = np.nan
-            self.cf_proximity = np.nan
-            self.cf_feasibility = np.nan
-            self.cf_sparsity = np.nan
-            self.cf_time = np.nan
-            self.cf_justification = np.nan
-            self.justifier_instance = np.nan
-            self.justifier_instance_pd = np.nan
-            self.normal_justifier_instance = np.nan
-        self.found_justifiable_cf = found_justifiable_jcf
-        df_cf_row = pd.DataFrame(data = [[self.cf_method_name, self.cf_pd, self.normal_cf,
+            self.cf = self.desired_class_centroid
+            self.cf_pd = pd.DataFrame(data = [self.cf], index = [self.idx], columns = data_obj.jce_all_cols)
+            nn_to_cf = self.cf_pd
+            label_nn_to_cf = 1 - self.undesired_class
+            self.nn_to_cf, self.cf_label  = nn_to_cf, label_nn_to_cf
+            normal_cf = self.cf_pd
+            self.cf_valid = False
+        self.normal_cf = normal_cf
+        self.proximity()
+        self.feasibility()
+        self.sparsity(data_obj)
+        self.cf_time = cf_time
+        # if cf_justification is None:
+        #     self.justification(model,data_obj)
+        # else:
+        #     self.cf_justification = cf_justification
+        #     self.justifier_instance = justifier_instance
+        #     justifier_instance_pd = pd.DataFrame(data = [self.justifier_instance], index = [self.idx], columns = data_obj.jce_all_cols) 
+        #     self.normal_justifier_instance = data_obj.adjust_to_mace_format(justifier_instance_pd)
+        # df_cf_row = pd.DataFrame(data = [[self.cf_method_name, self.cf_pd, self.normal_cf,
+        #                                   self.cf_proximity, self.cf_feasibility, self.cf_sparsity,
+        #                                   self.cf_justification, self.justifier_instance, self.normal_justifier_instance, self.cf_time]],
+        #                                   columns = self.eval_columns)
+        # self.found_justifiable_cf = found_justifiable_jcf
+        # df_cf_row = pd.DataFrame(data = [[self.idx, self.cf_method_name, self.cf_pd, self.normal_cf,
+        #                                   self.cf_proximity, self.cf_feasibility, self.cf_sparsity,
+        #                                   self.cf_justification, self.justifier_instance, self.normal_justifier_instance, self.cf_time]],
+        #                                   columns = self.eval_columns)
+        df_cf_row = pd.DataFrame(data = [[self.idx, self.cf_method_name, self.cf_pd, self.normal_cf,
                                           self.cf_proximity, self.cf_feasibility, self.cf_sparsity,
-                                          self.cf_justification, self.justifier_instance, self.normal_justifier_instance, self.cf_time]],
-                                          columns = self.eval_columns)
+                                          self.cf_valid, self.cf_time]], columns = self.eval_columns)
         self.all_cf_data = self.all_cf_data.append(df_cf_row)
 
     def accuracy(self):
@@ -171,7 +186,6 @@ class Evaluator():
             elif self.feat_dir[i] == 'neg' and vector[i] > 0:
                 feasibility = False
                 break
-        # print(f'after for: {feasibility}, {not np.array_equal(x[np.where(mutable_feat == 0)],cf[np.where(mutable_feat == 0)])}')
         if not np.array_equal(self.x[np.where(self.feat_mutable == 0)],self.cf[np.where(self.feat_mutable == 0)]):
             feasibility = False
         self.cf_feasibility = feasibility
@@ -191,7 +205,7 @@ class Evaluator():
         else:
             sparsity = np.round_(1 - n_changed/len(self.x),3)
         self.cf_sparsity = sparsity
-    
+
     def justification(self,model,data):
         """
         Method that finds whether the instance of interest is justified or not
