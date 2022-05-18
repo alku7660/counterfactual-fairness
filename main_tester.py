@@ -43,7 +43,7 @@ def check_evaluated_pd(evaluated_instances_pd, feat, feat_unique_val):
     """
     return len(evaluated_instances_pd[evaluated_instances_pd[feat] == feat_unique_val])
 
-datasets = ['adult','compass'] # Name of the dataset to be analyzed ['compass','credit','adult','german','heart']
+datasets = ['compass'] # Name of the dataset to be analyzed ['compass','credit','adult','german','heart']
 models_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -53,7 +53,7 @@ epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feat
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 perc = 1             # Percentage of test samples to consider for the counterfactuals search
-instances_per_protected_class = 20
+instances_per_protected_class = 50
 
 np.random.seed(seed_int)
 
