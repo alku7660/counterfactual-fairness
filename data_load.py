@@ -84,6 +84,7 @@ class Dataset:
         self.name = data_str
         self.label_str = label_str
         self.raw_df = raw_df
+        self.raw_df_cols = raw_df.columns
         self.jce_binary = binary
         self.jce_categorical = categorical
         self.jce_numerical = numerical
@@ -161,16 +162,13 @@ class Dataset:
         """
         oh_jce_bin_enc = OneHotEncoder(drop='if_binary',dtype=np.uint8,handle_unknown='ignore')
         oh_jce_cat_enc = OneHotEncoder(drop='if_binary',dtype=np.uint8,handle_unknown='ignore')
-        oh_jce_bin_cat_enc = OneHotEncoder(drop='if_binary',dtype=np.uint8,handle_unknown='ignore',sparse=False)
         jce_scaler = MinMaxScaler(clip=True)
-        jce_train_data_bin, jce_train_data_cat, jce_train_data_num, jce_train_data_bin_cat = self.train_pd[self.jce_binary], self.train_pd[self.jce_categorical], self.train_pd[self.jce_numerical], self.train_pd[self.jce_binary+self.jce_categorical]
+        jce_train_data_bin, jce_train_data_cat, jce_train_data_num = self.train_pd[self.jce_binary], self.train_pd[self.jce_categorical], self.train_pd[self.jce_numerical]
         enc_jce_train_data_bin = oh_jce_bin_enc.fit_transform(jce_train_data_bin).toarray()
         enc_jce_train_data_cat = oh_jce_cat_enc.fit_transform(jce_train_data_cat).toarray()
-        oh_jce_bin_cat_enc.fit(jce_train_data_bin_cat)
         scaled_jce_train_data_num = jce_scaler.fit_transform(jce_train_data_num)
         self.oh_jce_bin_enc, self.oh_jce_bin_enc_cols = oh_jce_bin_enc, oh_jce_bin_enc.get_feature_names_out(self.jce_binary)
         self.oh_jce_cat_enc, self.oh_jce_cat_enc_cols = oh_jce_cat_enc, oh_jce_cat_enc.get_feature_names_out(self.jce_categorical)
-        self.oh_jce_bin_cat_enc = oh_jce_bin_cat_enc
         self.jce_scaler = jce_scaler
         scaled_jce_train_data_num_pd = pd.DataFrame(scaled_jce_train_data_num,index=jce_train_data_num.index,columns=self.jce_numerical)
         enc_jce_train_data_bin_pd = pd.DataFrame(enc_jce_train_data_bin,index=jce_train_data_bin.index,columns=self.oh_jce_bin_enc_cols)
@@ -195,7 +193,6 @@ class Dataset:
         scaled_carla_train_data_cont_pd = pd.DataFrame(scaled_carla_train_data_cont,index=carla_train_data_cont.index,columns=self.carla_continuous)
         self.carla_train_pd = pd.concat((scaled_carla_train_data_cont_pd,enc_carla_train_data_cat_pd),axis=1)
         self.carla_trained_features = self.carla_train_pd.columns.to_list()
-
         carla_test_data_cat, carla_test_data_cont = self.test_pd[self.carla_categorical], self.test_pd[self.carla_continuous]
         enc_carla_test_data_cat = oh_carla_enc.transform(carla_test_data_cat)
         scaled_carla_test_data_cont = carla_scaler.transform(carla_test_data_cont)
@@ -840,19 +837,19 @@ class Dataset:
         """
         feat_protected_values = {}
         if self.name == 'compass':
-            feat_protected_values['Race'] = {0.00:'African-American', 1.00:'Caucasian'}
-            feat_protected_values['Sex'] = {0.00:'Male', 1.00:'Female'}
-            feat_protected_values['AgeGroup'] = {0.00:'< 25', 0.50:'25 - 45', 1.00:'> 45'}
+            feat_protected_values['Race'] = {1.00:'African-American', 2.00:'Caucasian'}
+            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
+            feat_protected_values['AgeGroup'] = {1.00:'< 25', 2.00:'25 - 45', 3.00:'> 45'}
         elif self.name == 'credit':
             feat_protected_values['isMale'] = {1.00:'True', 0.00:'False'}
             feat_protected_values['isMarried'] = {1.00:'True', 0.00:'False'}
-            feat_protected_values['AgeGroup'] = {0.00:'<25', 0.33:'25-40', 0.67:'40-59', 1.00:'>59'}
-            feat_protected_values['EducationLevel'] = {0.00:'Other', 0.33:'HS', 0.67:'University', 1.00:'Graduate'}
+            feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-40', 3.00:'40-59', 4.00:'>59'}
+            feat_protected_values['EducationLevel'] = {1.00:'Other', 2.00:'HS', 3.00:'University', 4.00:'Graduate'}
         elif self.name == 'adult':
-            feat_protected_values['Sex'] = {0.00:'Male', 1.00:'Female'}
-            feat_protected_values['NativeCountry'] = {0.00:'USA', 1.00:'Non-USA'}
-            feat_protected_values['MaritalStatus'] = {0.00:'Divor.', 1.00:'Married-AF-spouse', 2.00:'Married-civ-spouse', 3.00:'Married-spouse-absent', 4.00:'Never-married', 5.00:'Separat.', 6.00:'Widow'}
-            feat_protected_values['Relationship'] = {0.00:'Husband', 1.00:'Not-in-family', 2.00:'Other-relative', 3.00:'Own-child', 4.00:'Unmarried', 5.00:'Wife'}
+            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
+            feat_protected_values['NativeCountry'] = {1.00:'USA', 2.00:'Non-USA'}
+            feat_protected_values['MaritalStatus'] = {1.00:'Divor.', 2.00:'Married-AF-spouse', 3.00:'Married-civ-spouse', 4.00:'Married-spouse-absent', 5.00:'Never-married', 6.00:'Separat.', 7.00:'Widow'}
+            feat_protected_values['Relationship'] = {1.00:'Husband', 2.00:'Not-in-family', 3.00:'Other-relative', 4.00:'Own-child', 5.00:'Unmarried', 6.00:'Wife'}
         elif self.name == 'german':
             feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
             feat_protected_values['Age'] = 'hist'

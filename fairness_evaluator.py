@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 12})
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
+from matplotlib import cm
 
 def load_obj(file_name):
     """
@@ -29,18 +30,20 @@ def extract_x_cd_df(eval_cf_df,eval_x_df, cf_metrics):
     """
     eval_cf_df.dropna(inplace=True)
     full_df_cf_list = eval_cf_df['cf'].tolist()
+    full_df_original_cf_list = eval_cf_df['original_cf'].tolist()
     full_df_x_list = eval_x_df['x'].tolist()
+    full_df_original_x_list = eval_x_df['original_x'].tolist()
     cf_df = pd.concat(full_df_cf_list)
+    original_cf_df = pd.concat(full_df_original_cf_list)
     x_df = pd.concat(full_df_x_list)
-    cf_df = cf_df.reset_index(drop=True)
-    full_df_metrics = eval_cf_df[['cf_method','instance_index','valid']+cf_metrics]
-    full_df_metrics = full_df_metrics.reset_index(drop=True)
-    x_df = x_df.reset_index(drop=True)
-    full_x_metrics = eval_x_df[['accuracy','instance_index']]
-    full_x_metrics = full_x_metrics.reset_index(drop=True)
+    original_x_df = pd.concat(full_df_original_x_list)
+    full_df_metrics = eval_cf_df[['cf_method','valid']+cf_metrics]
+    full_df_metrics.index = cf_df.index
+    full_x_metrics = eval_x_df[['accuracy']]
+    full_x_metrics.index = x_df.index
     cf_df = pd.concat((cf_df,full_df_metrics),axis=1)
     x_df = pd.concat((x_df,full_x_metrics),axis=1)
-    return x_df, cf_df
+    return x_df, cf_df, original_x_df, original_cf_df
 
 def extract_values_labels(cf_df, method, idx_list):
     """
@@ -63,20 +66,14 @@ def extract_changed_values_ratio(x_df, cf_df, method, feat, idx_list):
             counter_changed += 1
     return counter_changed / total_instances
 
-def extract_number_idx_instances_feat_val(x_df, df_feat_name, feat_unique_val):
+def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
     """
     Method that extracts the number of instances per value of a feature of interest
     """
     len_feat_values, idx_feat_values = [], []
-    if len(feat_unique_val) == 2:
-        feat_values = x_df[x_df[df_feat_name] == feat_unique_val[i]]
-        feat_values_idx = feat_values['instance_index'].values
-        len_feat_values.append(len(feat_values))
-        idx_feat_values.append(feat_values_idx)
-    else:
     for i in range(len(feat_unique_val)):
-        feat_values = x_df[x_df[df_feat_name] == feat_unique_val[i]]
-        feat_values_idx = feat_values['instance_index'].values
+        feat_values = original_x_df[original_x_df[feat_name] == feat_unique_val[i]]
+        feat_values_idx = feat_values.index.tolist()
         len_feat_values.append(len(feat_values))
         idx_feat_values.append(feat_values_idx)
     return len_feat_values, idx_feat_values
@@ -85,24 +82,10 @@ def extract_accuracy_feat_val(x_df, idx_list):
     """
     Method that extracts the accuracy of the instances per protected feature group
     """
-    x_feat_df = x_df[x_df['instance_index'].isin(idx_list)]
+    x_feat_df = x_df[x_df.index.isin(idx_list)]
     x_feat_df_acc = x_feat_df['accuracy']
     sum_x_feat_df_acc = np.sum(x_feat_df_acc)
     return sum_x_feat_df_acc/len(idx_list)
-
-def extract_unique_values(x_df, feat):
-    """
-    Method that extracts the unique values of the features in the DataFrame
-    """
-    x_df_columns = list(x_df.columns)
-    x_df_feat_columns = [c for c in x_df_feat_columns if feat in c]
-    if len(x_df_feat_columns) == 1:
-        unique_val = x_df[x_df_feat_columns].unique()
-    else:
-        unique_val = [float(i[-3:]) for i in x_df_feat_columns]
-        if min(unique_val) > 0:
-            unique_val = unique_val - 1
-    return unique_val
 
 def create_handles(feat, feat_unique_val, colors, protected_feat, len_feat_values):
     """
@@ -111,7 +94,7 @@ def create_handles(feat, feat_unique_val, colors, protected_feat, len_feat_value
     list_handles = []
     total_instances = np.sum(len_feat_values)
     for i in range(len(feat_unique_val)):
-        handle = Line2D([0], [0], color=colors[i], lw=2, label=f'{protected_feat[feat][np.round(feat_unique_val[i],2)]} ({len_feat_values[i]} examples, {np.round(len_feat_values[i]*100/total_instances,1)}%)')
+        handle = Line2D([0], [0], color=colors[i], lw=2, label=f'{feat_unique_val[i]} ({len_feat_values[i]} examples, {np.round(len_feat_values[i]*100/total_instances,1)}%)')
         list_handles.extend([handle])
     return list_handles
 
@@ -200,120 +183,105 @@ def get_feature_name(feat, protected_feat_keys):
         prot_feat_found = True
     return feat_name, prot_feat_found
 
-def metric_differences_plot(datasets, methods_to_run, cf_metrics, colors):
+def metric_differences_plot(datasets, methods_to_run, metric, colors):
     """
     Method that plots the metric differences among features, datasets and methods
     """
     methods_names = get_methods_names(methods_to_run)
     dataset_names = get_data_names(datasets)
-    metric_names = get_metric_names(cf_metrics)
+    metric_names = get_metric_names([metric])
     for data_str in datasets:
         eval_obj = load_obj(data_str)
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
         protected_feat_keys = list(protected_feat.keys())
-        x_df, cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, cf_metrics)
-        for feat in x_df.columns:
-            feat_name, prot_feat_found = get_feature_name(feat, protected_feat_keys)
-            if feat_name is None:
-                continue
-            feat_unique_val = extract_unique_values(x_df, feat_name)
-            # feat_unique_val = x_df[feat].unique()
-            len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(x_df, feat, feat_unique_val)
+        x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
+        for feat in protected_feat_keys:
+            feat_unique_val = original_x_df[feat].unique()
+            len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
             fig, ax = plt.subplots(figsize=(8,6))
             xaxis_pos_labels = np.arange((len(feat_unique_val)-1)/2,len(methods_to_run)*len(feat_unique_val),len(feat_unique_val))
             xaxis_pos_box = np.arange(len(methods_to_run)*len(feat_unique_val))
-            for metric in cf_metrics:
-                method_feat_labels = []
-                method_feat_valid_list = []
-                if prot_feat_found:
-                    for method_idx in range(len(methods_to_run)):
-                        for feat_idx in range(len(feat_unique_val)):
-                            box_feat_val_pos = xaxis_pos_box[method_idx*len(feat_unique_val)+feat_idx]
-                            feat_method_data = cf_df[(cf_df['cf_method'] == methods_to_run[method_idx]) & (cf_df['instance_index'].isin(idx_feat_values[feat_idx]))]
-                            feat_method_data_values = feat_method_data[metric].values
-                            feat_method_data_valid = np.sum(feat_method_data['valid'].values)*100/len(feat_method_data)
-                            feat_ratio_values_changed = extract_changed_values_ratio(x_df, cf_df, methods_to_run[method_idx], feat, idx_feat_values[feat_idx])
-                            method_feat_valid_list.append(feat_method_data_valid)
-                            c = colors[feat_idx]
-                            ax.boxplot(x=feat_method_data_values, positions=[box_feat_val_pos], boxprops=dict(color=c),
-                                       capprops=dict(color=c), showfliers=True, whiskerprops=dict(color=c),
-                                       medianprops=dict(color=c), widths=0.9, showmeans=True,
-                                       meanprops=dict(markerfacecolor=c, markeredgecolor=c, marker='D'), flierprops=dict(markeredgecolor=c), notch=False)
-                            # ax.text(x=box_feat_val_pos, y=0, s=np.round(feat_ratio_values_changed*100,1), ha='center', va='center', fontstyle='italic', fontweight='bold')
-                        method_feat_labels.append(methods_names[methods_to_run[method_idx]])
-                    legend_elements = create_handles(feat_name, feat_unique_val, colors, protected_feat, len_feat_values)
-                    # counter = 0
-                    # for pl in ax_plot.get_xticks():
-                    #     ax.text(x=pl, y=0.1*min([min(i) for i in method_feat_values_list]), s='{}'.format(np.round(method_feat_ratio_list[counter]*100,1)), ha='center')
-                    #     counter += 1
-                    ax.set_xticks(xaxis_pos_labels, labels=method_feat_labels)
-                    ax.set_xticklabels(method_feat_labels, rotation = 10, ha='center')
-                    # box = ax.get_position()
-                    # ax.set_position([box.x0, box.y0, box.width, box.height*0.5])
-                    ax.set_title(f'{dataset_names[data_str]} Dataset: {metric_names[metric]} by {feat_name}')
-                    ax.set_ylabel('CF Distance to Instance of Interest (Euclidean)')
-                    ax.set_xlabel('Counterfactual Method')
-                    axvalid = ax.twinx()
-                    color_secax = 'tab:blue'
-                    axvalid.set_ylabel('Percentage of attainable CFs (%)',color=color_secax)
-                    axvalid.plot(xaxis_pos_box, method_feat_valid_list, color=color_secax, linestyle='', marker='h', markersize=8)
-                    axvalid.tick_params(axis='y', labelcolor=color_secax)
-                    ax.legend(handles=legend_elements, loc=(-0.1,-0.1*len(legend_elements)))
-                    plt.tight_layout()
-                    plt.savefig(results_cf_plots_dir+f'{data_str}_{feat_name}_{metric}_method_feat_fairness.png',dpi=400)
+            method_feat_labels = []
+            method_feat_valid_list = []
+            for method_idx in range(len(methods_to_run)):
+                for feat_idx in range(len(feat_unique_val)):
+                    box_feat_val_pos = xaxis_pos_box[method_idx*len(feat_unique_val)+feat_idx]
+                    feat_method_data = cf_df[(cf_df['cf_method'] == methods_to_run[method_idx]) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
+                    feat_method_data_values = feat_method_data[metric].values
+                    feat_method_data_valid = np.sum(feat_method_data['valid'].values)*100/len(feat_method_data)
+                    # feat_ratio_values_changed = extract_changed_values_ratio(x_df, cf_df, methods_to_run[method_idx], feat, idx_feat_values[feat_idx])
+                    method_feat_valid_list.append(feat_method_data_valid)
+                    c = colors[feat_idx]
+                    ax.boxplot(x=feat_method_data_values, positions=[box_feat_val_pos], boxprops=dict(color=c),
+                               capprops=dict(color=c), showfliers=True, whiskerprops=dict(color=c),
+                               medianprops=dict(color=c), widths=0.9, showmeans=True,
+                               meanprops=dict(markerfacecolor=c, markeredgecolor=c, marker='D'), flierprops=dict(markeredgecolor=c), notch=False)
+                    # ax.text(x=box_feat_val_pos, y=0, s=np.round(feat_ratio_values_changed*100,1), ha='center', va='center', fontstyle='italic', fontweight='bold')
+                method_feat_labels.append(methods_names[methods_to_run[method_idx]])
+            legend_elements = create_handles(feat, feat_unique_val, colors, protected_feat, len_feat_values)
+            ax.set_xticks(xaxis_pos_labels, labels=method_feat_labels)
+            ax.set_xticklabels(method_feat_labels, rotation = 10, ha='center')
+            ax.set_title(f'{dataset_names[data_str]} Dataset: {metric_names[metric]} by {feat}')
+            ax.set_ylabel('CF Distance to Instance of Interest (Euclidean)')
+            ax.set_xlabel('Counterfactual Method')
+            axvalid = ax.twinx()
+            color_secax = 'tab:blue'
+            axvalid.set_ylabel('Percentage of attainable CFs (%)',color=color_secax)
+            axvalid.plot(xaxis_pos_box, method_feat_valid_list, color=color_secax, linestyle='', marker='>', markersize=8)
+            axvalid.tick_params(axis='y', labelcolor=color_secax)
+            ax.legend(handles=legend_elements, loc=(-0.1,-0.1*len(legend_elements)))
+            plt.tight_layout()
+            plt.savefig(results_cf_plots_dir+f'{data_str}_{feat}_{metric}_method_feat_fairness.png',dpi=400)
 
-def accuracy_burden_plot(datasets, methods_to_run, cf_metrics, colors):
+def accuracy_burden_plot(datasets, method, metric, colors):
     """
     Method that plots the accuracy differences among features, datasets and methods
     """
-    methods_names = get_methods_names(methods_to_run)
+    methods_names = get_methods_names([method])
     dataset_names = get_data_names(datasets)
-    metric_names = get_metric_names(cf_metrics)
+    metric_names = get_metric_names([metric])
     for data_str in datasets:
         eval_obj = load_obj(data_str)
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
         protected_feat_keys = list(protected_feat.keys())
-        x_df, cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, cf_metrics)
+        x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
         fig, ax = plt.subplots(figsize=(8,6))
         acc_list = []
         method_feat_valid_list = []
-        feat_counter = 0
-        for feat in x_df.columns:
-            feat_name, prot_feat_found = get_feature_name(feat, protected_feat_keys)
-            if feat_name is None:
-                continue
-            feat_unique_val = x_df[feat].unique()
-            len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(x_df, feat, feat_unique_val)
-            for metric in cf_metrics:
-                if prot_feat_found:
-                    for method_idx in range(len(methods_to_run)):
-                        for feat_idx in range(len(feat_unique_val)):
-                            c = colors[feat_counter][feat_idx]
-                            feat_method_data = cf_df[(cf_df['cf_method'] == methods_to_run[method_idx]) & (cf_df['instance_index'].isin(idx_feat_values[feat_idx]))]
-                            feat_method_data_values = feat_method_data[metric].values
-                            accuracy_feat_val = np.round(extract_accuracy_feat_val(x_df, idx_feat_values[feat_idx]),2)
-                            box_feat_val_pos = accuracy_feat_val
-                            acc_list.append(accuracy_feat_val)
-                            feat_method_data_valid = np.sum(feat_method_data['valid'].values)*100/len(feat_method_data)
-                            method_feat_valid_list.append(feat_method_data_valid)
-                            ax.scatter(x=np.mean(feat_method_data_values), y=box_feat_val_pos)
-                            ax.text(x=np.mean(feat_method_data_values), y=box_feat_val_pos,
-                                    s=f'{protected_feat[feat_name][np.round(feat_unique_val[feat_idx],2)]} ({len_feat_values[feat_idx]})',
-                                    ha='right', va='bottom', fontstyle='italic',
-                                    fontweight='bold', color=c)
-                    feat_counter += 1
-        ax.set_ylim(min(acc_list)-0.05,max(acc_list)+0.05)
-        ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[methods_to_run[method_idx]]} Method')
-        ax.set_ylabel('Classification Accuracy')
-        ax.set_xlabel('Burden (Lower is better)')
+        for prot_feat_idx in range(len(protected_feat_keys)):
+            feat = protected_feat_keys[prot_feat_idx]
+            feat_unique_val = original_x_df[feat].unique()
+            len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+            box_pos_list = []
+            mean_data_val_list = []
+            weights_list = []
+            for feat_idx in range(len(feat_unique_val)):
+                feat_method_data = cf_df[(cf_df['cf_method'] == method) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
+                feat_method_data_values = feat_method_data[metric].values
+                accuracy_feat_val = np.round(extract_accuracy_feat_val(x_df, idx_feat_values[feat_idx]),2)
+                box_pos_list.append(accuracy_feat_val)
+                mean_data_val_list.append(np.mean(feat_method_data_values))
+                weights_list.append(125*feat_idx/len(feat_unique_val) + 125)
+                acc_list.append(accuracy_feat_val)
+                feat_method_data_valid = np.sum(feat_method_data['valid'].values)*100/len(feat_method_data)
+                method_feat_valid_list.append(feat_method_data_valid)
+                ax.text(x=accuracy_feat_val, y=np.mean(feat_method_data_values),
+                        s=f'{feat} ({protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]})',
+                        ha='right', va='bottom', fontstyle='italic',
+                        fontweight='bold', color='black')
+            ax.scatter(x=box_pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=100)
+        # ax.set_ylim(min(acc_list)-0.05,max(acc_list)+0.05)
+        ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
+        ax.set_ylabel('Burden (Lower is better)')
+        ax.set_xlabel('Classification Accuracy')
         axvalid = ax.twiny()
         color_secax = 'tab:blue'
         axvalid.set_xlabel('Percentage of attainable CFs (%)',color=color_secax)
-        axvalid.plot(method_feat_valid_list, acc_list, method_feat_valid_list, color=color_secax, linestyle='', marker='h', markersize=8)
+        # axvalid.plot(method_feat_valid_list, acc_list, method_feat_valid_list, color=color_secax, linestyle='', marker='h', markersize=8)
         axvalid.tick_params(axis='x', labelcolor=color_secax)
         plt.tight_layout()
         plt.savefig(results_cf_plots_dir+f'{data_str}_accuracy_burden_fairness.png',dpi=400)
@@ -321,11 +289,6 @@ def accuracy_burden_plot(datasets, methods_to_run, cf_metrics, colors):
 datasets = ['adult','compass']  # Name of the dataset to be analyzed ['compass','credit','adult','german','heart'] ,'jce_prox','mutable_jce_prox'
 methods_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 colors = ['red', 'green', 'blue', 'pink', 'gold', 'cyan']
-scatter_colors = {0:{0:'darkred', 1:'firebrick', 2:'lightcoral'},
-                  1:{0:'limegreen', 1:'forestgreen', 2:'darkgreen'},
-                  2:{0:'lightskyblue', 1:'royalblue', 2:'darkblue'},
-                  3:{0:'khaki', 1:'yellow', 2:'goldenrod'}}
-cf_metrics = ['proximity']
 
-# metric_differences_plot(datasets, methods_to_run, cf_metrics, colors)
-accuracy_burden_plot(datasets, ['mo'], cf_metrics, scatter_colors)
+# metric_differences_plot(datasets, methods_to_run, 'proximity', colors)
+accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
