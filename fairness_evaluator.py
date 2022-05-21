@@ -215,7 +215,7 @@ def metric_differences_plot(datasets, methods_to_run, metric, colors):
                     method_feat_valid_list.append(feat_method_data_valid)
                     c = colors[feat_idx]
                     ax.boxplot(x=feat_method_data_values, positions=[box_feat_val_pos], boxprops=dict(color=c),
-                               capprops=dict(color=c), showfliers=True, whiskerprops=dict(color=c),
+                               capprops=dict(color=c), showfliers=False, whiskerprops=dict(color=c),
                                medianprops=dict(color=c), widths=0.9, showmeans=True,
                                meanprops=dict(markerfacecolor=c, markeredgecolor=c, marker='D'), flierprops=dict(markeredgecolor=c), notch=False)
                     # ax.text(x=box_feat_val_pos, y=0, s=np.round(feat_ratio_values_changed*100,1), ha='center', va='center', fontstyle='italic', fontweight='bold')
@@ -271,12 +271,12 @@ def accuracy_burden_plot(datasets, method, metric, colors):
                 method_feat_valid_list.append(feat_method_data_valid)
                 ax.text(x=accuracy_feat_val, y=np.mean(feat_method_data_values),
                         s=f'{feat} ({protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]})',
-                        ha='right', va='bottom', fontstyle='italic',
-                        fontweight='bold', color='black')
-            ax.scatter(x=box_pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=100)
-        # ax.set_ylim(min(acc_list)-0.05,max(acc_list)+0.05)
+                        ha='right', va='bottom', fontstyle='italic', color=colors[prot_feat_idx], size=10)
+            ax.scatter(x=box_pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=50)
+        y_min, y_max = ax.get_ylim()
+        ax.set_ylim(y_max*(1.01),y_min*(0.99))
         ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
-        ax.set_ylabel('Burden (Lower is better)')
+        ax.set_ylabel('Burden')
         ax.set_xlabel('Classification Accuracy')
         axvalid = ax.twiny()
         color_secax = 'tab:blue'
@@ -288,7 +288,7 @@ def accuracy_burden_plot(datasets, method, metric, colors):
 
 datasets = ['adult','compass']  # Name of the dataset to be analyzed ['compass','credit','adult','german','heart'] ,'jce_prox','mutable_jce_prox'
 methods_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
-colors = ['red', 'green', 'blue', 'pink', 'gold', 'cyan']
+colors = ['red', 'green', 'blue', 'tab:brown', 'gold', 'orange', 'purple']
 
-# metric_differences_plot(datasets, methods_to_run, 'proximity', colors)
+metric_differences_plot(datasets, methods_to_run, 'proximity', colors)
 accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
