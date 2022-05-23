@@ -9,6 +9,7 @@ import time
 import numpy as np
 from collections import Counter
 from nt import nn
+from support import verify_feasibility
 
 # As observed in https://github.com/tony-lind/Example-based-tweaking
 """
@@ -62,49 +63,6 @@ def random_forest_tweaking(clf, ex, wish_class, X_train, y_train, classified_as_
             sub_y = np.vstack([sub_y, y_train[ex]])
             sub_cnt = np.vstack([sub_cnt, freq])        
     return sub_cnt, sub_X, sub_y
-
-def verify_feasibility(x,cf,mutable_feat,feat_type,feat_step,feat_dir,mutability_check):
-    """
-    Method that indicates whether cf is a feasible counterfactual with respect to x and the feature mutability
-    Input x: Instance of interest
-    Input cf: Counterfactual to be evaluated
-    Input mutable_feat: Vector indicating mutability of the features of x
-    Input feat_type: Type of the features used
-    Input feat_step: Feature plausible change step size
-    Input feat_dir: Directionality of the features
-    Input mutability_check: Whether to check or not the mutable features    
-    Output: Boolean value indicating whether cf is a feasible counterfactual with regards to x and the feature mutability vector
-    """
-    toler = 0.000001
-    feasibility = True
-    vector = cf - x
-    for i in range(len(feat_type)):
-        if feat_type[i] == 'bin':
-            if not np.isclose(cf[i], [0,1],atol=toler).any():
-                feasibility = False
-                break
-        elif feat_type[i] == 'num-ord':
-            possible_val = np.linspace(0,1,int(1/feat_step[i]+1),endpoint=True)
-            if not np.isclose(cf[i],possible_val,atol=toler).any():
-                feasibility = False
-                break  
-        else:
-            if cf[i] < 0-toler or cf[i] > 1+toler:
-                feasibility = False
-                break
-        if feat_dir[i] == 0 and vector[i] != 0:
-            feasibility = False
-            break
-        elif feat_dir[i] == 'pos' and vector[i] < 0:
-            feasibility = False
-            break
-        elif feat_dir[i] == 'neg' and vector[i] > 0:
-            feasibility = False
-            break
-    if mutability_check:
-        if not np.array_equal(x[np.where(mutable_feat == 0)],cf[np.where(mutable_feat == 0)]):
-            feasibility = False
-    return feasibility
 
 # Random Forest Tweaking method (based on Lindgren et al. 2019, found in: https://github.com/tony-lind/Example-based-tweaking)
 # Added by Anonymous Author

@@ -230,7 +230,7 @@ class Dataset:
                                 enc_bin_data[self.oh_jce_bin_enc_cols[2:]],num_data[self.jce_numerical[9:]]),axis=1)
         elif self.name in ['adult']:
             enc_jce_data_pd = pd.concat((enc_bin_data[self.oh_jce_bin_enc_cols[0]],num_data[self.jce_numerical[0]],
-                                enc_bin_data[self.oh_jce_bin_enc_cols[1]],num_data[self.jce_numerical[1:5]],
+                                enc_bin_data[self.oh_jce_bin_enc_cols[1:3]],num_data[self.jce_numerical[1:5]],
                                 enc_cat_data[self.oh_jce_cat_enc_cols[:7]],num_data[self.jce_numerical[-1]],
                                 enc_cat_data[self.oh_jce_cat_enc_cols[7:]]),axis=1)
         elif self.name == 'german':
@@ -323,7 +323,7 @@ class Dataset:
                             'TotalOverdueCounts','TotalMonthsOverdue','HasHistoryOfOverduePayments','AgeGroup_ord_0','AgeGroup_ord_1','AgeGroup_ord_2',
                             'AgeGroup_ord_3','EducationLevel_ord_0','EducationLevel_ord_1','EducationLevel_ord_2','EducationLevel_ord_3']
         elif self.name == 'adult':
-            output_columns = ['Sex','Age','NativeCountry','EducationNumber','CapitalGain',
+            output_columns = ['Sex','AgeGroup','Race','NativeCountry','EducationNumber','CapitalGain',
                             'CapitalLoss','HoursPerWeek','WorkClass_1.0','WorkClass_2.0','WorkClass_3.0',
                             'WorkClass_4.0','WorkClass_5.0','WorkClass_6.0','WorkClass_7.0','EducationLevel_ord_0',
                             'EducationLevel_ord_1','EducationLevel_ord_2','EducationLevel_ord_3','EducationLevel_ord_4','EducationLevel_ord_5',
@@ -482,11 +482,11 @@ class Dataset:
                     feat_type_2.loc[i] = 'num-ord'
         elif self.name == 'adult':
             for i in feat_list:
-                if 'Sex' in i or 'Native' in i or 'WorkClass' in i or 'Marital' in i or 'Occupation' in i or 'Relation' in i:
+                if 'Sex' in i or 'Native' in i or 'WorkClass' in i or 'Marital' in i or 'Occupation' in i or 'Relation' in i or 'Race' in i:
                     feat_type_2.loc[i] = 'bin'
-                elif 'EducationLevel' in i:
+                elif 'EducationLevel' in i or 'Age' in i:
                     feat_type_2.loc[i] = 'num-ord'
-                elif 'EducationNumber' in i or 'Capital' in i or 'Hours' in i or 'Age' in i:
+                elif 'EducationNumber' in i or 'Capital' in i or 'Hours' in i:
                     feat_type_2.loc[i] = 'num-con'
         elif self.name == 'german':
             for i in feat_list:
@@ -555,7 +555,7 @@ class Dataset:
                     feat_mutable[i] = 1   
         elif self.name == 'adult':
             for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Native' in i or 'Marital' in i:
+                if 'Age' in i or 'Sex' in i or 'Race' in i:
                     feat_mutable[i] = 0
                 else:
                     feat_mutable[i] = 1
@@ -625,7 +625,7 @@ class Dataset:
                     feat_dir[i] = 'any'
         elif self.name == 'adult':
             for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Native' in i:
+                if 'Age' in i or 'Sex' in i or 'Native' in i or 'Race' in i:
                     feat_dir[i] = 0
                 elif 'Education' in i:
                     feat_dir[i] = 'pos'
@@ -711,7 +711,7 @@ class Dataset:
                     feat_cost[i] = 1#50
         elif self.name == 'adult':
             for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Native' in i:
+                if 'Age' in i or 'Sex' in i or 'Native' in i or 'Race' in i:
                     feat_cost[i] = 0
                 elif 'EducationLevel' in i:
                     feat_cost[i] = 1#50
@@ -804,8 +804,10 @@ class Dataset:
                 feat_cat.loc[i] = 'non'
         elif self.name == 'adult':
             for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Native' in i or 'EducationLevel' or i in 'EducationNumber' in i or 'Capital' in i or 'Hours' in i:
+                if 'Sex' in i or 'Native' in i or 'EducationLevel' or i in 'EducationNumber' in i or 'Capital' in i or 'Hours' in i or 'Race' in i:
                     feat_cat.loc[i] = 'non'
+                elif 'Age' in i:
+                    feat_cat.loc[i] = 'cat_0'
                 elif 'WorkClass' in i:
                     feat_cat.loc[i] = 'cat_1'
                 elif 'Marital' in i:
@@ -839,7 +841,7 @@ class Dataset:
         if self.name == 'compass':
             feat_protected_values['Race'] = {1.00:'African-American', 2.00:'Caucasian'}
             feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
-            feat_protected_values['AgeGroup'] = {1.00:'< 25', 2.00:'25 - 45', 3.00:'> 45'}
+            feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-45', 3.00:'>45'}
         elif self.name == 'credit':
             feat_protected_values['isMale'] = {1.00:'True', 0.00:'False'}
             feat_protected_values['isMarried'] = {1.00:'True', 0.00:'False'}
@@ -847,9 +849,8 @@ class Dataset:
             feat_protected_values['EducationLevel'] = {1.00:'Other', 2.00:'HS', 3.00:'University', 4.00:'Graduate'}
         elif self.name == 'adult':
             feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
-            feat_protected_values['NativeCountry'] = {1.00:'USA', 2.00:'Non-USA'}
-            feat_protected_values['MaritalStatus'] = {1.00:'Divor.', 2.00:'Married-AF-spouse', 3.00:'Married-civ-spouse', 4.00:'Married-spouse-absent', 5.00:'Never-married', 6.00:'Separat.', 7.00:'Widow'}
-            feat_protected_values['Relationship'] = {1.00:'Husband', 2.00:'Not-in-family', 3.00:'Other-relative', 4.00:'Own-child', 5.00:'Unmarried', 6.00:'Wife'}
+            feat_protected_values['Race'] = {1.00:'White', 2.00:'Non-white'}
+            feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-60', 3.00:'>60'}
         elif self.name == 'german':
             feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
             feat_protected_values['Age'] = 'hist'
@@ -1048,18 +1049,18 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
                 'MostRecentPaymentAmount','TotalOverdueCounts','TotalMonthsOverdue','AgeGroup','EducationLevel']
         processed_df = pd.read_csv(dataset_dir + '/credit/credit_processed.csv') # Obtained from MACE algorithm Datasets (please, see: https://github.com/amirhk/mace)
     elif data_str == 'adult':
-        binary = ['Sex','NativeCountry']
+        binary = ['Sex','NativeCountry','Race']
         categorical = ['WorkClass','MaritalStatus','Occupation','Relationship']
-        numerical = ['Age','EducationNumber','CapitalGain','CapitalLoss','HoursPerWeek','EducationLevel']
+        numerical = ['EducationNumber','CapitalGain','CapitalLoss','HoursPerWeek','EducationLevel','AgeGroup']
         label = ['label']
         mace_cols = ['EducationLevel']
-        carla_categorical = ['Sex','NativeCountry','WorkClass','MaritalStatus','Occupation','Relationship']
-        carla_continuous = ['Age','EducationNumber','CapitalGain','CapitalLoss','HoursPerWeek','EducationLevel']
+        carla_categorical = ['Sex','AgeGroup','Race','NativeCountry','WorkClass','MaritalStatus','Occupation','Relationship']
+        carla_continuous = ['EducationNumber','CapitalGain','CapitalLoss','HoursPerWeek','EducationLevel']
         attrs = ['age', 'workclass', 'fnlwgt', 'education', 'education_num', 'marital_status', 'occupation',
                 'relationship', 'race', 'sex', 'capital_gain', 'capital_loss', 'hours_per_week', 'native_country']  # all attributes
         int_attrs = ['age', 'fnlwgt', 'education_num', 'capital_gain', 'capital_loss', 'hours_per_week']  # attributes with integer values -- the rest are categorical
         sensitive_attrs = ['sex']  # the fairness constraints will be used for this feature
-        attrs_to_ignore = ['sex', 'race','fnlwgt']  # sex and race are sensitive feature so we will not use them in classification, we will not consider fnlwght for classification since its computed externally and it highly predictive for the class (for details, see documentation of the adult data)
+        attrs_to_ignore = ['sex','fnlwgt']  # sex and race are sensitive feature so we will not use them in classification, we will not consider fnlwght for classification since its computed externally and it highly predictive for the class (for details, see documentation of the adult data)
         attrs_for_classification = set(attrs) - set(attrs_to_ignore)
         # adult data comes in two different files, one for training and one for testing, however, we will combine data from both the files
         this_files_directory = dataset_dir+data_str+'/'
@@ -1105,6 +1106,16 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
                             attr_val = "prim-middle-school"
                         elif attr_val in ["9th", "10th", "11th", "12th"]:
                             attr_val = "high-school"
+                    elif attr_name == 'race':
+                        if attr_val != 'White':
+                            attr_val = 'Non-white'
+                    elif attr_name == 'age':
+                        if int(attr_val) < 25:
+                            attr_val = 1
+                        elif int(attr_val) >= 25 and int(attr_val) <= 60:
+                            attr_val = 2
+                        elif int(attr_val) > 60:
+                            attr_val = 3
                     if attr_name in sensitive_attrs:
                         x_control[attr_name].append(attr_val)
                     elif attr_name in attrs_to_ignore:
@@ -1122,7 +1133,12 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df['label'] = df['label']
         processed_df.loc[df['sex'] == 'Male', 'Sex'] = 1
         processed_df.loc[df['sex'] == 'Female', 'Sex'] = 2
-        processed_df['Age'] = df['age'].astype(int)
+        processed_df.loc[df['race'] == 'White', 'Race'] = 1
+        processed_df.loc[df['race'] == 'Non-white', 'Race'] = 2
+        # processed_df['Age'] = df['age'].astype(int)
+        processed_df.loc[df['age'] == 1, 'AgeGroup'] = 1
+        processed_df.loc[df['age'] == 2, 'AgeGroup'] = 2
+        processed_df.loc[df['age'] == 3, 'AgeGroup'] = 3
         processed_df.loc[df['native_country'] == 'United-States', 'NativeCountry'] = 1
         processed_df.loc[df['native_country'] == 'Non-United-Stated', 'NativeCountry'] = 2
         processed_df.loc[df['workclass'] == 'Federal-gov', 'WorkClass'] = 1

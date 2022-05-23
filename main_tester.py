@@ -47,7 +47,7 @@ epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feat
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 perc = 1             # Percentage of test samples to consider for the counterfactuals search
-instances_per_protected_class = 10
+instances_per_protected_class = 5
 
 np.random.seed(seed_int)
 

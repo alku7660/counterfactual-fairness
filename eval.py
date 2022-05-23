@@ -67,6 +67,7 @@ class Evaluator():
         self.data_cols = data_obj.jce_all_cols
         self.raw_data_cols = data_obj.train_pd.columns
         self.undesired_class = data_obj.undesired_class
+        self.desired_class = 1 - self.undesired_class
         self.n_feat = n_feat
         self.models = models
         self.x_columns = ['x','normal_x','original_x',
@@ -89,6 +90,58 @@ class Evaluator():
         penalize_instance = sorted_train_x[-1][0]
         # penalize_instance = np.mean(train_desired_class, axis=0)
         return penalize_instance
+
+    def statistical_parity_eval(self, data_obj, model_obj):
+        """
+        Method that calculates the Statistical Parity measure for each of the protected feature groups given a model
+        """
+        stat_parity = {}
+        test_data = data_obj.test_pd
+        test_data_jce = data_obj.jce_test_pd
+        test_data_jce_index = test_data_jce.index
+        pred = model_obj.jce_sel.predict(test_data_jce)
+        pred_pd = pd.DataFrame(data=pred, index=test_data_jce_index, columns=['prediction'])
+        test_data_with_pred = pd.concat((test_data, pred_pd),axis=1)
+        for i in self.protected_feat.keys():
+            feat_i_values = test_data_with_pred[i].unique()
+            val_dict = {}
+            for j in feat_i_values:
+                val_name = self.protected_feat[i][np.round(j,2)]
+                total_feat_i_val_j = len(test_data_with_pred[test_data_with_pred[i] == j])
+                total_feat_i_val_j_desired_pred = len(test_data_with_pred[test_data_with_pred[i] == j & test_data_with_pred['prediction'] == self.desired_class])
+                stat_parity_feat_val = total_feat_i_val_j_desired_pred / total_feat_i_val_j
+                val_dict[val_name] = stat_parity_feat_val
+            stat_parity[i] = val_dict
+        return stat_parity
+
+    def equalized_odds_eval(self, data_obj, model_obj):
+        """
+        Method that calculates the Equalized Odds measure for each of the protected feature groups given a model
+        """
+        eq_odds = {}
+        test_data = data_obj.test_pd
+        test_data_jce = data_obj.jce_test_pd
+        test_data_jce_index = test_data_jce.index
+        test_target = data_obj.test_target
+        pred = model_obj.jce_sel.predict(test_data_jce)
+        pred_pd = pd.DataFrame(data=pred, index=test_data_jce_index, columns=['prediction'])
+        target_pd = pd.DataFrame(data=test_target, index=test_data_jce_index, columns=['target'])
+        test_data_with_pred_target = pd.concat((test_data, pred_pd, target_pd),axis=1)
+        for i in self.protected_feat.keys():
+            feat_i_values = test_data_with_pred_target[i].unique()
+            val_dict = {}
+            for j in feat_i_values:
+                val_name = self.protected_feat[i][np.round(j,2)]
+                total_feat_i_val_j_ground_0 = len(test_data_with_pred_target[(test_data_with_pred_target[i] == j) & (test_data_with_pred_target['target'] == 0)])
+                total_feat_i_val_j_ground_1 = len(test_data_with_pred_target[(test_data_with_pred_target[i] == j) & (test_data_with_pred_target['target'] == 1)])
+                total_feat_i_val_j_desired_pred = len(test_data_with_pred_target[test_data_with_pred_target[i] == j & test_data_with_pred_target['prediction'] == self.desired_class])
+                stat_parity_feat_val = total_feat_i_val_j_desired_pred / total_feat_i_val_j
+                val_dict[val_name] = stat_parity_feat_val
+            eq_odds[i] = val_dict
+        return eq_odds
+    
+        #     self.statistical_parity = self.statistical_parity_eval()
+        # self.equalized_odds = self.equalized_odds_eval()
 
     def add_specific_x_data(self,idx,x,original_x,x_label,x_target,data_obj):
         """
@@ -270,7 +323,7 @@ class Evaluator():
             elif 'ft' in model_str:
                 cf, run_time = feat_tweak(x_jce_np,model.jce_rf,epsilon_ft)
             elif 'rt' in model_str:
-                cf, run_time = rf_tweak(x_jce_np,x_label,model.jce_rf,data,mutability_check)
+                cf, run_time = rf_tweak(x_jce_np,x_label,model.jce_rf,data,True,mutability_check)
             print(f'  {model_str} (time (s): {np.round_(run_time,2)})')
             print(f'---------------------------')
             self.add_specific_cf_data(data,model_str,cf,run_time,model)
