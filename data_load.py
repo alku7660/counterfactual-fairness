@@ -265,6 +265,7 @@ class Dataset:
             self.jce_test_undesired_np = self.jce_test_undesired_pd.to_numpy()
             self.test_undesired_target = self.test_target.loc[self.jce_test_pd['pred'] == self.undesired_class]
             self.test_undesired_pd = self.test_pd.loc[self.jce_test_pd['pred'] == self.undesired_class]
+            del self.jce_test_pd['pred']
             self.test_undesired_np = self.test_undesired_pd.to_numpy()
 
     def change_targets_to_numpy(self):
@@ -957,49 +958,7 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
     Output data_obj: Dataset object
     Output model_obj: Model object
     """
-    if data_str == 'synthetic_simple':
-        binary = []
-        categorical = []
-        numerical = ['x1','x2']
-        label = ['label']
-        mace_cols = []
-        carla_categorical = []
-        carla_continuous = ['x1','x2']
-        processed_df = pd.read_csv(dataset_dir+'synthetic_simple/synthetic_simple.csv')
-        data = np.genfromtxt(dataset_dir+'/'+data_str+'/'+data_str+'.csv',delimiter=',')
-        processed_df = pd.DataFrame(data = data, columns=numerical+label)
-    elif data_str == 'synthetic_disease':
-        binary = ['Smokes']
-        categorical = ['Diet','Stress']
-        numerical = ['Age','ExerciseMinutes','SleepHours','Weight']
-        label = ['Label']
-        mace_cols = ['Weight']
-        carla_categorical = ['Smokes','Diet','Stress']
-        carla_continuous = ['Age','ExerciseMinutes','SleepHours','Weight']
-        processed_df = pd.read_csv(dataset_dir+'synthetic_disease/synthetic_disease.csv',index_col=0)
-    elif data_str == 'synthetic_athlete':
-        binary = ['Sex']
-        categorical = ['Diet','Sport','TrainingTime']
-        numerical = ['Age','SleepHours']
-        label = ['Label']
-        mace_cols = []
-        carla_categorical = ['Sex','Diet','Sport','TrainingTime']
-        carla_continuous = ['Age','SleepHours']
-        processed_df = pd.read_csv(dataset_dir+'synthetic_athlete/synthetic_athlete.csv',index_col=0)
-    elif data_str == 'ionosphere':
-        binary = []
-        categorical = []
-        numerical = ['0','2','4','5','6','7','26','30'] #Chosen based on feature importance permutation
-        mace_cols = []
-        carla_categorical = []
-        carla_continuous = ['0','2','4','5','6','7','26','30']
-        label = ['label']
-        columns = [str(i) for i in range(34)]
-        columns = columns + label
-        data = pd.read_csv(dataset_dir+'/ionosphere/ionosphere.data',names=columns)
-        data = data[numerical + label]
-        processed_df, lbl_encoder = nom_to_num(data)
-    elif data_str == 'compass':
+    if data_str == 'compass':
         processed_df = pd.DataFrame()
         binary = ['Race','Sex','ChargeDegree']
         categorical = []
@@ -1048,6 +1007,20 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
                 'MonthsWithLowSpendingOverLast6Months','MonthsWithHighSpendingOverLast6Months','MostRecentBillAmount',
                 'MostRecentPaymentAmount','TotalOverdueCounts','TotalMonthsOverdue','AgeGroup','EducationLevel']
         processed_df = pd.read_csv(dataset_dir + '/credit/credit_processed.csv') # Obtained from MACE algorithm Datasets (please, see: https://github.com/amirhk/mace)
+    elif data_str == 'kdd_census':
+        binary = ['Sex','Race','Industry','Occupation']
+        categorical = []
+        numerical = ['Age','WageHour','CapitalGain','CapitalLoss','Dividends','WorkWeeksYear']
+        label = ['Label']
+        read_cols = ['Age','WorkClass','IndustryDetail','OccupationDetail','Education','WageHour','Enrolled','MaritalStatus','Industry','Occupation',
+                'Race','Hispanic','Sex','Union','UnemployedReason','FullTimePartTime','CapitalGain','CapitalLoss','Dividends','Tax',
+                'RegionPrev','StatePrev','HouseDetailFamily','HouseDetailSummary','ChangeMsa','ChangeReg','MoveReg','Live1YrAgo','PrevSunbelt','NumPersonsWorkEmp',
+                'Under18Family','CountryFather','CountryMother','Country','Citizenship','OwnBusiness','VeteransAdmin','VeteransBenefits','WorkWeeksYear','Year','Label']
+        train_raw_df = pd.read_csv(dataset_dir+'/kdd_census/census-income.data',names=read_cols)
+        test_raw_df = pd.read_csv(dataset_dir+'/kdd_census/census-income.test',names=read_cols)
+        raw_df = pd.concat((train_raw_df,test_raw_df),axis=0)
+        processed_df = raw_df[binary+numerical+label]
+        
     elif data_str == 'adult':
         binary = ['Sex','NativeCountry','Race']
         categorical = ['WorkClass','MaritalStatus','Occupation','Relationship']
@@ -1212,48 +1185,6 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         data = erase_duplicates(data)
         data, lbl_encoder = nom_to_num(data)
         train_data, test_data, train_target, test_target = train_test_split(data,data['class'],train_size=train_fraction,random_state=seed)    
-    elif data_str == 'Hepatitis':
-        columns = ['class','age','sex','steroid','antivirals','fatigue','malaise','anorexia','liver big','liver firm','spleen palpable','spiders','ascities','varices','bilirubin','alk phospate','sgot','albumine','protime','histology']
-        data = pd.read_csv(dataset_dir+'/Hepatitis/hepatitis.data',names=columns) # Requires numeric transform
-        data = erase_missing(data,data_str)
-        data, lbl_encoder = nom_to_num(data)
-        train_data, test_data, train_target, test_target = train_test_split(data,data['class'],train_size=train_fraction,random_state=seed)  
-    elif data_str == 'heart':
-        binary = ['Sex']
-        categorical = ['ChestPain','ECG']
-        numerical = ['Age','RestBloodPressure','Chol','BloodSugar']
-        label = ['class']
-        mace_cols = []
-        carla_categorical = ['Sex','ChestPain','ECG']
-        carla_continuous = ['Age','RestBloodPressure','Chol','BloodSugar']
-        columns = ['Age','Sex','ChestPain','RestBloodPressure','Chol','BloodSugar','ECG','thalach','exang','oldpeak','slope','ca','thal','class']
-        data = pd.read_csv(dataset_dir+'/heart/processed.cleveland.data',names=columns)
-        processed_df = data[['Sex','Age','ChestPain','RestBloodPressure','Chol','BloodSugar','ECG','class']]
-        processed_df = erase_missing(processed_df,data_str)
-        processed_df['class'].replace(2,1,inplace=True)
-        processed_df['class'].replace(3,1,inplace=True)
-        processed_df['class'].replace(4,1,inplace=True)
-    elif data_str == 'Echocardiogram':
-        columns = ['survival','still-alive','age-at-heart-attack','pericardial-effusion','fractional-shortening','epss','lvdd','wall-motion-score to be erased','wall-motion-index','mult to be erased','name to be erased','group to be erased','class']
-        data = pd.read_csv(dataset_dir+'/Echocardiogram/echocardiogram.data',names=columns) # Requires transformation, according to:
-        data = erase_missing(data,data_str)
-        data = eliminate_columns(data)
-        data, lbl_encoder = nom_to_num(data)
-        train_data, test_data, train_target, test_target = train_test_split(data,data['class'],train_size=train_fraction,random_state=seed)  
-    elif data_str == 'cervical':
-        binary = ['Smokes','Hormonal Contraceptives','IUD','STDs:HIV']
-        categorical = []
-        numerical = ['Age','Number of sexual partners','First sexual intercourse','Smokes (years)','Smokes (packs/year)','Hormonal Contraceptives (years)','IUD (years)']
-        label = ['Biopsy']
-        mace_cols = []
-        carla_categorical = ['Smokes','Hormonal Contraceptives','IUD','STDs:HIV']
-        carla_continuous = ['Age','Number of sexual partners','First sexual intercourse','Smokes (years)','Smokes (packs/year)','Hormonal Contraceptives (years)','IUD (years)']
-        columns = ['Age','Number of sexual partners','First sexual intercourse','Smokes','Smokes (years)','Smokes (packs/year)','Hormonal Contraceptives','Hormonal Contraceptives (years)','IUD',
-            'IUD (years)','STDs:HIV','Biopsy']
-        data = pd.read_csv(dataset_dir+'/cervical/Cervical Cancer.csv',error_bad_lines=False) # Requires transformation, according to:
-        processed_df = data[columns]
-        processed_df = erase_missing(processed_df,data_str)
-        processed_df, lbl_encoder = nom_to_num(processed_df)
         
     data_obj = Dataset(seed,train_fraction,data_str,label,
                  processed_df,binary,categorical,numerical,step,

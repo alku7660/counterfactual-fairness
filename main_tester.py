@@ -71,6 +71,7 @@ for data_str in datasets:
     save_obj(model,data_str+'_model.pkl')
     save_obj(data,data_str+'_data.pkl')
     
+    cf_evaluator.add_fairness_measures(data, model)
     evaluated_instances_pd = pd.DataFrame(columns=cf_evaluator.raw_data_cols)
     idx_instances_evaluated = []
     test_undesired_index = data.test_undesired_pd.index.to_list()

@@ -303,29 +303,26 @@ def accuracy_burden_plot(datasets, method, metric, colors):
         protected_feat_keys = list(protected_feat.keys())
         x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
         fig, ax = plt.subplots(figsize=(8,6))
-        acc_list = []
         method_feat_valid_list = []
         for prot_feat_idx in range(len(protected_feat_keys)):
             feat = protected_feat_keys[prot_feat_idx]
             feat_unique_val = original_x_df[feat].unique()
             len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
-            box_pos_list = []
+            pos_list = []
             mean_data_val_list = []
-            weights_list = []
             for feat_idx in range(len(feat_unique_val)):
+                feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
                 feat_method_data = cf_df[(cf_df['cf_method'] == method) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
                 feat_method_data_values = feat_method_data[metric].values
                 accuracy_feat_val = np.round(extract_accuracy_feat_val(x_df, idx_feat_values[feat_idx]),2)
-                box_pos_list.append(accuracy_feat_val)
+                pos_list.append(accuracy_feat_val)
                 mean_data_val_list.append(np.mean(feat_method_data_values))
-                weights_list.append(125*feat_idx/len(feat_unique_val) + 125)
-                acc_list.append(accuracy_feat_val)
                 feat_method_data_valid = np.sum(feat_method_data['valid'].values)*100/len(feat_method_data)
                 method_feat_valid_list.append(feat_method_data_valid)
-                ax.text(x=accuracy_feat_val, y=np.mean(feat_method_data_values),
-                        s=f'{protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]}',
-                        fontstyle='italic', color=colors[prot_feat_idx], size=10)
-            ax.scatter(x=box_pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=40)
+                c = colors[prot_feat_idx]
+                ax.text(x=accuracy_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c),
+                        s=f'{feat_val_name}', fontstyle='italic', color=c, size=9)
+            ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=40)
         legend_handles = create_acc_burden_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
         ax.set_ylim(y_max*(1.01),y_min*(0.99))
@@ -336,10 +333,98 @@ def accuracy_burden_plot(datasets, method, metric, colors):
         plt.tight_layout()
         plt.savefig(results_cf_plots_dir+f'{data_str}_accuracy_burden_fairness.png',dpi=400)
 
+def statistical_parity_burden_plot(datasets, method, metric, colors):
+    """
+    Method that plots the accuracy differences among features, datasets and methods
+    """
+    methods_names = get_methods_names([method])
+    dataset_names = get_data_names(datasets)
+    for data_str in datasets:
+        eval_obj = load_obj(data_str)
+        eval_x_df = eval_obj.all_x_data
+        eval_cf_df = eval_obj.all_cf_data
+        protected_feat = eval_obj.feat_protected
+        protected_feat_keys = list(protected_feat.keys())
+        x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
+        fig, ax = plt.subplots(figsize=(8,6))
+        method_feat_valid_list = []
+        for prot_feat_idx in range(len(protected_feat_keys)):
+            feat = protected_feat_keys[prot_feat_idx]
+            feat_unique_val = original_x_df[feat].unique()
+            len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+            pos_list = []
+            mean_data_val_list = []
+            for feat_idx in range(len(feat_unique_val)):
+                feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
+                feat_method_data = cf_df[(cf_df['cf_method'] == method) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
+                feat_method_data_values = feat_method_data[metric].values
+                stat_parity_feat_val = eval_obj.stat_parity[feat][feat_val_name]
+                pos_list.append(stat_parity_feat_val)
+                mean_data_val_list.append(np.mean(feat_method_data_values))
+                feat_method_data_valid = np.sum(feat_method_data['valid'].values)*100/len(feat_method_data)
+                method_feat_valid_list.append(feat_method_data_valid)
+                c = colors[prot_feat_idx]
+                ax.text(x=stat_parity_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c),
+                        s=feat_val_name, fontstyle='italic', color=c, size=9)
+            ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=40)
+        legend_handles = create_acc_burden_handles(protected_feat_keys, colors)
+        y_min, y_max = ax.get_ylim()
+        ax.set_ylim(y_max*(1.01),y_min*(0.99))
+        ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
+        ax.set_ylabel('Burden')
+        ax.set_xlabel('Statistical Parity')
+        ax.legend(handles=legend_handles) #loc=(-0.1,-0.1*len(legend_elements))
+        plt.tight_layout()
+        plt.savefig(results_cf_plots_dir+f'{data_str}_stat_parity_burden_fairness.png',dpi=400)
+
+def equalized_odds_burden_plot(datasets, method, metric, colors):
+    """
+    Method that plots the accuracy differences among features, datasets and methods
+    """
+    methods_names = get_methods_names([method])
+    dataset_names = get_data_names(datasets)
+    for data_str in datasets:
+        eval_obj = load_obj(data_str)
+        eval_x_df = eval_obj.all_x_data
+        eval_cf_df = eval_obj.all_cf_data
+        protected_feat = eval_obj.feat_protected
+        protected_feat_keys = list(protected_feat.keys())
+        x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
+        fig, ax = plt.subplots(figsize=(8,6))
+        method_feat_valid_list = []
+        for prot_feat_idx in range(len(protected_feat_keys)):
+            feat = protected_feat_keys[prot_feat_idx]
+            feat_unique_val = original_x_df[feat].unique()
+            len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+            pos_list = []
+            mean_data_val_list = []
+            for feat_idx in range(len(feat_unique_val)):
+                feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
+                feat_method_data = cf_df[(cf_df['cf_method'] == method) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
+                feat_method_data_values = feat_method_data[metric].values
+                stat_parity_feat_val = eval_obj.stat_parity[feat][feat_val_name]
+                pos_list.append(stat_parity_feat_val)
+                mean_data_val_list.append(np.mean(feat_method_data_values))
+                feat_method_data_valid = np.sum(feat_method_data['valid'].values)*100/len(feat_method_data)
+                method_feat_valid_list.append(feat_method_data_valid)
+                c = colors[prot_feat_idx]
+                ax.text(x=stat_parity_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c),
+                        s=feat_val_name, fontstyle='italic', color=c, size=9)
+            ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=40)
+        legend_handles = create_acc_burden_handles(protected_feat_keys, colors)
+        y_min, y_max = ax.get_ylim()
+        ax.set_ylim(y_max*(1.01),y_min*(0.99))
+        ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
+        ax.set_ylabel('Burden')
+        ax.set_xlabel('Equalized Odds')
+        ax.legend(handles=legend_handles) #loc=(-0.1,-0.1*len(legend_elements))
+        plt.tight_layout()
+        plt.savefig(results_cf_plots_dir+f'{data_str}_eq_odds_burden_fairness.png',dpi=400)
+
 datasets = ['adult','compass']  # Name of the dataset to be analyzed ['compass','credit','adult','german','heart'] ,'jce_prox','mutable_jce_prox'
 methods_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 colors = ['red', 'purple', 'tab:brown', 'blue', 'lightgreen', 'gold', 'orange']
 
-# method_box_plot(datasets, methods_to_run, 'proximity', colors)
+method_box_plot(datasets, methods_to_run, 'proximity', colors)
 attainable_cf_plot(datasets, methods_to_run)
 accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
