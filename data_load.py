@@ -450,28 +450,31 @@ class Dataset:
         feat_type = self.jce_train_pd.dtypes
         feat_type_2 = copy.deepcopy(feat_type)
         feat_list = feat_type.index.tolist()
-        if self.name in ['synthetic_simple','ionosphere']:
+        if self.name == 'adult':
             for i in feat_list:
-                feat_type_2.loc[i] = 'num-con'
-        elif self.name == 'synthetic_disease':
-            for i in feat_list:
-                if i in ['Age','ExerciseMinutes','SleepHours']:
-                    feat_type_2.loc[i] = 'num-con'
-                elif 'Weight' in i:
+                if 'Sex' in i or 'Native' in i or 'WorkClass' in i or 'Marital' in i or 'Occupation' in i or 'Relation' in i or 'Race' in i:
+                    feat_type_2.loc[i] = 'bin'
+                elif 'EducationLevel' in i or 'Age' in i:
                     feat_type_2.loc[i] = 'num-ord'
-                elif 'Diet' in i or 'Stress' in i or 'Smokes' in i:
-                    feat_type_2.loc[i] = 'bin'
-        elif self.name == 'synthetic_athlete':
-            for i in feat_list:
-                if 'Sex' in i or 'TrainingTime' in i or 'Diet' in i or 'Sport' in i:
-                    feat_type_2.loc[i] = 'bin'
-                elif i in ['Age','SleepHours']:
+                elif 'EducationNumber' in i or 'Capital' in i or 'Hours' in i:
                     feat_type_2.loc[i] = 'num-con'
-        elif self.name == 'compass':
+        elif self.name == 'kdd_census':
             for i in feat_list:
-                if 'Sex' in i or 'Race' in i or 'Charge' in i:
+                if 'Sex' in i or 'Race' in i or 'Industry' in i or 'Occupation' in i:
                     feat_type_2.loc[i] = 'bin'
-                elif 'Priors' in i or 'Age' in i:
+                elif 'Age' in i or 'WageHour' in i or 'CapitalGain' in i or 'CapitalLoss' in i or 'Dividends' in i or 'WorkWeeksYear' in i:
+                    feat_type_2.loc[i] = 'num-con'
+        elif self.name == 'german':
+            for i in feat_list:
+                if 'Sex' in i:
+                    feat_type_2.loc[i] = 'bin'
+                elif 'Age' in i or 'Credit' in i or 'Loan' in i:
+                    feat_type_2.loc[i] = 'num-con'
+        elif self.name == 'dutch':
+            for i in feat_list:
+                if 'Sex' in i or 'HouseholdPosition' in i or 'HouseholdSize' in i or 'Country' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i:
+                    feat_type_2.loc[i] = 'bin'
+                elif 'Age' in i or 'EducationLevel' in i:
                     feat_type_2.loc[i] = 'num-ord'
         elif self.name == 'credit':
             for i in feat_list:
@@ -481,33 +484,11 @@ class Dataset:
                     feat_type_2.loc[i] = 'num-con'
                 elif 'Total' in i or 'Age' in i or 'Education' in i:
                     feat_type_2.loc[i] = 'num-ord'
-        elif self.name == 'adult':
+        elif self.name == 'compass':
             for i in feat_list:
-                if 'Sex' in i or 'Native' in i or 'WorkClass' in i or 'Marital' in i or 'Occupation' in i or 'Relation' in i or 'Race' in i:
+                if 'Sex' in i or 'Race' in i or 'Charge' in i:
                     feat_type_2.loc[i] = 'bin'
-                elif 'EducationLevel' in i or 'Age' in i:
-                    feat_type_2.loc[i] = 'num-ord'
-                elif 'EducationNumber' in i or 'Capital' in i or 'Hours' in i:
-                    feat_type_2.loc[i] = 'num-con'
-        elif self.name == 'german':
-            for i in feat_list:
-                if 'Sex' in i:
-                    feat_type_2.loc[i] = 'bin'
-                elif 'Age' in i or 'Credit' in i or 'Loan' in i:
-                    feat_type_2.loc[i] = 'num-con'
-        elif self.name == 'heart':
-            for i in feat_list:
-                if 'Sex' in i or 'ChestPain' in i or 'ECG' in i:
-                    feat_type_2.loc[i] = 'bin'
-                elif i in ['Age','RestBloodPressure','Chol','BloodSugar']:
-                    feat_type_2.loc[i] = 'num-con'
-        elif self.name == 'cervical':
-            for i in feat_list:
-                if i in ['Smokes_1','Hormonal Contraceptives_1','IUD_1','STDs:HIV_1']:
-                    feat_type_2.loc[i] = 'bin'
-                elif i in ['Age','First sexual intercourse','Smokes (years)','Smokes (packs/year)','Hormonal Contraceptives (years)','IUD (years)']:
-                    feat_type_2.loc[i] = 'num-con'
-                elif i == 'Number of sexual partners':
+                elif 'Priors' in i or 'Age' in i:
                     feat_type_2.loc[i] = 'num-ord'
         return feat_type_2
 
@@ -518,33 +499,27 @@ class Dataset:
         """
         feat_list = self.feat_type.index.tolist()
         feat_mutable  = dict()
-        if self.name in ['synthetic_simple']:
+        if self.name == 'adult':
             for i in feat_list:
-                if '1' in i:
-                    feat_mutable[i] = 1
-                elif '2' in i:
-                    feat_mutable[i] = 0
-        elif self.name == 'synthetic_disease':
-            for i in feat_list:
-                if i == 'Age':
-                    feat_mutable[i] = 0
-                elif 'Weight' in i or 'ExerciseMinutes' in i or 'SleepHours' in i or 'Diet' in i or 'Stress' in i or 'Smokes' in i:
-                    feat_mutable[i] = 1
-        elif self.name == 'synthetic_athlete':
-            for i in feat_list:
-                if i in ['Age','Sex']:
-                    feat_mutable[i] = 0
-                elif 'TrainingTime' in i or 'Diet' in i or 'Sport' in i or 'SleepHours' in i:
-                    feat_mutable[i] = 1
-        elif self.name == 'ionosphere':
-            for i in feat_list:
-                if i == '0':
+                if 'Age' in i or 'Sex' in i or 'Race' in i:
                     feat_mutable[i] = 0
                 else:
                     feat_mutable[i] = 1
-        elif self.name == 'compass':
+        elif self.name == 'kdd_census':
             for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Race' in i:
+                if 'Age' in i or 'Sex' in i:
+                    feat_mutable[i] = 0
+                else:
+                    feat_mutable = 1
+        elif self.name == 'german':
+            for i in feat_list:
+                if 'Age' in i or 'Sex' in i:
+                    feat_mutable[i] = 0
+                else:
+                    feat_mutable[i] = 1
+        elif self.name == 'dutch':
+            for i in feat_list:
+                if 'Sex' in i or 'Age' in i or 'Country' in i:
                     feat_mutable[i] = 0
                 else:
                     feat_mutable[i] = 1
@@ -554,29 +529,11 @@ class Dataset:
                     feat_mutable[i] = 0
                 else:
                     feat_mutable[i] = 1   
-        elif self.name == 'adult':
+        elif self.name == 'compass':
             for i in feat_list:
                 if 'Age' in i or 'Sex' in i or 'Race' in i:
                     feat_mutable[i] = 0
                 else:
-                    feat_mutable[i] = 1
-        elif self.name == 'german':
-            for i in feat_list:
-                if 'Age' in i or 'Sex' in i:
-                    feat_mutable[i] = 0
-                else:
-                    feat_mutable[i] = 1
-        elif self.name == 'heart':
-            for i in feat_list:
-                if 'Age' in i or 'Sex' in i:
-                    feat_mutable[i] = 0
-                elif 'ChestPain' in i or 'ECG' in i or i in ['RestBloodPressure','Chol','BloodSugar']:
-                    feat_mutable[i] = 1
-        elif self.name == 'cervical':
-            for i in feat_list:
-                if i in ['Age','First sexual intercourse'] or 'STDs' in i:
-                    feat_mutable[i] = 0 
-                elif 'Smokes' in i or 'Hormonal Contraceptives' in i or 'IUD' in i or i == 'Number of sexual partners':
                     feat_mutable[i] = 1
         feat_mutable = pd.Series(feat_mutable)
         return feat_mutable
@@ -588,32 +545,34 @@ class Dataset:
         """
         feat_list = self.feat_type.index.tolist()
         feat_dir  = dict()
-        if self.name in ['synthetic_simple']:
+        if self.name == 'adult':
             for i in feat_list:
-                feat_dir[i] = 'any'
-        elif self.name == 'synthetic_disease':
-            for i in feat_list:
-                if 'Age' in i:
+                if 'Age' in i or 'Sex' in i or 'Native' in i or 'Race' in i:
                     feat_dir[i] = 0
-                elif 'ExerciseMinutes' in i or 'SleepHours' in i or 'Weight' in i:
+                elif 'Education' in i:
+                    feat_dir[i] = 'pos'
+                else:
                     feat_dir[i] = 'any'
-                elif 'Diet' in i or 'Stress' in i or 'Smokes' in i:
+        elif self.name == 'kdd_census':
+            for i in feat_list:
+                if 'Sex' in i or 'Race' in i or 'Age' in i:
+                    feat_dir[i] = 0
+                elif 'Industry' in i or 'Occupation' in i or 'WageHour' in i or 'CapitalGain' in i or 'CapitalLoss' in i or 'Dividends' in i or 'WorkWeeksYear':
                     feat_dir[i] = 'any'
-        elif self.name == 'synthetic_athlete':
+        elif self.name == 'german':
             for i in feat_list:
                 if 'Age' in i or 'Sex' in i:
                     feat_dir[i] = 0
-                elif 'TrainingTime' in i or 'Diet' in i or 'Sport' in i or 'SleepHours' in i:
+                else:
                     feat_dir[i] = 'any'
-        elif self.name == 'ionosphere':
+        elif self.name == 'dutch':
             for i in feat_list:
-                feat_dir[i] = 'any'
-        elif self.name == 'compass':
-            for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Race' in i:
+                if 'Sex' in i or 'Age' in i or 'Country' in i:
                     feat_dir[i] = 0
-                elif 'Charge' in i or 'Priors' in i:
+                elif 'HouseholdPosition' in i or 'HouseholdSize' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i:
                     feat_dir[i] = 'any'
+                elif 'EducationLevel' in i:
+                    feat_dir[i] = 'pos'
         elif self.name == 'credit':
             for i in feat_list:
                 if 'Age' in i or 'Male' in i:
@@ -624,35 +583,11 @@ class Dataset:
                     feat_dir[i] = 'pos'
                 elif 'Married' in i:
                     feat_dir[i] = 'any'
-        elif self.name == 'adult':
+        elif self.name == 'compass':
             for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Native' in i or 'Race' in i:
+                if 'Age' in i or 'Sex' in i or 'Race' in i:
                     feat_dir[i] = 0
-                elif 'Education' in i:
-                    feat_dir[i] = 'pos'
-                else:
-                    feat_dir[i] = 'any'
-        elif self.name == 'german':
-            for i in feat_list:
-                if 'Age' in i or 'Sex' in i:
-                    feat_dir[i] = 0
-                else:
-                    feat_dir[i] = 'any'
-        elif self.name == 'heart':
-            for i in feat_list:
-                if 'Age' in i or 'Sex' in i:
-                    feat_dir[i] = 0
-                elif 'ChestPain' in i or 'ECG' in i:
-                    feat_dir[i] = 'any'
-                elif i in ['RestBloodPressure','Chol','BloodSugar']:
-                    feat_dir[i] = 'any'
-        elif self.name == 'cervical':
-            for i in feat_list:
-                if i in ['Age','First sexual intercourse','STDs:HIV']:
-                    feat_dir[i] = 0
-                elif i in ['Number of sexual partners','Smokes (years)','Hormonal Contraceptives (years)','IUD (years)']:
-                    feat_dir[i] = 'pos'  
-                elif i in ['Smokes','Smokes (packs/year)','Hormonal Contraceptives','IUD']:
+                elif 'Charge' in i or 'Priors' in i:
                     feat_dir[i] = 'any'
         feat_dir = pd.Series(feat_dir)
         return feat_dir
@@ -664,53 +599,7 @@ class Dataset:
         """
         feat_cost  = dict()
         feat_list = self.feat_type.index.tolist()
-        if self.name == 'synthetic_simple':
-            for i in feat_list:
-                if i == 0:
-                    feat_cost[i] = 0
-                else:
-                    feat_cost[i] = 1
-        elif self.name == 'ionosphere':
-            for i in feat_list:
-                if i == '0':
-                    feat_cost[i] = 0
-                else:
-                    feat_cost[i] = 1
-        elif self.name == 'synthetic_disease':
-            for i in feat_list:
-                if 'Age' in i:
-                    feat_cost[i] = 0
-                elif 'ExerciseMinutes' in i or 'SleepHours' in i or 'Weight' in i:
-                    feat_cost[i] = 1
-                elif 'Diet' in i or 'Stress' in i or 'Smokes' in i:
-                    feat_cost[i] = 1
-        elif self.name == 'synthetic_athlete':
-            for i in feat_list:
-                if 'Age' in i or 'Sex' in i:
-                    feat_cost[i] = 0
-                elif 'TrainingTime' in i or 'Diet' in i or 'Sport' in i or 'SleepHours' in i:
-                    feat_cost[i] = 1
-        elif self.name == 'compass':
-            for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Race' in i:
-                    feat_cost[i] = 0
-                elif 'Charge' in i:
-                    feat_cost[i] = 1#10
-                elif 'Priors' in i:
-                    feat_cost[i] = 1#20
-        elif self.name == 'credit':
-            for i in feat_list:
-                if 'Age' in i or 'Male' in i:
-                    feat_cost[i] = 0
-                elif 'OverLast6Months' in i or 'MostRecent' in i or 'TotalOverdueCounts' in i or 'History' in i:
-                    feat_cost[i] = 1#20
-                elif 'TotalMonthsOverdue' in i:
-                    feat_cost[i] = 1#10   
-                elif 'Education' in i:
-                    feat_cost[i] = 1#50
-                elif 'Married' in i:
-                    feat_cost[i] = 1#50
-        elif self.name == 'adult':
+        if self.name == 'adult':
             for i in feat_list:
                 if 'Age' in i or 'Sex' in i or 'Native' in i or 'Race' in i:
                     feat_cost[i] = 0
@@ -730,26 +619,44 @@ class Dataset:
                     feat_cost[i] = 1#10
                 elif 'Relationship' in i:
                     feat_cost[i] = 1#50
+        elif self.name == 'kdd_census':
+            for i in feat_list:
+                if 'Sex' in i or 'Race' in i or 'Age' in i:
+                    feat_cost[i] = 0
+                elif 'Industry' in i or 'Occupation' in i or 'WageHour' in i or 'CapitalGain' in i or 'CapitalLoss' in i or 'Dividends' in i or 'WorkWeeksYear':
+                    feat_cost[i] = 1
         elif self.name == 'german':
             for i in feat_list:
                 if 'Age' in i or 'Sex' in i:
                     feat_cost[i] = 0
                 else:
                     feat_cost[i] = 1
-        elif self.name == 'heart':
+        elif self.name == 'dutch':
             for i in feat_list:
-                if 'Age' in i or 'Sex' in i:
+                if 'Sex' in i or 'Age' in i or 'Country' in i:
                     feat_cost[i] = 0
-                elif 'ChestPain' in i or 'ECG' in i:
+                elif 'HouseholdPosition' in i or 'HouseholdSize' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i or 'EducationLevel' in i:
                     feat_cost[i] = 1
-                elif i in ['RestBloodPressure','Chol','BloodSugar']:
-                    feat_cost[i] = 1
-        elif self.name == 'cervical':
+        elif self.name == 'credit':
             for i in feat_list:
-                if i in ['Age','First sexual intercourse'] or 'STDs' in i:
+                if 'Age' in i or 'Male' in i:
                     feat_cost[i] = 0
-                elif 'Smokes' in i or 'Hormonal Contraceptives' in i or 'IUD' in i or 'Number of sexual partners':
-                    feat_cost[i] = 1
+                elif 'OverLast6Months' in i or 'MostRecent' in i or 'TotalOverdueCounts' in i or 'History' in i:
+                    feat_cost[i] = 1#20
+                elif 'TotalMonthsOverdue' in i:
+                    feat_cost[i] = 1#10   
+                elif 'Education' in i:
+                    feat_cost[i] = 1#50
+                elif 'Married' in i:
+                    feat_cost[i] = 1#50
+        elif self.name == 'compass':
+            for i in feat_list:
+                if 'Age' in i or 'Sex' in i or 'Race' in i:
+                    feat_cost[i] = 0
+                elif 'Charge' in i:
+                    feat_cost[i] = 1#10
+                elif 'Priors' in i:
+                    feat_cost[i] = 1#20
         feat_cost = pd.Series(feat_cost)
         return feat_cost
 
@@ -776,34 +683,7 @@ class Dataset:
         """
         feat_cat = copy.deepcopy(self.feat_type)
         feat_list = self.feat_type.index.tolist()
-        if self.name in ['synthetic_simple','ionosphere']:
-            for i in feat_list:
-                feat_cat[i] = 'non'
-        elif self.name == 'synthetic_disease':
-            for i in feat_list:
-                if 'Age' in i or 'Smokes' in i or 'ExerciseMinutes' in i or 'SleepHours' in i or 'Weight' in i:
-                    feat_cat.loc[i] = 'non'
-                elif 'Diet' in i:
-                    feat_cat.loc[i] = 'cat_1'
-                elif 'Stress' in i:
-                    feat_cat.loc[i] = 'cat_2'
-        elif self.name == 'synthetic_athlete':
-            for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'SleepHours' in i:
-                    feat_cat.loc[i] = 'non'
-                elif 'TrainingTime' in i:
-                    feat_cat.loc[i] = 'cat_1'
-                elif 'Diet' in i:
-                    feat_cat.loc[i] = 'cat_2'
-                elif 'Sport' in i:
-                    feat_cat.loc[i] = 'cat_3'
-        elif self.name == 'compass':
-            for i in feat_list:
-                feat_cat.loc[i] = 'non'
-        elif self.name == 'credit':
-            for i in feat_list:
-                feat_cat.loc[i] = 'non'
-        elif self.name == 'adult':
+        if self.name == 'adult':
             for i in feat_list:
                 if 'Sex' in i or 'Native' in i or 'EducationLevel' or i in 'EducationNumber' in i or 'Capital' in i or 'Hours' in i or 'Race' in i:
                     feat_cat.loc[i] = 'non'
@@ -817,18 +697,35 @@ class Dataset:
                     feat_cat.loc[i] = 'cat_3'
                 elif 'Relation' in i:
                     feat_cat.loc[i] = 'cat_4'
+        elif self.name == 'kdd_census':
+            for i in feat_list:
+                if 'Industry' in i:
+                    feat_cat.loc[i] = 'cat_0'
+                elif 'Occupation' in i:
+                    feat_cat.loc[i] = 'cat_1'    
+                else:
+                    feat_cat.loc[i] = 'non'
         elif self.name == 'german':
             for i in feat_list:
                 feat_cat.loc[i] = 'non'
-        elif self.name == 'heart':
+        elif self.name == 'dutch':
             for i in feat_list:
-                if i in ['Age','Sex','RestBloodPressure','Chol','BloodSugar']:
-                    feat_cat.loc[i] = 'non'
-                elif 'ChestPain' in i:
+                if 'HouseholdPosition' in i:
+                    feat_cat.loc[i] = 'cat_0'
+                elif 'HouseholdSize' in i:
                     feat_cat.loc[i] = 'cat_1'
-                elif 'ECG' in i:
+                elif 'Country' in i:
                     feat_cat.loc[i] = 'cat_2'
-        elif self.name == 'cervical':
+                elif 'EconomicStatus' in i:
+                    feat_cat.loc[i] = 'cat_3'
+                elif 'CurEcoActivity' in i:
+                    feat_cat.loc[i] = 'cat_4'
+                elif 'MaritalStatus' in i:
+                    feat_cat.loc[i] = 'cat_5'
+        elif self.name == 'credit':
+            for i in feat_list:
+                feat_cat.loc[i] = 'non'
+        elif self.name == 'compass':
             for i in feat_list:
                 feat_cat.loc[i] = 'non'
         return feat_cat
@@ -839,25 +736,26 @@ class Dataset:
         Output feat_protected: Protected set of features per dataset
         """
         feat_protected_values = {}
-        if self.name == 'compass':
-            feat_protected_values['Race'] = {1.00:'African-American', 2.00:'Caucasian'}
+        if self.name == 'adult':
             feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
-            feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-45', 3.00:'>45'}
+            feat_protected_values['Race'] = {1.00:'White', 2.00:'Non-white'}
+            feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-60', 3.00:'>60'}
+        elif self.name == 'kdd_census':
+            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
+            feat_protected_values['Race'] = {1.00:'White', 2.00:'Non-white'}
+        elif self.name == 'german':
+            feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
+        elif self.name == 'dutch':
+            feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
         elif self.name == 'credit':
             feat_protected_values['isMale'] = {1.00:'True', 0.00:'False'}
             feat_protected_values['isMarried'] = {1.00:'True', 0.00:'False'}
             feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-40', 3.00:'40-59', 4.00:'>59'}
             feat_protected_values['EducationLevel'] = {1.00:'Other', 2.00:'HS', 3.00:'University', 4.00:'Graduate'}
-        elif self.name == 'adult':
+        elif self.name == 'compass':
+            feat_protected_values['Race'] = {1.00:'African-American', 2.00:'Caucasian'}
             feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
-            feat_protected_values['Race'] = {1.00:'White', 2.00:'Non-white'}
-            feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-60', 3.00:'>60'}
-        elif self.name == 'german':
-            feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
-            feat_protected_values['Age'] = 'hist'
-        elif self.name == 'heart':
-            feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
-            feat_protected_values['Age'] = 'hist'
+            feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-45', 3.00:'>45'}
         return feat_protected_values
 
 class Model:
@@ -958,70 +856,7 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
     Output data_obj: Dataset object
     Output model_obj: Model object
     """
-    if data_str == 'compass':
-        processed_df = pd.DataFrame()
-        binary = ['Race','Sex','ChargeDegree']
-        categorical = []
-        numerical = ['PriorsCount','AgeGroup']
-        label = ['TwoYearRecid (label)']
-        mace_cols = ['AgeGroup']
-        carla_categorical = ['Race','Sex','ChargeDegree','AgeGroup']
-        carla_continuous = ['PriorsCount']
-        FEATURES_CLASSIFICATION = ['age_cat','race','sex','priors_count','c_charge_degree']  # features to be used for classification
-        CONT_VARIABLES = ['priors_count']  # continuous features, will need to be handled separately from categorical features, categorical features will be encoded using one-hot
-        CLASS_FEATURE = 'two_year_recid'  # the decision variable
-        SENSITIVE_ATTRS = ['race']
-        df = pd.read_csv(dataset_dir+'/compass/compas-scores-two-years.csv')
-        df = df.dropna(subset=["days_b_screening_arrest"])  # dropping missing vals
-        # """ Data filtering and preparation """ (As seen in MACE algorithm, based on Propublica methodology. Please, see: https://github.com/amirhk/mace)
-        tmp = \
-            ((df["days_b_screening_arrest"] <= 30) & (df["days_b_screening_arrest"] >= -30)) & \
-            (df["is_recid"] != -1) & \
-            (df["c_charge_degree"] != "O") & \
-            (df["score_text"] != "NA") & \
-            ((df["race"] == "African-American") | (df["race"] == "Caucasian"))
-        df = df[tmp == True]
-        df = pd.concat([df[FEATURES_CLASSIFICATION],df[CLASS_FEATURE],], axis=1)
-        processed_df['TwoYearRecid (label)'] = df['two_year_recid']
-        processed_df.loc[df['age_cat'] == 'Less than 25', 'AgeGroup'] = 1
-        processed_df.loc[df['age_cat'] == '25 - 45', 'AgeGroup'] = 2
-        processed_df.loc[df['age_cat'] == 'Greater than 45', 'AgeGroup'] = 3
-        processed_df.loc[df['race'] == 'African-American', 'Race'] = 1
-        processed_df.loc[df['race'] == 'Caucasian', 'Race'] = 2
-        processed_df.loc[df['sex'] == 'Male', 'Sex'] = 1
-        processed_df.loc[df['sex'] == 'Female', 'Sex'] = 2
-        processed_df['PriorsCount'] = df['priors_count']
-        processed_df.loc[df['c_charge_degree'] == 'M', 'ChargeDegree'] = 1
-        processed_df.loc[df['c_charge_degree'] == 'F', 'ChargeDegree'] = 2
-        processed_df = processed_df.reset_index(drop=True)
-    elif data_str == 'credit':
-        binary = ['isMale','isMarried','HasHistoryOfOverduePayments']
-        categorical = []
-        numerical = ['MaxBillAmountOverLast6Months','MaxPaymentAmountOverLast6Months','MonthsWithZeroBalanceOverLast6Months',
-                'MonthsWithLowSpendingOverLast6Months','MonthsWithHighSpendingOverLast6Months','MostRecentBillAmount',
-                'MostRecentPaymentAmount','TotalOverdueCounts','TotalMonthsOverdue','AgeGroup','EducationLevel']
-        label = ['NoDefaultNextMonth (label)']
-        mace_cols = ['AgeGroup','EducationLevel']
-        carla_categorical = ['isMale','isMarried','HasHistoryOfOverduePayments']
-        carla_continuous = ['MaxBillAmountOverLast6Months','MaxPaymentAmountOverLast6Months','MonthsWithZeroBalanceOverLast6Months',
-                'MonthsWithLowSpendingOverLast6Months','MonthsWithHighSpendingOverLast6Months','MostRecentBillAmount',
-                'MostRecentPaymentAmount','TotalOverdueCounts','TotalMonthsOverdue','AgeGroup','EducationLevel']
-        processed_df = pd.read_csv(dataset_dir + '/credit/credit_processed.csv') # Obtained from MACE algorithm Datasets (please, see: https://github.com/amirhk/mace)
-    elif data_str == 'kdd_census':
-        binary = ['Sex','Race','Industry','Occupation']
-        categorical = []
-        numerical = ['Age','WageHour','CapitalGain','CapitalLoss','Dividends','WorkWeeksYear']
-        label = ['Label']
-        read_cols = ['Age','WorkClass','IndustryDetail','OccupationDetail','Education','WageHour','Enrolled','MaritalStatus','Industry','Occupation',
-                'Race','Hispanic','Sex','Union','UnemployedReason','FullTimePartTime','CapitalGain','CapitalLoss','Dividends','Tax',
-                'RegionPrev','StatePrev','HouseDetailFamily','HouseDetailSummary','ChangeMsa','ChangeReg','MoveReg','Live1YrAgo','PrevSunbelt','NumPersonsWorkEmp',
-                'Under18Family','CountryFather','CountryMother','Country','Citizenship','OwnBusiness','VeteransAdmin','VeteransBenefits','WorkWeeksYear','Year','Label']
-        train_raw_df = pd.read_csv(dataset_dir+'/kdd_census/census-income.data',names=read_cols)
-        test_raw_df = pd.read_csv(dataset_dir+'/kdd_census/census-income.test',names=read_cols)
-        raw_df = pd.concat((train_raw_df,test_raw_df),axis=0)
-        processed_df = raw_df[binary+numerical+label]
-        
-    elif data_str == 'adult':
+    if data_str == 'adult':
         binary = ['Sex','NativeCountry','Race']
         categorical = ['WorkClass','MaritalStatus','Occupation','Relationship']
         numerical = ['EducationNumber','CapitalGain','CapitalLoss','HoursPerWeek','EducationLevel','AgeGroup']
@@ -1162,6 +997,77 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df['CapitalGain'] = df['capital_gain'].astype(int)
         processed_df['CapitalLoss'] = df['capital_loss'].astype(int)
         processed_df['HoursPerWeek'] = df['hours_per_week'].astype(int)
+    elif data_str == 'kdd_census':
+        binary = ['Sex','Race']
+        categorical = ['Industry','Occupation']
+        numerical = ['Age','WageHour','CapitalGain','CapitalLoss','Dividends','WorkWeeksYear']
+        label = ['Label']
+        carla_categorical = ['Sex','Race','Industry','Occupation']
+        carla_continuous = ['Age','WageHour','CapitalGain','CapitalLoss','Dividends','WorkWeeksYear']
+        mace_cols = []
+        cols = binary + numerical + label
+        read_cols = ['Age','WorkClass','IndustryDetail','OccupationDetail','Education','WageHour','Enrolled','MaritalStatus','Industry','Occupation',
+                'Race','Hispanic','Sex','Union','UnemployedReason','FullTimePartTime','CapitalGain','CapitalLoss','Dividends','Tax',
+                'RegionPrev','StatePrev','HouseDetailFamily','HouseDetailSummary','UnknownFeature','ChangeMsa','ChangeReg','MoveReg','Live1YrAgo','PrevSunbelt','NumPersonsWorkEmp',
+                'Under18Family','CountryFather','CountryMother','Country','Citizenship','OwnBusiness','VeteransAdmin','VeteransBenefits','WorkWeeksYear','Year','Label']
+        train_raw_df = pd.read_csv(dataset_dir+'/kdd_census/census-income.data',index_col=False,names=read_cols)
+        test_raw_df = pd.read_csv(dataset_dir+'/kdd_census/census-income.test',index_col=False,names=read_cols)
+        raw_df = pd.concat((train_raw_df,test_raw_df),axis=0)
+        processed_df = raw_df[cols]
+        processed_df.loc[processed_df['Sex'] == ' Male','Sex'] = 1
+        processed_df.loc[processed_df['Sex'] == ' Female','Sex'] = 2
+        processed_df.loc[processed_df['Race'] != ' White','Race'] = 'Non-white'
+        processed_df.loc[processed_df['Race'] == ' White','Race'] = 1
+        processed_df.loc[processed_df['Race'] == 'Non-white','Race'] = 2
+        processed_df.loc[processed_df['Industry'] == ' Construction','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Entertainment','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Finance insurance and real estate','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Business and repair services','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Manufacturing-nondurable goods','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Personal services except private HH','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Manufacturing-durable goods','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Other professional services','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Mining','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Transportation','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Wholesale trade','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Public administration','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Retail trade','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Social services','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Private household services','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Communications','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Agriculture','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Forestry and fisheries','Industry'] = 'Industry'
+        processed_df.loc[processed_df['Industry'] == ' Education','Industry'] = 'Education'
+        processed_df.loc[processed_df['Industry'] == ' Utilities and sanitary services','Industry'] = 'Medical'
+        processed_df.loc[processed_df['Industry'] == ' Hospital services','Industry'] = 'Medical'
+        processed_df.loc[processed_df['Industry'] == ' Medical except hospital','Industry'] = 'Medical'
+        processed_df.loc[processed_df['Industry'] == ' Armed Forces','Industry'] = 'Military'
+        processed_df.loc[processed_df['Industry'] == ' Not in universe or children','Industry'] = 'Other'
+        processed_df.loc[processed_df['Industry'] == 'Industry','Industry'] = 1
+        processed_df.loc[processed_df['Industry'] == 'Education','Industry'] = 2
+        processed_df.loc[processed_df['Industry'] == 'Medical','Industry'] = 3
+        processed_df.loc[processed_df['Industry'] == 'Military','Industry'] = 4
+        processed_df.loc[processed_df['Industry'] == 'Other','Industry'] = 5
+        processed_df.loc[processed_df['Occupation'] == ' Precision production craft & repair','Occupation'] = 'Technician'
+        processed_df.loc[processed_df['Occupation'] == ' Professional specialty','Occupation'] = 'Executive'
+        processed_df.loc[processed_df['Occupation'] == ' Executive admin and managerial','Occupation'] = 'Executive'
+        processed_df.loc[processed_df['Occupation'] == ' Handlers equip cleaners etc ','Occupation'] = 'Services'
+        processed_df.loc[processed_df['Occupation'] == ' Adm support including clerical','Occupation'] = 'Services'
+        processed_df.loc[processed_df['Occupation'] == ' Machine operators assmblrs & inspctrs','Occupation'] = 'Technician'
+        processed_df.loc[processed_df['Occupation'] == ' Sales','Occupation'] = 'Executive'
+        processed_df.loc[processed_df['Occupation'] == ' Private household services','Occupation'] = 'Services'
+        processed_df.loc[processed_df['Occupation'] == ' Technicians and related support','Occupation'] = 'Technician'
+        processed_df.loc[processed_df['Occupation'] == ' Transportation and material moving','Occupation'] = 'Services'
+        processed_df.loc[processed_df['Occupation'] == ' Farming forestry and fishing','Occupation'] = 'Technician'
+        processed_df.loc[processed_df['Occupation'] == ' Protective services','Occupation'] = 'Services'
+        processed_df.loc[processed_df['Occupation'] == ' Other service','Occupation'] = 'Services'
+        processed_df.loc[processed_df['Occupation'] == ' Armed Forces','Occupation'] = 'Military'
+        processed_df.loc[processed_df['Occupation'] == ' Not in universe','Occupation'] = 'Other'
+        processed_df.loc[processed_df['Occupation'] == 'Technician','Occupation'] = 1
+        processed_df.loc[processed_df['Occupation'] == 'Executive','Occupation'] = 2
+        processed_df.loc[processed_df['Occupation'] == 'Services','Occupation'] = 3
+        processed_df.loc[processed_df['Occupation'] == 'Military','Occupation'] = 4
+        processed_df.loc[processed_df['Occupation'] == 'Other','Occupation'] = 5
     elif data_str == 'german':
         binary = ['Sex']
         categorical = []
@@ -1179,6 +1085,102 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df['Age'] = raw_df['Age']
         processed_df['Credit'] = raw_df['Credit']
         processed_df['LoanDuration'] = raw_df['LoanDuration']
+    elif data_str == 'dutch':
+        binary = ['Sex']
+        categorical = ['HouseholdPosition','HouseholdSize','Country','EconomicStatus','CurEcoActivity','MaritalStatus']
+        numerical = ['Age','EducationLevel']
+        label = ['Occupation']
+        mace_cols = []
+        carla_categorical = ['Sex','HouseholdPosition','HouseholdSize','Country','EconomicStatus','CurEcoActivity','MaritalStatus','Age','EducationLevel']
+        carla_continuous = []
+        cols = binary + numerical + categorical 
+        raw_df = pd.read_csv(dataset_dir+'/dutch/dutch.txt')
+        processed_df = raw_df[cols]
+        processed_df.loc[processed_df['HouseholdPosition'] == 1131,'HouseholdPosition'] = 1
+        processed_df.loc[processed_df['HouseholdPosition'] == 1122,'HouseholdPosition'] = 2
+        processed_df.loc[processed_df['HouseholdPosition'] == 1121,'HouseholdPosition'] = 3
+        processed_df.loc[processed_df['HouseholdPosition'] == 1110,'HouseholdPosition'] = 4
+        processed_df.loc[processed_df['HouseholdPosition'] == 1210,'HouseholdPosition'] = 5
+        processed_df.loc[processed_df['HouseholdPosition'] == 1132,'HouseholdPosition'] = 6
+        processed_df.loc[processed_df['HouseholdPosition'] == 1140,'HouseholdPosition'] = 7
+        processed_df.loc[processed_df['HouseholdPosition'] == 1220,'HouseholdPosition'] = 8
+        processed_df.loc[processed_df['HouseholdSize'] == 111,'HouseholdSize'] = 1
+        processed_df.loc[processed_df['HouseholdSize'] == 112,'HouseholdSize'] = 2
+        processed_df.loc[processed_df['HouseholdSize'] == 113,'HouseholdSize'] = 3
+        processed_df.loc[processed_df['HouseholdSize'] == 114,'HouseholdSize'] = 4
+        processed_df.loc[processed_df['HouseholdSize'] == 125,'HouseholdSize'] = 5
+        processed_df.loc[processed_df['HouseholdSize'] == 126,'HouseholdSize'] = 6
+        processed_df.loc[processed_df['EconomicStatus'] == 111,'EconomicStatus'] = 1
+        processed_df.loc[processed_df['EconomicStatus'] == 120,'EconomicStatus'] = 2
+        processed_df.loc[processed_df['EconomicStatus'] == 112,'EconomicStatus'] = 3
+        processed_df.loc[processed_df['CurEcoActivity'] == 131,'CurEcoActivity'] = 1
+        processed_df.loc[processed_df['CurEcoActivity'] == 135,'CurEcoActivity'] = 2
+        processed_df.loc[processed_df['CurEcoActivity'] == 138,'CurEcoActivity'] = 3
+        processed_df.loc[processed_df['CurEcoActivity'] == 122,'CurEcoActivity'] = 4
+        processed_df.loc[processed_df['CurEcoActivity'] == 137,'CurEcoActivity'] = 5
+        processed_df.loc[processed_df['CurEcoActivity'] == 136,'CurEcoActivity'] = 6
+        processed_df.loc[processed_df['CurEcoActivity'] == 133,'CurEcoActivity'] = 7
+        processed_df.loc[processed_df['CurEcoActivity'] == 139,'CurEcoActivity'] = 8
+        processed_df.loc[processed_df['CurEcoActivity'] == 132,'CurEcoActivity'] = 9
+        processed_df.loc[processed_df['CurEcoActivity'] == 134,'CurEcoActivity'] = 10
+        processed_df.loc[processed_df['CurEcoActivity'] == 111,'CurEcoActivity'] = 11
+        processed_df.loc[processed_df['CurEcoActivity'] == 124,'CurEcoActivity'] = 12
+        processed_df.loc[processed_df['Occupation'] == '5_4_9','Occupation'] = 1
+        processed_df.loc[processed_df['Occupation'] == '2_1','Occupation'] = 0
+    elif data_str == 'bank':
+        binary = ['default']
+        categorical = ['job','marital','education']
+        numerical = ['age']
+        label = []
+    elif data_str == 'credit':
+        binary = ['isMale','isMarried','HasHistoryOfOverduePayments']
+        categorical = []
+        numerical = ['MaxBillAmountOverLast6Months','MaxPaymentAmountOverLast6Months','MonthsWithZeroBalanceOverLast6Months',
+                'MonthsWithLowSpendingOverLast6Months','MonthsWithHighSpendingOverLast6Months','MostRecentBillAmount',
+                'MostRecentPaymentAmount','TotalOverdueCounts','TotalMonthsOverdue','AgeGroup','EducationLevel']
+        label = ['NoDefaultNextMonth (label)']
+        mace_cols = ['AgeGroup','EducationLevel']
+        carla_categorical = ['isMale','isMarried','HasHistoryOfOverduePayments']
+        carla_continuous = ['MaxBillAmountOverLast6Months','MaxPaymentAmountOverLast6Months','MonthsWithZeroBalanceOverLast6Months',
+                'MonthsWithLowSpendingOverLast6Months','MonthsWithHighSpendingOverLast6Months','MostRecentBillAmount',
+                'MostRecentPaymentAmount','TotalOverdueCounts','TotalMonthsOverdue','AgeGroup','EducationLevel']
+        processed_df = pd.read_csv(dataset_dir + '/credit/credit_processed.csv') # Obtained from MACE algorithm Datasets (please, see: https://github.com/amirhk/mace)
+    elif data_str == 'compass':
+        processed_df = pd.DataFrame()
+        binary = ['Race','Sex','ChargeDegree']
+        categorical = []
+        numerical = ['PriorsCount','AgeGroup']
+        label = ['TwoYearRecid (label)']
+        mace_cols = ['AgeGroup']
+        carla_categorical = ['Race','Sex','ChargeDegree','AgeGroup']
+        carla_continuous = ['PriorsCount']
+        FEATURES_CLASSIFICATION = ['age_cat','race','sex','priors_count','c_charge_degree']  # features to be used for classification
+        CONT_VARIABLES = ['priors_count']  # continuous features, will need to be handled separately from categorical features, categorical features will be encoded using one-hot
+        CLASS_FEATURE = 'two_year_recid'  # the decision variable
+        SENSITIVE_ATTRS = ['race']
+        df = pd.read_csv(dataset_dir+'/compass/compas-scores-two-years.csv')
+        df = df.dropna(subset=["days_b_screening_arrest"])  # dropping missing vals
+        # """ Data filtering and preparation """ (As seen in MACE algorithm, based on Propublica methodology. Please, see: https://github.com/amirhk/mace)
+        tmp = \
+            ((df["days_b_screening_arrest"] <= 30) & (df["days_b_screening_arrest"] >= -30)) & \
+            (df["is_recid"] != -1) & \
+            (df["c_charge_degree"] != "O") & \
+            (df["score_text"] != "NA") & \
+            ((df["race"] == "African-American") | (df["race"] == "Caucasian"))
+        df = df[tmp == True]
+        df = pd.concat([df[FEATURES_CLASSIFICATION],df[CLASS_FEATURE],], axis=1)
+        processed_df['TwoYearRecid (label)'] = df['two_year_recid']
+        processed_df.loc[df['age_cat'] == 'Less than 25', 'AgeGroup'] = 1
+        processed_df.loc[df['age_cat'] == '25 - 45', 'AgeGroup'] = 2
+        processed_df.loc[df['age_cat'] == 'Greater than 45', 'AgeGroup'] = 3
+        processed_df.loc[df['race'] == 'African-American', 'Race'] = 1
+        processed_df.loc[df['race'] == 'Caucasian', 'Race'] = 2
+        processed_df.loc[df['sex'] == 'Male', 'Sex'] = 1
+        processed_df.loc[df['sex'] == 'Female', 'Sex'] = 2
+        processed_df['PriorsCount'] = df['priors_count']
+        processed_df.loc[df['c_charge_degree'] == 'M', 'ChargeDegree'] = 1
+        processed_df.loc[df['c_charge_degree'] == 'F', 'ChargeDegree'] = 2
+        processed_df = processed_df.reset_index(drop=True)
     elif data_str == 'Diabetes':
         data = pd.read_csv(dataset_dir+'/Diabetes/diabetes_data_upload.csv') # Requires numeric transform
         data = erase_missing(data,data_str)
