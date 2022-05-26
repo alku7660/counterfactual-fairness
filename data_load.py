@@ -105,12 +105,12 @@ class Dataset:
         self.undesired_class = self.undesired_class_data()
 
         self.feat_type = self.define_feat_type()
+        self.feat_protected = self.define_protected()
         self.feat_mutable = self.define_mutability()
         self.feat_dir = self.define_directionality()
         self.feat_cost = self.define_feat_cost()
         self.feat_step = self.define_feat_step()
         self.feat_cat = self.define_category_groups()
-        self.feat_protected = self.define_protected()
         self.train_sorted = None
 
     def unique_values(self):
@@ -448,49 +448,86 @@ class Dataset:
         Output feat_type: Dataset feature type series in usable format
         """
         feat_type = self.jce_train_pd.dtypes
-        feat_type_2 = copy.deepcopy(feat_type)
+        feat_type_out = copy.deepcopy(feat_type)
         feat_list = feat_type.index.tolist()
         if self.name == 'adult':
             for i in feat_list:
                 if 'Sex' in i or 'Native' in i or 'WorkClass' in i or 'Marital' in i or 'Occupation' in i or 'Relation' in i or 'Race' in i:
-                    feat_type_2.loc[i] = 'bin'
+                    feat_type_out.loc[i] = 'bin'
                 elif 'EducationLevel' in i or 'Age' in i:
-                    feat_type_2.loc[i] = 'num-ord'
+                    feat_type_out.loc[i] = 'num-ord'
                 elif 'EducationNumber' in i or 'Capital' in i or 'Hours' in i:
-                    feat_type_2.loc[i] = 'num-con'
+                    feat_type_out.loc[i] = 'num-con'
         elif self.name == 'kdd_census':
             for i in feat_list:
                 if 'Sex' in i or 'Race' in i or 'Industry' in i or 'Occupation' in i:
-                    feat_type_2.loc[i] = 'bin'
+                    feat_type_out.loc[i] = 'bin'
                 elif 'Age' in i or 'WageHour' in i or 'CapitalGain' in i or 'CapitalLoss' in i or 'Dividends' in i or 'WorkWeeksYear' in i:
-                    feat_type_2.loc[i] = 'num-con'
+                    feat_type_out.loc[i] = 'num-con'
         elif self.name == 'german':
             for i in feat_list:
                 if 'Sex' in i:
-                    feat_type_2.loc[i] = 'bin'
+                    feat_type_out.loc[i] = 'bin'
                 elif 'Age' in i or 'Credit' in i or 'Loan' in i:
-                    feat_type_2.loc[i] = 'num-con'
+                    feat_type_out.loc[i] = 'num-con'
         elif self.name == 'dutch':
             for i in feat_list:
                 if 'Sex' in i or 'HouseholdPosition' in i or 'HouseholdSize' in i or 'Country' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i:
-                    feat_type_2.loc[i] = 'bin'
+                    feat_type_out.loc[i] = 'bin'
                 elif 'Age' in i or 'EducationLevel' in i:
-                    feat_type_2.loc[i] = 'num-ord'
+                    feat_type_out.loc[i] = 'num-ord'
+        elif self.name == 'bank':
+            for i in feat_list:
+                if 'Default' in i or 'Housing' in i or 'Loan' in i or 'Job' in i or 'MaritalStatus' in i or 'Education' in i or 'Contact' in i or 'Month' in i or 'Poutcome':
+                    feat_type_out.loc[i] = 'bin'
+                elif 'Age' in i:
+                    feat_type_out.loc[i] = 'num-ord'
+                elif 'Balance' in i or 'Day' in i or 'Duration' in i or 'Campaign' in i or 'Pdays' in i or 'Previous':
+                    feat_type_out.loc[i] = 'num-con'
         elif self.name == 'credit':
             for i in feat_list:
                 if 'Male' in i or 'Married' in i or 'History' in i:
-                    feat_type_2.loc[i] = 'bin'
+                    feat_type_out.loc[i] = 'bin'
                 elif 'Amount' in i or 'Balance' in i or 'Spending' in i:
-                    feat_type_2.loc[i] = 'num-con'
+                    feat_type_out.loc[i] = 'num-con'
                 elif 'Total' in i or 'Age' in i or 'Education' in i:
-                    feat_type_2.loc[i] = 'num-ord'
+                    feat_type_out.loc[i] = 'num-ord'
         elif self.name == 'compass':
             for i in feat_list:
                 if 'Sex' in i or 'Race' in i or 'Charge' in i:
-                    feat_type_2.loc[i] = 'bin'
+                    feat_type_out.loc[i] = 'bin'
                 elif 'Priors' in i or 'Age' in i:
-                    feat_type_2.loc[i] = 'num-ord'
-        return feat_type_2
+                    feat_type_out.loc[i] = 'num-ord'
+        return feat_type_out
+
+    def define_protected(self):
+        """
+        Method that defines which features are sensitive / protected and the groups or categories in each of them
+        Output feat_protected: Protected set of features per dataset
+        """
+        feat_protected_values = {}
+        if self.name == 'adult':
+            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
+            feat_protected_values['Race'] = {1.00:'White', 2.00:'Non-white'}
+            feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-60', 3.00:'>60'}
+        elif self.name == 'kdd_census':
+            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
+            feat_protected_values['Race'] = {1.00:'White', 2.00:'Non-white'}
+        elif self.name == 'german':
+            feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
+        elif self.name == 'dutch':
+            feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
+        elif self.name == 'bank':
+            feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-60', 3.00:'>60'}
+            feat_protected_values['MaritalStatus'] = {1.00:'Married', 2.00:'Single', 3.00:'Divorced'}
+        elif self.name == 'credit':
+            feat_protected_values['isMale'] = {1.00:'True', 0.00:'False'}
+            feat_protected_values['isMarried'] = {1.00:'True', 0.00:'False'}
+            feat_protected_values['EducationLevel'] = {1.00:'Other', 2.00:'HS', 3.00:'University', 4.00:'Graduate'}
+        elif self.name == 'compass':
+            feat_protected_values['Race'] = {1.00:'African-American', 2.00:'Caucasian'}
+            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
+        return feat_protected_values
 
     def define_mutability(self):
         """
@@ -499,45 +536,14 @@ class Dataset:
         """
         feat_list = self.feat_type.index.tolist()
         feat_mutable  = dict()
-        if self.name == 'adult':
-            for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Race' in i:
-                    feat_mutable[i] = 0
-                else:
-                    feat_mutable[i] = 1
-        elif self.name == 'kdd_census':
-            for i in feat_list:
-                if 'Age' in i or 'Sex' in i:
-                    feat_mutable[i] = 0
-                else:
-                    feat_mutable = 1
-        elif self.name == 'german':
-            for i in feat_list:
-                if 'Age' in i or 'Sex' in i:
-                    feat_mutable[i] = 0
-                else:
-                    feat_mutable[i] = 1
-        elif self.name == 'dutch':
-            for i in feat_list:
-                if 'Sex' in i or 'Age' in i or 'Country' in i:
-                    feat_mutable[i] = 0
-                else:
-                    feat_mutable[i] = 1
-        elif self.name == 'credit':
-            for i in feat_list:
-                if 'Male' in i or 'Age' in i:
-                    feat_mutable[i] = 0
-                else:
-                    feat_mutable[i] = 1   
-        elif self.name == 'compass':
-            for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Race' in i:
-                    feat_mutable[i] = 0
-                else:
-                    feat_mutable[i] = 1
+        for i in feat_list:
+            if i in self.feat_protected.keys():
+                feat_mutable[i] = 0
+            else:
+                feat_mutable[i] = 1
         feat_mutable = pd.Series(feat_mutable)
         return feat_mutable
-
+        
     def define_directionality(self):
         """
         Method that outputs change directionality of features per dataset
@@ -573,16 +579,22 @@ class Dataset:
                     feat_dir[i] = 'any'
                 elif 'EducationLevel' in i:
                     feat_dir[i] = 'pos'
+        elif self.name == 'bank':
+            for i in feat_list:
+                if 'Age' in i or 'Marital' in i:
+                    feat_dir[i] = 0
+                elif 'Default' in i or 'Housing' in i or 'Loan' in i or 'Job' in i or 'Contact' in i or 'Month' in i or 'Poutcome' or 'Balance' in i or 'Day' in i or 'Duration' in i or 'Campaign' in i or 'Pdays' in i or 'Previous' in i:
+                    feat_dir[i] = 'any'
+                elif 'Education' in i:
+                    feat_dir[i] = 'pos'
         elif self.name == 'credit':
             for i in feat_list:
                 if 'Age' in i or 'Male' in i:
                     feat_dir[i] = 0
-                elif 'OverLast6Months' in i or 'MostRecent' in i or 'Total' in i or 'History' in i:
+                elif 'OverLast6Months' in i or 'MostRecent' in i or 'Total' in i or 'History' in i or 'Married' in i:
                     feat_dir[i] = 'any'   
                 elif 'Education' in i:
                     feat_dir[i] = 'pos'
-                elif 'Married' in i:
-                    feat_dir[i] = 'any'
         elif self.name == 'compass':
             for i in feat_list:
                 if 'Age' in i or 'Sex' in i or 'Race' in i:
@@ -636,6 +648,12 @@ class Dataset:
                 if 'Sex' in i or 'Age' in i or 'Country' in i:
                     feat_cost[i] = 0
                 elif 'HouseholdPosition' in i or 'HouseholdSize' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i or 'EducationLevel' in i:
+                    feat_cost[i] = 1
+        elif self.name == 'bank':
+            for i in feat_list:
+                if 'Age' in i or 'Marital' in i:
+                    feat_cost[i] = 0
+                else:
                     feat_cost[i] = 1
         elif self.name == 'credit':
             for i in feat_list:
@@ -722,6 +740,22 @@ class Dataset:
                     feat_cat.loc[i] = 'cat_4'
                 elif 'MaritalStatus' in i:
                     feat_cat.loc[i] = 'cat_5'
+        elif self.name == 'bank':
+            for i in feat_list:
+                if 'Job' in i:
+                    feat_cat.loc[i] = 'cat_0'
+                elif 'MaritalStatus' in i:
+                    feat_cat.loc[i] = 'cat_1'
+                elif 'Education' in i:
+                    feat_cat.loc[i] = 'cat_2'
+                elif 'Contact' in i:
+                    feat_cat.loc[i] = 'cat_3'
+                elif 'Month' in i:
+                    feat_cat.loc[i] = 'cat_4'
+                elif 'Poutcome' in i:
+                    feat_cat.loc[i] = 'cat_5'
+                else:
+                    feat_cat.loc[i] = 'non'
         elif self.name == 'credit':
             for i in feat_list:
                 feat_cat.loc[i] = 'non'
@@ -729,34 +763,6 @@ class Dataset:
             for i in feat_list:
                 feat_cat.loc[i] = 'non'
         return feat_cat
-
-    def define_protected(self):
-        """
-        Method that defines which features are sensitive / protected and the groups or categories in each of them
-        Output feat_protected: Protected set of features per dataset
-        """
-        feat_protected_values = {}
-        if self.name == 'adult':
-            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
-            feat_protected_values['Race'] = {1.00:'White', 2.00:'Non-white'}
-            feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-60', 3.00:'>60'}
-        elif self.name == 'kdd_census':
-            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
-            feat_protected_values['Race'] = {1.00:'White', 2.00:'Non-white'}
-        elif self.name == 'german':
-            feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
-        elif self.name == 'dutch':
-            feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
-        elif self.name == 'credit':
-            feat_protected_values['isMale'] = {1.00:'True', 0.00:'False'}
-            feat_protected_values['isMarried'] = {1.00:'True', 0.00:'False'}
-            feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-40', 3.00:'40-59', 4.00:'>59'}
-            feat_protected_values['EducationLevel'] = {1.00:'Other', 2.00:'HS', 3.00:'University', 4.00:'Graduate'}
-        elif self.name == 'compass':
-            feat_protected_values['Race'] = {1.00:'African-American', 2.00:'Caucasian'}
-            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
-            feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-45', 3.00:'>45'}
-        return feat_protected_values
 
 class Model:
     """
@@ -1005,7 +1011,7 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         carla_categorical = ['Sex','Race','Industry','Occupation']
         carla_continuous = ['Age','WageHour','CapitalGain','CapitalLoss','Dividends','WorkWeeksYear']
         mace_cols = []
-        cols = binary + numerical + label
+        cols = binary + numerical + categorical + label
         read_cols = ['Age','WorkClass','IndustryDetail','OccupationDetail','Education','WageHour','Enrolled','MaritalStatus','Industry','Occupation',
                 'Race','Hispanic','Sex','Union','UnemployedReason','FullTimePartTime','CapitalGain','CapitalLoss','Dividends','Tax',
                 'RegionPrev','StatePrev','HouseDetailFamily','HouseDetailSummary','UnknownFeature','ChangeMsa','ChangeReg','MoveReg','Live1YrAgo','PrevSunbelt','NumPersonsWorkEmp',
@@ -1093,7 +1099,7 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         mace_cols = []
         carla_categorical = ['Sex','HouseholdPosition','HouseholdSize','Country','EconomicStatus','CurEcoActivity','MaritalStatus','Age','EducationLevel']
         carla_continuous = []
-        cols = binary + numerical + categorical 
+        cols = binary + numerical + categorical + label
         raw_df = pd.read_csv(dataset_dir+'/dutch/dutch.txt')
         processed_df = raw_df[cols]
         processed_df.loc[processed_df['HouseholdPosition'] == 1131,'HouseholdPosition'] = 1
@@ -1128,10 +1134,65 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[processed_df['Occupation'] == '5_4_9','Occupation'] = 1
         processed_df.loc[processed_df['Occupation'] == '2_1','Occupation'] = 0
     elif data_str == 'bank':
-        binary = ['default']
-        categorical = ['job','marital','education']
-        numerical = ['age']
-        label = []
+        binary = ['Default','Housing','Loan']
+        categorical = ['Job','MaritalStatus','Education','Contact','Month','Poutcome']
+        numerical = ['Age','Balance','Day','Duration','Campaign','Pdays','Previous']
+        label = ['Subscribed']
+        mace_cols = []
+        carla_categorical = ['Default','Housing','Loan','Job','MaritalStatus','Education','Contact','Month','Poutcome']
+        carla_continuous = ['Age','Balance','Day','Duration','Campaign','Pdays','Previous']
+        cols = binary + numerical + categorical + label
+        raw_df = pd.read_csv(dataset_dir+'bank/bank.csv',sep=';',index_col=False)
+        processed_df.loc[processed_df['age'] < 25,'AgeGroup'] = 1
+        processed_df.loc[(processed_df['age'] <= 60) & (processed_df['age'] >= 25),'AgeGroup'] = 2
+        processed_df.loc[processed_df['age'] > 60,'AgeGroup'] = 3
+        processed_df.loc[processed_df['default'] == 'no','Default'] = 1
+        processed_df.loc[processed_df['default'] == 'yes','Default'] = 2
+        processed_df.loc[processed_df['housing'] == 'no','Housing'] = 1
+        processed_df.loc[processed_df['housing'] == 'yes','Housing'] = 2
+        processed_df.loc[processed_df['loan'] == 'no','Loan'] = 1
+        processed_df.loc[processed_df['loan'] == 'yes','Loan'] = 2
+        processed_df.loc[processed_df['job'] == 'management','Job'] = 1
+        processed_df.loc[processed_df['job'] == 'technician','Job'] = 2
+        processed_df.loc[processed_df['job'] == 'entrepreneur','Job'] = 3
+        processed_df.loc[processed_df['job'] == 'blue-collar','Job'] = 4
+        processed_df.loc[processed_df['job'] == 'retired','Job'] = 5
+        processed_df.loc[processed_df['job'] == 'admin.','Job'] = 6
+        processed_df.loc[processed_df['job'] == 'services','Job'] = 7
+        processed_df.loc[processed_df['job'] == 'self-employed','Job'] = 8
+        processed_df.loc[processed_df['job'] == 'unemployed','Job'] = 9
+        processed_df.loc[processed_df['job'] == 'housemaid','Job'] = 10
+        processed_df.loc[processed_df['job'] == 'student','Job'] = 11
+        processed_df.loc[processed_df['job'] == 'unknown','Job'] = 12
+        processed_df.loc[processed_df['marital'] == 'married','MaritalStatus'] = 1
+        processed_df.loc[processed_df['marital'] == 'single','MaritalStatus'] = 2
+        processed_df.loc[processed_df['marital'] == 'divorced','MaritalStatus'] = 3
+        processed_df.loc[processed_df['education'] == 'primary','Education'] = 1
+        processed_df.loc[processed_df['education'] == 'secondary','Education'] = 2
+        processed_df.loc[processed_df['education'] == 'tertiary','Education'] = 3
+        processed_df.loc[processed_df['education'] == 'unknown','Education'] = 4
+        processed_df.loc[processed_df['contact'] == 'telephone','Contact'] = 1
+        processed_df.loc[processed_df['contact'] == 'cellular','Contact'] = 2
+        processed_df.loc[processed_df['contact'] == 'unknown','Contact'] = 3
+        processed_df.loc[processed_df['month'] == 'jan','Month'] = 1
+        processed_df.loc[processed_df['month'] == 'feb','Month'] = 2
+        processed_df.loc[processed_df['month'] == 'mar','Month'] = 3
+        processed_df.loc[processed_df['month'] == 'apr','Month'] = 4
+        processed_df.loc[processed_df['month'] == 'may','Month'] = 5
+        processed_df.loc[processed_df['month'] == 'jun','Month'] = 6
+        processed_df.loc[processed_df['month'] == 'jul','Month'] = 7
+        processed_df.loc[processed_df['month'] == 'ago','Month'] = 8
+        processed_df.loc[processed_df['month'] == 'sep','Month'] = 9
+        processed_df.loc[processed_df['month'] == 'oct','Month'] = 10
+        processed_df.loc[processed_df['month'] == 'nov','Month'] = 11
+        processed_df.loc[processed_df['month'] == 'dec','Month'] = 12
+        processed_df.loc[processed_df['month'] == 'ago','Month'] = 8
+        processed_df.loc[processed_df['poutcome'] == 'success','Poutcome'] = 1
+        processed_df.loc[processed_df['poutcome'] == 'failure','Poutcome'] = 2
+        processed_df.loc[processed_df['poutcome'] == 'other','Poutcome'] = 3
+        processed_df.loc[processed_df['poutcome'] == 'unknown','Poutcome'] = 4
+        processed_df.loc[processed_df['y'] == 'no','Subscribed'] = 0
+        processed_df.loc[processed_df['y'] == 'yes','Subscribed'] = 1
     elif data_str == 'credit':
         binary = ['isMale','isMarried','HasHistoryOfOverduePayments']
         categorical = []
