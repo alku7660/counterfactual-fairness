@@ -57,7 +57,7 @@ def JUICE(x,x_label,data,model,priority,mutability_check=True):
     else:
         if model.predict(closest_train.reshape(1,-1)) == x_label:
             closest_train_old = np.copy(closest_train)
-            closest_train = nn_model(closest_train,x,x_label,data,model)
+            closest_train = nn_model(closest_train,x,x_label,data,model,mutability_check)
             if not np.array_equal(closest_train,closest_train_old):
                 justifiable = 1
             else:

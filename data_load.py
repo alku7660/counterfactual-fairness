@@ -95,7 +95,7 @@ class Dataset:
         self.unique_val = self.unique_values()
         self.train_pd, self.test_pd, self.train_target, self.test_target = train_test_split(self.raw_df,self.raw_df[self.label_str],train_size=self.train_fraction,random_state=self.seed)
         self.data_balancing_target_filter() 
-        self.mace_df, self.mace_cf, self.mace_time = self.load_mace()
+        # self.mace_df, self.mace_cf, self.mace_time = self.load_mace()
         # self.mace_prox_df, self.mace_prox_cf, self.mace_prox_time = self.load_prox_mace()
 
         # Stores all encoders, scalers, and train datasets
@@ -222,23 +222,25 @@ class Dataset:
         Input enc_cat_cata: The categorical variables transformed in DataFrame into the jce format
         Output enc_jce_data_pd: The DataFrame instance in the jce format
         """
-        if self.name in ['compass']:
-            enc_jce_data_pd = pd.concat((enc_bin_data[self.oh_jce_bin_enc_cols[:2]],num_data[self.jce_numerical[0]],
-                                enc_bin_data[self.oh_jce_bin_enc_cols[2:]],num_data[self.jce_numerical[1]]),axis=1)
-        elif self.name in ['credit']:
-            enc_jce_data_pd = pd.concat((enc_bin_data[self.oh_jce_bin_enc_cols[:2]],num_data[self.jce_numerical[0:9]],
-                                enc_bin_data[self.oh_jce_bin_enc_cols[2:]],num_data[self.jce_numerical[9:]]),axis=1)
-        elif self.name in ['adult']:
+        if self.name == 'adult':
             enc_jce_data_pd = pd.concat((enc_bin_data[self.oh_jce_bin_enc_cols[0]],num_data[self.jce_numerical[0]],
                                 enc_bin_data[self.oh_jce_bin_enc_cols[1:3]],num_data[self.jce_numerical[1:5]],
                                 enc_cat_data[self.oh_jce_cat_enc_cols[:7]],num_data[self.jce_numerical[-1]],
                                 enc_cat_data[self.oh_jce_cat_enc_cols[7:]]),axis=1)
+        elif self.name == 'kdd_census':
+            enc_jce_data_pd = pd.concat((enc_bin_data,num_data,enc_cat_data),axis=1)
         elif self.name == 'german':
             enc_jce_data_pd = pd.concat((enc_bin_data,num_data),axis=1)
-        elif self.name in ['heart','synthetic_disease','synthetic_athlete']:
+        elif self.name == 'dutch':
             enc_jce_data_pd = pd.concat((enc_bin_data,num_data,enc_cat_data),axis=1)
-        elif self.name in ['synthetic_simple','ionosphere']:
-            enc_jce_data_pd = num_data
+        elif self.name == 'bank':
+            enc_jce_data_pd = pd.concat((enc_bin_data,num_data,enc_cat_data),axis=1)
+        elif self.name == 'credit':
+            enc_jce_data_pd = pd.concat((enc_bin_data[self.oh_jce_bin_enc_cols[:2]],num_data[self.jce_numerical[0:9]],
+                                enc_bin_data[self.oh_jce_bin_enc_cols[2:]],num_data[self.jce_numerical[9:]]),axis=1)
+        elif self.name == 'compass':
+            enc_jce_data_pd = pd.concat((enc_bin_data[self.oh_jce_bin_enc_cols[:2]],num_data[self.jce_numerical[0]],
+                                enc_bin_data[self.oh_jce_bin_enc_cols[2:]],num_data[self.jce_numerical[1]]),axis=1)
         return enc_jce_data_pd
 
     def filter_undesired_class(self,model,mace_prediction_consideration=True):
@@ -297,9 +299,9 @@ class Dataset:
         """
         Method to obtain the undesired class
         """
-        if self.name in ['compass','credit','german','heart','cervical','synthetic_simple','synthetic_disease']:
+        if self.name in ['german','credit','compass']:
             undesired_class = 1
-        elif self.name in ['ionosphere','adult','synthetic_athlete']:
+        elif self.name in ['adult','kdd_census','dutch','bank']:
             undesired_class = 0
         return undesired_class
     
@@ -474,7 +476,7 @@ class Dataset:
             for i in feat_list:
                 if 'Sex' in i or 'HouseholdPosition' in i or 'HouseholdSize' in i or 'Country' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i:
                     feat_type_out.loc[i] = 'bin'
-                elif 'Age' in i or 'EducationLevel' in i:
+                elif 'AgeGroup' in i or 'EducationLevel' in i:
                     feat_type_out.loc[i] = 'num-ord'
         elif self.name == 'bank':
             for i in feat_list:
@@ -537,10 +539,11 @@ class Dataset:
         feat_list = self.feat_type.index.tolist()
         feat_mutable  = dict()
         for i in feat_list:
-            if i in self.feat_protected.keys():
-                feat_mutable[i] = 0
-            else:
-                feat_mutable[i] = 1
+            feat_mutable[i] = 1
+        for i in self.feat_protected.keys():
+            idx_feat_protected = [j for j in range(len(feat_list)) if i in feat_list[j]]
+            feat = feat_list[idx_feat_protected[0]]
+            feat_mutable[feat] = 0
         feat_mutable = pd.Series(feat_mutable)
         return feat_mutable
         
@@ -553,7 +556,7 @@ class Dataset:
         feat_dir  = dict()
         if self.name == 'adult':
             for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Native' in i or 'Race' in i:
+                if 'Age' in i or 'Sex' in i or 'Race' in i:
                     feat_dir[i] = 0
                 elif 'Education' in i:
                     feat_dir[i] = 'pos'
@@ -561,9 +564,9 @@ class Dataset:
                     feat_dir[i] = 'any'
         elif self.name == 'kdd_census':
             for i in feat_list:
-                if 'Sex' in i or 'Race' in i or 'Age' in i:
+                if 'Sex' in i or 'Race' in i:
                     feat_dir[i] = 0
-                elif 'Industry' in i or 'Occupation' in i or 'WageHour' in i or 'CapitalGain' in i or 'CapitalLoss' in i or 'Dividends' in i or 'WorkWeeksYear':
+                elif 'Industry' in i or 'Occupation' in i or 'WageHour' in i or 'CapitalGain' in i or 'CapitalLoss' in i or 'Dividends' in i or 'WorkWeeksYear' or 'Age' in i:
                     feat_dir[i] = 'any'
         elif self.name == 'german':
             for i in feat_list:
@@ -633,7 +636,7 @@ class Dataset:
                     feat_cost[i] = 1#50
         elif self.name == 'kdd_census':
             for i in feat_list:
-                if 'Sex' in i or 'Race' in i or 'Age' in i:
+                if 'Sex' in i or 'Race' in i:
                     feat_cost[i] = 0
                 elif 'Industry' in i or 'Occupation' in i or 'WageHour' in i or 'CapitalGain' in i or 'CapitalLoss' in i or 'Dividends' in i or 'WorkWeeksYear':
                     feat_cost[i] = 1
@@ -1074,6 +1077,8 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[processed_df['Occupation'] == 'Services','Occupation'] = 3
         processed_df.loc[processed_df['Occupation'] == 'Military','Occupation'] = 4
         processed_df.loc[processed_df['Occupation'] == 'Other','Occupation'] = 5
+        processed_df.loc[processed_df['Label'] == ' - 50000.','Label'] = 0
+        processed_df.loc[processed_df['Label'] == ' 50000+.','Label'] = 1
     elif data_str == 'german':
         binary = ['Sex']
         categorical = []
@@ -1133,6 +1138,7 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[processed_df['CurEcoActivity'] == 124,'CurEcoActivity'] = 12
         processed_df.loc[processed_df['Occupation'] == '5_4_9','Occupation'] = 1
         processed_df.loc[processed_df['Occupation'] == '2_1','Occupation'] = 0
+        processed_df.rename({'Age': 'AgeGroup'}, inplace=True, axis=1)
     elif data_str == 'bank':
         binary = ['Default','Housing','Loan']
         categorical = ['Job','MaritalStatus','Education','Contact','Month','Poutcome']

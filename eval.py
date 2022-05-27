@@ -365,6 +365,9 @@ class Evaluator():
                 cf, run_time = feat_tweak(x_jce_np,model.jce_rf,epsilon_ft)
             elif 'rt' in model_str:
                 cf, run_time = rf_tweak(x_jce_np,x_label,model.jce_rf,data,True,mutability_check)
+            elif 'juice' in model_str:
+                results = JUICE(x_jce_np,x_label,data,model.jce_sel,'proximity',mutability_check)
+                cf, run_time = results[0], results[4]
             print(f'  {model_str} (time (s): {np.round_(run_time,2)})')
             print(f'---------------------------')
             self.add_specific_cf_data(data,model_str,cf,run_time,model)
