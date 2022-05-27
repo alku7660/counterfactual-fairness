@@ -100,7 +100,7 @@ class Dataset:
 
         # Stores all encoders, scalers, and train datasets
         self.jce_encoder_scaler_fit_transform_train()
-        self.carla_encoder_scaler_fit_transform_train()
+        # self.carla_encoder_scaler_fit_transform_train()
         self.jce_test_pd, self.jce_test_np = self.jce_encoder_scaler_transform_test(self.test_pd)
         self.undesired_class = self.undesired_class_data()
 
@@ -576,11 +576,11 @@ class Dataset:
                     feat_dir[i] = 'any'
         elif self.name == 'dutch':
             for i in feat_list:
-                if 'Sex' in i or 'Age' in i or 'Country' in i:
+                if 'Sex' in i:
                     feat_dir[i] = 0
-                elif 'HouseholdPosition' in i or 'HouseholdSize' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i:
+                elif 'HouseholdPosition' in i or 'HouseholdSize' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i or 'Country' in i:
                     feat_dir[i] = 'any'
-                elif 'EducationLevel' in i:
+                elif 'EducationLevel' in i or 'Age' in i:
                     feat_dir[i] = 'pos'
         elif self.name == 'bank':
             for i in feat_list:
@@ -1102,7 +1102,7 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         numerical = ['Age','EducationLevel']
         label = ['Occupation']
         mace_cols = []
-        carla_categorical = ['Sex','HouseholdPosition','HouseholdSize','Country','EconomicStatus','CurEcoActivity','MaritalStatus','Age','EducationLevel']
+        carla_categorical = ['Sex','HouseholdPosition','HouseholdSize','Country','EconomicStatus','CurEcoActivity','MaritalStatus','AgeGroup','EducationLevel']
         carla_continuous = []
         cols = binary + numerical + categorical + label
         raw_df = pd.read_csv(dataset_dir+'/dutch/dutch.txt')
@@ -1139,6 +1139,7 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[processed_df['Occupation'] == '5_4_9','Occupation'] = 1
         processed_df.loc[processed_df['Occupation'] == '2_1','Occupation'] = 0
         processed_df.rename({'Age': 'AgeGroup'}, inplace=True, axis=1)
+        numerical = ['AgeGroup','EducationLevel']
     elif data_str == 'bank':
         binary = ['Default','Housing','Loan']
         categorical = ['Job','MaritalStatus','Education','Contact','Month','Poutcome']

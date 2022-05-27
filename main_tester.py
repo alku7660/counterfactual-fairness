@@ -53,8 +53,8 @@ np.random.seed(seed_int)
 for data_str in datasets:
 
     data, model = load_model_dataset(data_str,train_fraction,seed_int,step,path_here)
-    carla_data = MyOwnDataSet(data)
-    carla_model = MyOwnModel(carla_data,data,model)
+    # carla_data = MyOwnDataSet(data)
+    # carla_model = MyOwnModel(carla_data,data,model)
     cf_evaluator = Evaluator(data,n_feat,models_to_run)
 
     print(f'---------------------------------------')  
@@ -63,8 +63,8 @@ for data_str in datasets:
     print(f'         Test dataset shape: {data.test_undesired_pd.shape}')
     print(f'   JCE model train accuracy: {np.round_(model.jce_sel.score(data.jce_train_pd,data.train_target),2)}')
     print(f'    JCE model test accuracy: {np.round_(model.jce_sel.score(data.jce_test_undesired_pd,data.test_undesired_target),2)}')
-    print(f' CARLA model train accuracy: {np.round_(carla_model._mymodel.score(data.carla_train_pd,data.train_target),2)}')
-    print(f'  CARLA model test accuracy: {np.round_(carla_model._mymodel.score(data.carla_test_pd,data.test_target),2)}')
+    # print(f' CARLA model train accuracy: {np.round_(carla_model._mymodel.score(data.carla_train_pd,data.train_target),2)}')
+    # print(f'  CARLA model test accuracy: {np.round_(carla_model._mymodel.score(data.carla_test_pd,data.test_target),2)}')
     print(f'---------------------------------------')
 
     save_obj(model,data_str+'_model.pkl')
