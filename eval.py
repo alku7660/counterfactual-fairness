@@ -193,7 +193,8 @@ class Evaluator():
         self.original_x = original_x
         self.x_pd = pd.DataFrame(data=[self.x], index=[self.idx], columns=self.data_cols)
         self.x_original_pd = pd.DataFrame(data=[self.original_x], index=[self.idx], columns=self.raw_data_cols)
-        self.normal_x = data_obj.adjust_to_mace_format(self.x_pd)
+        # self.normal_x = data_obj.adjust_to_mace_format(self.x_pd) (REQUIRES ADJUSTMENT FOR MACE)
+        self.normal_x = self.x_pd
         self.x_label = x_label
         self.x_target = x_target
         self.x_accuracy = self.accuracy()[0]
@@ -241,7 +242,8 @@ class Evaluator():
                     nn_to_cf = i[0]
                     label_nn_to_cf = i[2]
                     break
-            normal_cf = data_obj.adjust_to_mace_format(self.cf_pd)
+            # normal_cf = data_obj.adjust_to_mace_format(self.cf_pd) (REQUIRES ADJUSTMENT FOR MACE)
+            normal_cf = self.x_pd
             self.cf_valid = True
         else:
             self.cf = self.search_desired_class_penalize(data_obj)

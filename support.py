@@ -59,20 +59,15 @@ def verify_feasibility(x,cf,mutable_feat,feat_type,feat_step,feat_dir,mutability
             if not np.isclose(cf[i],possible_val,atol=toler).any():
                 feasibility = False
                 break  
-        else:
-            if cf[i] < 0-toler or cf[i] > 1+toler:
-                feasibility = False
-                break
+        elif cf[i] < 0-toler or cf[i] > 1+toler:
+            feasibility = False
+    if mutability_check:
         if feat_dir[i] == 0 and vector[i] != 0:
             feasibility = False
-            break
         elif feat_dir[i] == 'pos' and vector[i] < 0:
             feasibility = False
-            break
         elif feat_dir[i] == 'neg' and vector[i] > 0:
             feasibility = False
-            break
-    if mutability_check:
         if not np.array_equal(x[np.where(mutable_feat == 0)],cf[np.where(mutable_feat == 0)]):
             feasibility = False
     return feasibility

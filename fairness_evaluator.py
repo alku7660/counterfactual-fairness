@@ -69,7 +69,7 @@ def extract_changed_values_ratio(x_df, cf_df, method, feat, idx_list):
         cf_idx = cf_method_df[cf_method_df.index == idx]
         if x_idx[feat].values != cf_idx[feat].values and cf_idx['valid'].values:
             counter_changed += 1
-    return counter_changed / total_instances
+    return counter_changed*100 / total_instances
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
     """
@@ -120,16 +120,20 @@ def get_data_names(datasets):
     """
     data_dict = {}
     for i in datasets:
-        if i == 'compass':
-            data_dict[i] = 'Compas'
+        if i == 'adult':
+            data_dict[i] = 'Adult'
+        elif i == 'kdd_census':
+            data_dict[i] = 'Census'
+        elif i == 'dutch':
+            data_dict[i] = 'Dutch'
         elif i == 'credit':
             data_dict[i] = 'Credit'
-        elif i == 'adult':
-            data_dict[i] = 'Adult'
         elif i == 'german':
             data_dict[i] = 'German'
-        elif i == 'heart':
-            data_dict[i] = 'Heart'
+        elif i == 'bank':
+            data_dict[i] = 'Bank'
+        elif i == 'compass':
+            data_dict[i] = 'Compas'
     return data_dict
 
 def get_metric_names(metrics):
@@ -176,9 +180,9 @@ def get_methods_names(methods):
             method_dict[i] = 'MACE'
         elif i == 'cchvae':
             method_dict[i] = 'CCHVAE'
-        elif i == 'jce_prox':
+        elif i == 'juice':
             method_dict[i] = 'JUICEP'
-        elif i == 'mutable-jce_prox':
+        elif i == 'mutable-juice':
             method_dict[i] = 'Mutable JUICEP'
         elif i == 'jce_spar':
             method_dict[i] = 'JUICES'
@@ -262,32 +266,63 @@ def attainable_cf_plot(datasets, methods_to_run):
             xaxis_pos_bar = np.arange(len(methods_to_run)*len(feat_unique_val))
             method_feat_labels = []
             method_feat_valid_list = []
-            method_feat_changed_ratio_list = []
             color_list = []
             for method_idx in range(len(methods_to_run)):
                 for feat_idx in range(len(feat_unique_val)):
                     feat_method_data = cf_df[(cf_df['cf_method'] == methods_to_run[method_idx]) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
                     feat_method_data_valid = np.sum(feat_method_data['valid'].values)*100/len(feat_method_data)
-                    feat_ratio_values_changed = extract_changed_values_ratio(original_x_df, original_cf_df, methods_to_run[method_idx], feat, idx_feat_values[feat_idx])
                     method_feat_valid_list.append(feat_method_data_valid)
-                    method_feat_changed_ratio_list.append(feat_ratio_values_changed)
                     color_list.append(colors[feat_idx])
                 method_feat_labels.append(methods_names[methods_to_run[method_idx]])
             legend_elements = create_box_bar_plot_handles(feat, feat_unique_val, colors, protected_feat, len_feat_values)
             ax.bar(x=xaxis_pos_bar, height=method_feat_valid_list, color=color_list)
             ax.set_xticks(xaxis_pos_labels, labels=method_feat_labels)
             ax.set_xticklabels(method_feat_labels, rotation = 10, ha='center')
-            ax.set_title(f'{dataset_names[data_str]} Dataset: Attainable CFs and Changed Values by {feat}')
+            ax.set_title(f'{dataset_names[data_str]} Dataset: Attainable CFs by {feat}')
             ax.set_ylabel('Attainable CFs (%)')
             ax.set_xlabel('Counterfactual Method')
             ax.legend(handles=legend_elements) #loc=(-0.1,-0.1*len(legend_elements))
-            axvalid = ax.twinx()
-            color_secax = 'green'
-            axvalid.set_ylabel('CFs Changed Values (%)',color=color_secax)
-            axvalid.plot(xaxis_pos_bar, method_feat_changed_ratio_list, color=color_secax, linestyle='', marker='>', markersize=5)
-            axvalid.tick_params(axis='y', labelcolor=color_secax)
             plt.tight_layout()
             plt.savefig(results_cf_plots_dir+f'{data_str}_{feat}_attainable_change.png',dpi=400)
+
+def feature_ratio_change_cf_plot(datasets, methods_to_run):
+    """
+    Method that plots the percentage of attainable CFs given feasibility constraints and whther or not to consider feature mutability
+    """
+    methods_names = get_methods_names(methods_to_run)
+    dataset_names = get_data_names(datasets)
+    for data_str in datasets:
+        eval_obj = load_obj(data_str)
+        eval_x_df = eval_obj.all_x_data
+        eval_cf_df = eval_obj.all_cf_data
+        protected_feat = eval_obj.feat_protected
+        protected_feat_keys = list(protected_feat.keys())
+        x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df)
+        for feat in protected_feat_keys:
+            feat_unique_val = original_x_df[feat].unique()
+            len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+            fig, ax = plt.subplots(figsize=(8,6))
+            xaxis_pos_labels = np.arange((len(feat_unique_val)-1)/2,len(methods_to_run)*len(feat_unique_val),len(feat_unique_val))
+            xaxis_pos_bar = np.arange(len(methods_to_run)*len(feat_unique_val))
+            method_feat_labels = []
+            method_feat_changed_ratio_list = []
+            color_list = []
+            for method_idx in range(len(methods_to_run)):
+                for feat_idx in range(len(feat_unique_val)):
+                    feat_ratio_values_changed = extract_changed_values_ratio(original_x_df, original_cf_df, methods_to_run[method_idx], feat, idx_feat_values[feat_idx])
+                    method_feat_changed_ratio_list.append(feat_ratio_values_changed)
+                    color_list.append(colors[feat_idx])
+                method_feat_labels.append(methods_names[methods_to_run[method_idx]])
+            legend_elements = create_box_bar_plot_handles(feat, feat_unique_val, colors, protected_feat, len_feat_values)
+            ax.bar(x=xaxis_pos_bar, height=method_feat_changed_ratio_list, color=color_list)
+            ax.set_xticks(xaxis_pos_labels, labels=method_feat_labels)
+            ax.set_xticklabels(method_feat_labels, rotation = 10, ha='center')
+            ax.set_title(f'{dataset_names[data_str]} Dataset: Changed Values by {feat}')
+            ax.set_ylabel('Instances with sensitive feature changed (%)')
+            ax.set_xlabel('Counterfactual Method')
+            ax.legend(handles=legend_elements) #loc=(-0.1,-0.1*len(legend_elements))
+            plt.tight_layout()
+            plt.savefig(results_cf_plots_dir+f'{data_str}_{feat}_feat_change.png',dpi=400)
 
 def accuracy_burden_plot(datasets, method, metric, colors):
     """
@@ -320,9 +355,9 @@ def accuracy_burden_plot(datasets, method, metric, colors):
                 feat_method_data_valid = np.sum(feat_method_data['valid'].values)*100/len(feat_method_data)
                 method_feat_valid_list.append(feat_method_data_valid)
                 c = colors[prot_feat_idx]
-                ax.text(x=accuracy_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c),
+                ax.text(x=accuracy_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c,fc='none'),
                         s=f'{feat_val_name}', fontstyle='italic', color=c, size=9)
-            ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=40)
+            ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
         legend_handles = create_acc_burden_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
         ax.set_ylim(y_max*(1.01),y_min*(0.99))
@@ -364,9 +399,9 @@ def statistical_parity_burden_plot(datasets, method, metric, colors):
                 feat_method_data_valid = np.sum(feat_method_data['valid'].values)*100/len(feat_method_data)
                 method_feat_valid_list.append(feat_method_data_valid)
                 c = colors[prot_feat_idx]
-                ax.text(x=stat_parity_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c),
+                ax.text(x=stat_parity_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c,fc='none'),
                         s=feat_val_name, fontstyle='italic', color=c, size=9)
-            ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=40)
+            ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
         legend_handles = create_acc_burden_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
         ax.set_ylim(y_max*(1.01),y_min*(0.99))
@@ -402,15 +437,15 @@ def equalized_odds_burden_plot(datasets, method, metric, colors):
                 feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
                 feat_method_data = cf_df[(cf_df['cf_method'] == method) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
                 feat_method_data_values = feat_method_data[metric].values
-                stat_parity_feat_val = eval_obj.stat_parity[feat][feat_val_name]
+                stat_parity_feat_val = eval_obj.eq_odds[feat][feat_val_name]
                 pos_list.append(stat_parity_feat_val)
                 mean_data_val_list.append(np.mean(feat_method_data_values))
                 feat_method_data_valid = np.sum(feat_method_data['valid'].values)*100/len(feat_method_data)
                 method_feat_valid_list.append(feat_method_data_valid)
                 c = colors[prot_feat_idx]
-                ax.text(x=stat_parity_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c),
+                ax.text(x=stat_parity_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c,fc='none'),
                         s=feat_val_name, fontstyle='italic', color=c, size=9)
-            ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=40)
+            ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
         legend_handles = create_acc_burden_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
         ax.set_ylim(y_max*(1.01),y_min*(0.99))
@@ -421,10 +456,13 @@ def equalized_odds_burden_plot(datasets, method, metric, colors):
         plt.tight_layout()
         plt.savefig(results_cf_plots_dir+f'{data_str}_eq_odds_burden_fairness.png',dpi=400)
 
-datasets = ['adult','compass']  # Name of the dataset to be analyzed ['compass','credit','adult','german','heart'] ,'jce_prox','mutable_jce_prox'
+datasets = ['adult','kdd_census','german','dutch','bank','credit','compass']  # Name of the dataset to be analyzed ['adult','kdd_census','dutch','bank','compass']
 methods_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 colors = ['red', 'purple', 'tab:brown', 'blue', 'lightgreen', 'gold', 'orange']
 
-method_box_plot(datasets, methods_to_run, 'proximity', colors)
-attainable_cf_plot(datasets, methods_to_run)
-accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
+# attainable_cf_plot(datasets, methods_to_run)
+# feature_ratio_change_cf_plot(datasets, methods_to_run)
+# method_box_plot(datasets, methods_to_run, 'proximity', colors)
+# accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
+# statistical_parity_burden_plot(datasets, 'mo', 'proximity', colors)
+equalized_odds_burden_plot(datasets, 'mo', 'proximity', colors)

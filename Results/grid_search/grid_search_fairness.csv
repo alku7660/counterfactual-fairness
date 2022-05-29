@@ -1,0 +1,13 @@
+dataset,model,params,F1
+kdd_census,svm,"[{'C': 10, 'coef0': 1, 'degree': 5, 'kernel': 'poly'}]",0.8606046419203486
+kdd_census,dt,"[{'max_depth': 5, 'min_samples_leaf': 1, 'min_samples_split': 2}]",0.8595629150692222
+kdd_census,mlp,"[{'activation': 'tanh', 'hidden_layer_sizes': (100, 5), 'solver': 'adam'}]",0.8680574758497667
+kdd_census,rf,"[{'max_depth': 10, 'min_samples_leaf': 5, 'min_samples_split': 10, 'n_estimators': 100}]",0.8693545237450688
+dutch,svm,"[{'C': 1, 'coef0': 1, 'degree': 2, 'kernel': 'poly'}]",0.8379723799436123
+dutch,dt,"[{'max_depth': 10, 'min_samples_leaf': 5, 'min_samples_split': 2}]",0.8274800345732881
+dutch,mlp,"[{'activation': 'tanh', 'hidden_layer_sizes': (100, 2), 'solver': 'adam'}]",0.8388647156417572
+dutch,rf,"[{'max_depth': 10, 'min_samples_leaf': 3, 'min_samples_split': 5, 'n_estimators': 50}]",0.8394034116507341
+bank,svm,"[{'C': 1, 'coef0': 1, 'degree': 3, 'kernel': 'poly'}]",0.8400427026062601
+bank,dt,"[{'max_depth': 10, 'min_samples_leaf': 5, 'min_samples_split': 5}]",0.8146144726960873
+bank,mlp,"[{'activation': 'tanh', 'hidden_layer_sizes': (10, 1), 'solver': 'adam'}]",0.847572107959412
+bank,rf,"[{'max_depth': 10, 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 200}]",0.8581261179390612

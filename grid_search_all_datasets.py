@@ -30,13 +30,13 @@ for data_str in datasets:
 
     data_obj = load_model_dataset(data_str,train_fraction,seed_int,step,path_none)
     if data_str in ['kdd_census','dutch','bank']:
-        perc_data = 0.5
+        perc_data = 0.3
         train, train_target = data_obj.jce_train_pd.iloc[0:int(len(data_obj.jce_train_pd)*perc_data)], data_obj.train_target.iloc[0:int(len(data_obj.jce_train_pd)*perc_data)]
     else:
         train, train_target = data_obj.jce_train_pd, data_obj.train_target
     print(f'{data_str} size: {train.shape}')
 
-    param_grid_svm = {'C':[0.01,0.1,1,10], 'kernel':['linear','poly','rbf'], 'degree':[2,3,4,5], 'coef0':[0,0.1,1]}
+    param_grid_svm = {'C':[0.01,0.1,1,10], 'kernel':['linear','poRohjitly','rbf'], 'degree':[2,3,4,5], 'coef0':[0,0.1,1]}
     clf_search_svm = GridSearchCV(svm.SVC(),param_grid=param_grid_svm,scoring='f1',cv=5,verbose=2.5)
     clf_search_svm.fit(train,train_target)
     results.loc[(data_str,'svm'),'params'] = [clf_search_svm.best_params_]
@@ -64,6 +64,6 @@ for data_str in datasets:
     results.loc[(data_str,'rf'),'params'] = [clf_search_rf.best_params_]
     results.loc[(data_str,'rf'),'F1'] = clf_search_rf.best_score_
 
-results.to_csv(str(path_here)+'/Results/grid_search/grid_search_4.csv')
+results.to_csv(str(path_here)+'/Results/grid_search/grid_search_fairness.csv')
 
     

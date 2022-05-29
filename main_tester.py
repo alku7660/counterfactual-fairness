@@ -36,8 +36,8 @@ def load_obj(file_name):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-datasets = ['dutch'] # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass']
-models_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt','juice','mutable-juice'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
+datasets = ['adult','kdd_census','german','dutch','bank','credit','compass'] # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass']
+models_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -46,7 +46,7 @@ epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feat
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 perc = 1             # Percentage of test samples to consider for the counterfactuals search
-instances_per_protected_class = 5
+instances_per_protected_class = 30
 
 np.random.seed(seed_int)
 
@@ -77,6 +77,7 @@ for data_str in datasets:
     for feat in data.feat_protected.keys():
         feat_unique_val_dict = {i:0 for i in data.test_pd[feat].unique()}
         for i in range(1,int(len(test_undesired_index)*perc)):
+            # i = 3
             idx = test_undesired_index[i]
             if idx in idx_instances_evaluated:
                 continue

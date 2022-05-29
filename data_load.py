@@ -128,10 +128,7 @@ class Dataset:
         Method that balances the dataset (Adapted from MACE algorithm methodology (please, see: https://github.com/amirhk/mace))
         """
         unique_values_and_count = self.train_target.value_counts()
-        if self.name in ['heart','ionosphere']:
-            number_of_subsamples_per_class = unique_values_and_count.min() // 50 * 50
-        else:
-            number_of_subsamples_per_class = unique_values_and_count.min() // 250 * 250
+        number_of_subsamples_per_class = unique_values_and_count.min() // 10 * 10
         self.train_pd = pd.concat([self.train_pd[(self.train_pd[self.label_str] == 0).to_numpy()].sample(number_of_subsamples_per_class, random_state = self.seed),
         self.train_pd[(self.train_pd[self.label_str] == 1).to_numpy()].sample(number_of_subsamples_per_class, random_state = self.seed),]).sample(frac = 1, random_state = self.seed)
         self.train_target = self.train_pd[self.label_str]
@@ -230,7 +227,7 @@ class Dataset:
         elif self.name == 'kdd_census':
             enc_jce_data_pd = pd.concat((enc_bin_data,num_data,enc_cat_data),axis=1)
         elif self.name == 'german':
-            enc_jce_data_pd = pd.concat((enc_bin_data,num_data),axis=1)
+            enc_jce_data_pd = pd.concat((enc_bin_data,num_data,enc_cat_data),axis=1)
         elif self.name == 'dutch':
             enc_jce_data_pd = pd.concat((enc_bin_data,num_data,enc_cat_data),axis=1)
         elif self.name == 'bank':
@@ -318,14 +315,7 @@ class Dataset:
             """
             return np.append(np.ones(val),np.zeros(num_unique_values - val))
         
-        if self.name == 'compass':
-            output_columns = ['Race','Sex','PriorsCount','ChargeDegree','AgeGroup_ord_0','AgeGroup_ord_1','AgeGroup_ord_2']
-        elif self.name == 'credit':
-            output_columns = ['isMale','isMarried','MaxBillAmountOverLast6Months','MaxPaymentAmountOverLast6Months','MonthsWithZeroBalanceOverLast6Months',
-                            'MonthsWithLowSpendingOverLast6Months','MonthsWithHighSpendingOverLast6Months','MostRecentBillAmount','MostRecentPaymentAmount',
-                            'TotalOverdueCounts','TotalMonthsOverdue','HasHistoryOfOverduePayments','AgeGroup_ord_0','AgeGroup_ord_1','AgeGroup_ord_2',
-                            'AgeGroup_ord_3','EducationLevel_ord_0','EducationLevel_ord_1','EducationLevel_ord_2','EducationLevel_ord_3']
-        elif self.name == 'adult':
+        if self.name == 'adult':
             output_columns = ['Sex','AgeGroup','Race','NativeCountry','EducationNumber','CapitalGain',
                             'CapitalLoss','HoursPerWeek','WorkClass_1.0','WorkClass_2.0','WorkClass_3.0',
                             'WorkClass_4.0','WorkClass_5.0','WorkClass_6.0','WorkClass_7.0','EducationLevel_ord_0',
@@ -336,24 +326,18 @@ class Dataset:
                             'Occupation_5.0','Occupation_6.0','Occupation_7.0','Occupation_8.0','Occupation_9.0',
                             'Occupation_10.0','Occupation_11.0','Occupation_12.0','Occupation_13.0','Occupation_14.0',
                             'Relationship_1.0','Relationship_2.0','Relationship_3.0','Relationship_4.0','Relationship_5.0','Relationship_6.0']
+        elif self.name in ['kdd_census','dutch','bank']:
+            output_columns = list(self.oh_jce_bin_enc_cols) + list(self.jce_numerical) + list(self.oh_jce_cat_enc_cols) #(REQUIRES ADJUSTMENT FOR MACE)
         elif self.name == 'german':
             output_columns = ['Sex','Age','Credit','LoanDuration']
-        elif self.name == 'heart':
-            output_columns = ['Sex','Age','RestBloodPressure','Chol','BloodSugar','ECG_0.0','ECG_1.0','ECG_2.0','ChestPain_1.0','ChestPain_2.0','ChestPain_3.0','ChestPain_4.0']
-        elif self.name == 'cervical':
-            output_columns = ['Smokes','Hormonal Contraceptives','IUD','STDs:HIV','Age','Number of sexual partners','First sexual intercourse',
-                              'Smokes (years)','Hormonal Contraceptives (years)','IUD (years)']
-        elif self.name == 'synthetic_disease':
-            output_columns = ['Smokes','Age','ExerciseMinutes','SleepHours','Weight_ord_0','Weight_ord_1','Weight_ord_2','Weight_ord_3',
-                              'Diet_1','Diet_2','Diet_3','Diet_4','Stress_1','Stress_2','Stress_3']
-        elif self.name == 'synthetic_athlete':
-            output_columns = ['Sex','Age','SleepHours','TrainingTime_1','TrainingTime_2','TrainingTime_3','TrainingTime_4','Sport_1',
-                              'Sport_2','Sport_3','Sport_4','Diet_1','Diet_2','Diet_3','Diet_4']
-        elif self.name == 'synthetic_simple':
-            output_columns = ['x1','x2']
-        elif self.name == 'ionosphere':
-            output_columns = ['0','2','4','5','6','7','26','30']
-        
+        elif self.name == 'credit':
+            output_columns = ['isMale','isMarried','MaxBillAmountOverLast6Months','MaxPaymentAmountOverLast6Months','MonthsWithZeroBalanceOverLast6Months',
+                            'MonthsWithLowSpendingOverLast6Months','MonthsWithHighSpendingOverLast6Months','MostRecentBillAmount','MostRecentPaymentAmount',
+                            'TotalOverdueCounts','TotalMonthsOverdue','HasHistoryOfOverduePayments','AgeGroup_ord_0','AgeGroup_ord_1','AgeGroup_ord_2',
+                            'AgeGroup_ord_3','EducationLevel_ord_0','EducationLevel_ord_1','EducationLevel_ord_2','EducationLevel_ord_3']
+        elif self.name == 'compass':
+            output_columns = ['Race','Sex','PriorsCount','ChargeDegree','AgeGroup_ord_0','AgeGroup_ord_1','AgeGroup_ord_2']
+                
         inv_scale_num_instance = self.jce_scaler.inverse_transform(instance[self.jce_numerical].to_numpy().reshape(1,-1))
         inv_scale_num_instance_pd = pd.DataFrame(data=inv_scale_num_instance,index=instance.index,columns=self.jce_numerical)
         pd_inv_norm_instance = pd.DataFrame(data=instance[self.oh_jce_bin_enc_cols].values,index=instance.index,columns=self.oh_jce_bin_enc_cols)
@@ -468,7 +452,7 @@ class Dataset:
                     feat_type_out.loc[i] = 'num-con'
         elif self.name == 'german':
             for i in feat_list:
-                if 'Sex' in i:
+                if 'Sex' in i or 'Single' in i or 'Unemployed' in i or 'Housing' in i or 'PurposeOfLoan' in i or 'InstallmentRate' in i or 'Housing' in i:
                     feat_type_out.loc[i] = 'bin'
                 elif 'Age' in i or 'Credit' in i or 'Loan' in i:
                     feat_type_out.loc[i] = 'num-con'
@@ -480,11 +464,11 @@ class Dataset:
                     feat_type_out.loc[i] = 'num-ord'
         elif self.name == 'bank':
             for i in feat_list:
-                if 'Default' in i or 'Housing' in i or 'Loan' in i or 'Job' in i or 'MaritalStatus' in i or 'Education' in i or 'Contact' in i or 'Month' in i or 'Poutcome':
+                if 'Default' in i or 'Housing' in i or 'Loan' in i or 'Job' in i or 'MaritalStatus' in i or 'Education' in i or 'Contact' in i or 'Month' in i or 'Poutcome' in i:
                     feat_type_out.loc[i] = 'bin'
                 elif 'Age' in i:
                     feat_type_out.loc[i] = 'num-ord'
-                elif 'Balance' in i or 'Day' in i or 'Duration' in i or 'Campaign' in i or 'Pdays' in i or 'Previous':
+                elif 'Balance' in i or 'Day' in i or 'Duration' in i or 'Campaign' in i or 'Pdays' in i or 'Previous' in i:
                     feat_type_out.loc[i] = 'num-con'
         elif self.name == 'credit':
             for i in feat_list:
@@ -516,9 +500,9 @@ class Dataset:
             feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
             feat_protected_values['Race'] = {1.00:'White', 2.00:'Non-white'}
         elif self.name == 'german':
-            feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
+            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
         elif self.name == 'dutch':
-            feat_protected_values['Sex'] = {1.00:'Male', 0.00:'Female'}
+            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
         elif self.name == 'bank':
             feat_protected_values['AgeGroup'] = {1.00:'<25', 2.00:'25-60', 3.00:'>60'}
             feat_protected_values['MaritalStatus'] = {1.00:'Married', 2.00:'Single', 3.00:'Divorced'}
@@ -542,8 +526,9 @@ class Dataset:
             feat_mutable[i] = 1
         for i in self.feat_protected.keys():
             idx_feat_protected = [j for j in range(len(feat_list)) if i in feat_list[j]]
-            feat = feat_list[idx_feat_protected[0]]
-            feat_mutable[feat] = 0
+            feat = [feat_list[j] for j in idx_feat_protected]
+            for j in feat:
+                feat_mutable[j] = 0
         feat_mutable = pd.Series(feat_mutable)
         return feat_mutable
         
@@ -648,9 +633,9 @@ class Dataset:
                     feat_cost[i] = 1
         elif self.name == 'dutch':
             for i in feat_list:
-                if 'Sex' in i or 'Age' in i or 'Country' in i:
+                if 'Sex' in i:
                     feat_cost[i] = 0
-                elif 'HouseholdPosition' in i or 'HouseholdSize' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i or 'EducationLevel' in i:
+                elif 'HouseholdPosition' in i or 'HouseholdSize' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i or 'EducationLevel' in i or 'Age' in i or 'Country' in i:
                     feat_cost[i] = 1
         elif self.name == 'bank':
             for i in feat_list:
@@ -728,7 +713,14 @@ class Dataset:
                     feat_cat.loc[i] = 'non'
         elif self.name == 'german':
             for i in feat_list:
-                feat_cat.loc[i] = 'non'
+                if 'PurposeOfLoan' in i:
+                    feat_cat.loc[i] = 'cat_0'
+                elif 'InstallmentRate' in i:
+                    feat_cat.loc[i] = 'cat_1'
+                elif 'Housing' in i:
+                    feat_cat.loc[i] = 'cat_2'
+                else:
+                    feat_cat.loc[i] = 'non'
         elif self.name == 'dutch':
             for i in feat_list:
                 if 'HouseholdPosition' in i:
@@ -782,7 +774,7 @@ class Model:
         grid_search_results = pd.read_csv(str(self.model_params_path)+'/Results/grid_search/grid_search_final.csv',index_col = ['dataset','model'])
         sel_model_str, params_best, params_rf = best_model_params(grid_search_results,data_obj.name)
         self.jce_sel, self.jce_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.jce_train_pd,data_obj.train_target)
-        self.carla_sel, self.carla_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.carla_train_pd,data_obj.train_target)
+        # self.carla_sel, self.carla_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.carla_train_pd,data_obj.train_target)
 
 def erase_missing(data,data_str):
     """
@@ -1022,6 +1014,7 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         train_raw_df = pd.read_csv(dataset_dir+'/kdd_census/census-income.data',index_col=False,names=read_cols)
         test_raw_df = pd.read_csv(dataset_dir+'/kdd_census/census-income.test',index_col=False,names=read_cols)
         raw_df = pd.concat((train_raw_df,test_raw_df),axis=0)
+        raw_df.reset_index(drop=True, inplace=True)
         processed_df = raw_df[cols]
         processed_df.loc[processed_df['Sex'] == ' Male','Sex'] = 1
         processed_df.loc[processed_df['Sex'] == ' Female','Sex'] = 2
@@ -1077,25 +1070,48 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[processed_df['Occupation'] == 'Services','Occupation'] = 3
         processed_df.loc[processed_df['Occupation'] == 'Military','Occupation'] = 4
         processed_df.loc[processed_df['Occupation'] == 'Other','Occupation'] = 5
-        processed_df.loc[processed_df['Label'] == ' - 50000.','Label'] = 0
-        processed_df.loc[processed_df['Label'] == ' 50000+.','Label'] = 1
+        processed_df.loc[processed_df['Label'] == ' - 50000.','Label'] = int(0)
+        processed_df.loc[processed_df['Label'] == ' 50000+.','Label'] = int(1)
+        processed_df['Label']=processed_df['Label'].astype('int')
     elif data_str == 'german':
-        binary = ['Sex']
-        categorical = []
+        binary = ['Sex','Single','Unemployed']
+        categorical = ['PurposeOfLoan','InstallmentRate','Housing']
         numerical = ['Age','Credit','LoanDuration']
-        label = ['GoodCustomer (label)']
+        label = ['Label']
         mace_cols = []
         carla_categorical = ['Sex']
         carla_continuous = ['Age','Credit','LoanDuration']
+        cols = binary + numerical + categorical + label
         processed_df = pd.DataFrame()
         raw_df = pd.read_csv(dataset_dir+'/german/german_raw.csv')
-        processed_df['GoodCustomer (label)'] = raw_df['GoodCustomer']
-        processed_df['GoodCustomer (label)'] = (processed_df['GoodCustomer (label)'] + 1) / 2
+        processed_df['GoodCustomer'] = raw_df['GoodCustomer']
+        processed_df['PurposeOfLoan'] = raw_df['PurposeOfLoan']
+        processed_df['PurposeOfLoan'] = raw_df['PurposeOfLoan']
+        processed_df['Single'] = raw_df['Single']
+        processed_df['Unemployed'] = raw_df['Unemployed']
+        processed_df['InstallmentRate'] = raw_df['LoanRateAsPercentOfIncome']
+        processed_df.loc[processed_df['GoodCustomer'] == -1,'Label'] = int(0)
+        processed_df.loc[processed_df['GoodCustomer'] == 1,'Label'] = int(1)
+        processed_df.loc[processed_df['PurposeOfLoan'] == 'Business','PurposeOfLoan'] = 1
+        processed_df.loc[processed_df['PurposeOfLoan'] == 'Education','PurposeOfLoan'] = 2
+        processed_df.loc[processed_df['PurposeOfLoan'] == 'Electronics','PurposeOfLoan'] = 3
+        processed_df.loc[processed_df['PurposeOfLoan'] == 'Furniture','PurposeOfLoan'] = 4
+        processed_df.loc[processed_df['PurposeOfLoan'] == 'HomeAppliances','PurposeOfLoan'] = 5
+        processed_df.loc[processed_df['PurposeOfLoan'] == 'NewCar','PurposeOfLoan'] = 6
+        processed_df.loc[processed_df['PurposeOfLoan'] == 'Other','PurposeOfLoan'] = 7
+        processed_df.loc[processed_df['PurposeOfLoan'] == 'Repairs','PurposeOfLoan'] = 8
+        processed_df.loc[processed_df['PurposeOfLoan'] == 'Retraining','PurposeOfLoan'] = 9
+        processed_df.loc[processed_df['PurposeOfLoan'] == 'UsedCar','PurposeOfLoan'] = 10
         processed_df.loc[raw_df['Gender'] == 'Male', 'Sex'] = 1
-        processed_df.loc[raw_df['Gender'] == 'Female', 'Sex'] = 0
+        processed_df.loc[raw_df['Gender'] == 'Female', 'Sex'] = 2
+        processed_df.loc[raw_df['OwnsHouse'] == 1, 'Housing'] = 1
+        processed_df.loc[raw_df['RentsHouse'] == 1, 'Housing'] = 2
+        processed_df.loc[(raw_df['OwnsHouse'] == 0) & (raw_df['RentsHouse'] == 0), 'Housing'] = 3
         processed_df['Age'] = raw_df['Age']
         processed_df['Credit'] = raw_df['Credit']
         processed_df['LoanDuration'] = raw_df['LoanDuration']
+        processed_df['Label']=processed_df['Label'].astype('int')
+        processed_df = processed_df[cols]
     elif data_str == 'dutch':
         binary = ['Sex']
         categorical = ['HouseholdPosition','HouseholdSize','Country','EconomicStatus','CurEcoActivity','MaritalStatus']
@@ -1136,20 +1152,21 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[processed_df['CurEcoActivity'] == 134,'CurEcoActivity'] = 10
         processed_df.loc[processed_df['CurEcoActivity'] == 111,'CurEcoActivity'] = 11
         processed_df.loc[processed_df['CurEcoActivity'] == 124,'CurEcoActivity'] = 12
-        processed_df.loc[processed_df['Occupation'] == '5_4_9','Occupation'] = 1
-        processed_df.loc[processed_df['Occupation'] == '2_1','Occupation'] = 0
+        processed_df.loc[processed_df['Occupation'] == '5_4_9','Occupation'] = int(1)
+        processed_df.loc[processed_df['Occupation'] == '2_1','Occupation'] = int(0)
+        processed_df['Occupation']=processed_df['Occupation'].astype('int')
         processed_df.rename({'Age': 'AgeGroup'}, inplace=True, axis=1)
         numerical = ['AgeGroup','EducationLevel']
     elif data_str == 'bank':
         binary = ['Default','Housing','Loan']
         categorical = ['Job','MaritalStatus','Education','Contact','Month','Poutcome']
-        numerical = ['Age','Balance','Day','Duration','Campaign','Pdays','Previous']
+        numerical = ['AgeGroup','Balance','Day','Duration','Campaign','Pdays','Previous']
         label = ['Subscribed']
         mace_cols = []
-        carla_categorical = ['Default','Housing','Loan','Job','MaritalStatus','Education','Contact','Month','Poutcome']
-        carla_continuous = ['Age','Balance','Day','Duration','Campaign','Pdays','Previous']
+        carla_categorical = ['Default','Housing','Loan','Job','MaritalStatus','Education','Contact','Month','Poutcome','AgeGroup']
+        carla_continuous = ['Balance','Day','Duration','Campaign','Pdays','Previous']
         cols = binary + numerical + categorical + label
-        raw_df = pd.read_csv(dataset_dir+'bank/bank.csv',sep=';',index_col=False)
+        processed_df = pd.read_csv(dataset_dir+'bank/bank.csv',sep=';',index_col=False)
         processed_df.loc[processed_df['age'] < 25,'AgeGroup'] = 1
         processed_df.loc[(processed_df['age'] <= 60) & (processed_df['age'] >= 25),'AgeGroup'] = 2
         processed_df.loc[processed_df['age'] > 60,'AgeGroup'] = 3
@@ -1198,8 +1215,11 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[processed_df['poutcome'] == 'failure','Poutcome'] = 2
         processed_df.loc[processed_df['poutcome'] == 'other','Poutcome'] = 3
         processed_df.loc[processed_df['poutcome'] == 'unknown','Poutcome'] = 4
-        processed_df.loc[processed_df['y'] == 'no','Subscribed'] = 0
-        processed_df.loc[processed_df['y'] == 'yes','Subscribed'] = 1
+        processed_df.loc[processed_df['y'] == 'no','Subscribed'] = int(0)
+        processed_df.loc[processed_df['y'] == 'yes','Subscribed'] = int(1)
+        processed_df.rename({'balance':'Balance','day':'Day','duration':'Duration','campaign':'Campaign','pdays':'Pdays','previous':'Previous'}, inplace=True, axis=1)
+        processed_df = processed_df[cols]
+        processed_df['Subscribed']=processed_df['Subscribed'].astype('int')
     elif data_str == 'credit':
         binary = ['isMale','isMarried','HasHistoryOfOverduePayments']
         categorical = []
