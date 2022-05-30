@@ -91,7 +91,7 @@ class Evaluator():
         # penalize_instance = np.mean(train_desired_class, axis=0)
         return penalize_instance
 
-    def statistical_parity_eval(self, prob):
+    def statistical_parity_eval(self, prob, length):
         """
         Method that calculates the Statistical Parity measure for each of the protected feature groups given a model
         """
@@ -101,7 +101,8 @@ class Evaluator():
             feat_parity = {}
             for j in feat_names:
                 j_probability = prob[i][j]
-                others_probability = np.mean([prob[i][x] for x in feat_names if x != j])
+                total_others_length = np.sum([length[i][x] for x in feat_names if x != j])
+                others_probability = np.sum([prob[i][x]*length[i][x] for x in feat_names if x != j]) / total_others_length
                 feat_parity[j] = j_probability - others_probability
             stat_parity[i] = feat_parity
         return stat_parity
@@ -111,6 +112,7 @@ class Evaluator():
         Method that calculates the probabilities used by the Statistical Parity method
         """
         prob_dict = {}
+        length_dict = {}
         test_data = data_obj.test_pd
         test_data_jce = data_obj.jce_test_pd
         test_data_jce_index = test_data_jce.index
@@ -120,16 +122,19 @@ class Evaluator():
         for i in self.feat_protected.keys():
             feat_i_values = test_data_with_pred[i].unique()
             val_dict = {}
+            length_val_dict = {}
             for j in feat_i_values:
                 val_name = self.feat_protected[i][np.round(j,2)]
                 total_feat_i_val_j = len(test_data_with_pred[test_data_with_pred[i] == j])
                 total_feat_i_val_j_desired_pred = len(test_data_with_pred[(test_data_with_pred[i] == j) & (test_data_with_pred['prediction'] == self.desired_class)])
                 stat_parity_feat_val = total_feat_i_val_j_desired_pred / total_feat_i_val_j
                 val_dict[val_name] = stat_parity_feat_val
+                length_val_dict[val_name] = total_feat_i_val_j
             prob_dict[i] = val_dict
-        return prob_dict
+            length_dict[i] = length_val_dict
+        return prob_dict, length_dict
 
-    def equalized_odds_eval(self, prob):
+    def equalized_odds_eval(self, prob, length):
         """
         Method that calculates the Equalized Odds measure for each of the protected feature groups given a model
         """
@@ -139,9 +144,11 @@ class Evaluator():
             feat_odds = {}
             for j in feat_val_names:
                 j_probability_target_0, j_probability_target_1 = prob[i][j][0], prob[i][j][1]
-                others_probability_target_0 = np.mean([prob[i][x][0] for x in feat_val_names if x != j])
-                others_probability_target_1 = np.mean([prob[i][x][1] for x in feat_val_names if x != j])
-                feat_odds[j] = np.abs(j_probability_target_0 - others_probability_target_0) + np.abs(j_probability_target_1 - others_probability_target_1) 
+                total_others_target_0_length = np.sum([length[i][x][0] for x in feat_val_names if x != j])
+                total_others_target_1_length = np.sum([length[i][x][1] for x in feat_val_names if x != j])
+                others_probability_target_0 = np.sum([prob[i][x][0]*length[i][x][0] for x in feat_val_names if x != j]) / total_others_target_0_length
+                others_probability_target_1 = np.sum([prob[i][x][1]*length[i][x][1] for x in feat_val_names if x != j]) / total_others_target_1_length
+                feat_odds[j] = np.abs(j_probability_target_0 - others_probability_target_0) + np.abs(j_probability_target_1 - others_probability_target_1)
             eq_odds[i] = feat_odds
         return eq_odds
 
@@ -150,6 +157,7 @@ class Evaluator():
         Method that calculates the probabilities used by the Equalized Odds method
         """
         prob_dict = {}
+        length_dict = {}
         test_data = data_obj.test_pd
         test_data_jce = data_obj.jce_test_pd
         test_data_jce_index = test_data_jce.index
@@ -161,9 +169,11 @@ class Evaluator():
         for i in self.feat_protected.keys():
             feat_i_values = test_data_with_pred_target[i].unique()
             feat_dict = {}
+            length_val_dict = {}
             for j in feat_i_values:
                 val_name = self.feat_protected[i][np.round(j,2)]
                 target_dict = {}
+                length_target_dict = {}
                 for k in [0,1]:
                     data_feat_i_val_j_ground_k = test_data_with_pred_target[(test_data_with_pred_target[i] == j) & (test_data_with_pred_target['target'] == k)]
                     data_feat_i_val_j_ground_k_desired_pred = data_feat_i_val_j_ground_k[data_feat_i_val_j_ground_k['prediction'] == self.desired_class]
@@ -171,9 +181,12 @@ class Evaluator():
                     total_feat_i_val_j_ground_k_desired_pred = len(data_feat_i_val_j_ground_k_desired_pred)
                     prob_val = total_feat_i_val_j_ground_k_desired_pred / total_feat_i_val_j_ground_k
                     target_dict[k] = prob_val
+                    length_target_dict[k] = total_feat_i_val_j_ground_k
                 feat_dict[val_name] = target_dict
+                length_val_dict[val_name] = length_target_dict
             prob_dict[i] = feat_dict
-        return prob_dict
+            length_dict[i] = length_val_dict
+        return prob_dict, length_dict
 
     def add_fairness_measures(self, data_obj, model):
         """
