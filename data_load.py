@@ -9,6 +9,8 @@ Imports
 import os
 import copy
 import pickle
+
+from py import process
 from model_params import clf_model, best_model_params
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import MinMaxScaler
@@ -298,7 +300,7 @@ class Dataset:
         """
         if self.name in ['german','credit','compass']:
             undesired_class = 1
-        elif self.name in ['adult','kdd_census','dutch','bank']:
+        elif self.name in ['adult','kdd_census','dutch','bank','diabetes']:
             undesired_class = 0
         return undesired_class
     
@@ -484,6 +486,14 @@ class Dataset:
                     feat_type_out.loc[i] = 'bin'
                 elif 'Priors' in i or 'Age' in i:
                     feat_type_out.loc[i] = 'num-ord'
+        elif self.name == 'diabetes':
+            for i in feat_list:
+                if 'DiabetesMed' in i or 'Race' in i or 'Sex' in i or 'A1CResult' in i or 'Metformin' in i or 'Chlorpropamide' in i or 'Glipizide' in i or 'Rosiglitazone' in i or 'Acarbose' in i or 'Miglitol' in i:
+                    feat_type_out.loc[i] = 'bin'
+                elif 'AgeGroup' in i:
+                    feat_type_out.loc[i] = 'num-ord'
+                elif 'TimeInHospital' in i or 'NumProcedures' in i or 'NumMedications' in i or 'NumEmergency':
+                    feat_type_out.loc[i] = 'num-con'
         return feat_type_out
 
     def define_protected(self):
@@ -512,6 +522,8 @@ class Dataset:
             feat_protected_values['EducationLevel'] = {1.00:'Other', 2.00:'HS', 3.00:'University', 4.00:'Graduate'}
         elif self.name == 'compass':
             feat_protected_values['Race'] = {1.00:'African-American', 2.00:'Caucasian'}
+            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
+        elif self.name == 'diabetes':
             feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
         return feat_protected_values
 
@@ -589,6 +601,12 @@ class Dataset:
                     feat_dir[i] = 0
                 elif 'Charge' in i or 'Priors' in i:
                     feat_dir[i] = 'any'
+        elif self.name == 'diabetes':
+            for i in feat_list:
+                if 'Sex' in i:
+                    feat_dir[i] = 0
+                else:
+                    feat_dir[i] = 'any'
         feat_dir = pd.Series(feat_dir)
         return feat_dir
 
@@ -663,6 +681,12 @@ class Dataset:
                     feat_cost[i] = 1#10
                 elif 'Priors' in i:
                     feat_cost[i] = 1#20
+        elif self.name == 'diabetes':
+            for i in feat_list:
+                if 'Sex' in i:
+                    feat_cost[i] = 0
+                else:
+                    feat_cost[i] = 1
         feat_cost = pd.Series(feat_cost)
         return feat_cost
 
@@ -757,6 +781,24 @@ class Dataset:
         elif self.name == 'compass':
             for i in feat_list:
                 feat_cat.loc[i] = 'non'
+        elif self.name == 'diabetes':
+            for i in feat_list:
+                if 'Race' in i:
+                    feat_cat.loc[i] = 'cat_0'
+                elif 'A1CResult' in i:
+                    feat_cat.loc[i] = 'cat_1'
+                elif 'Metformin' in i:
+                    feat_cat.loc[i] = 'cat_2'
+                elif 'Chlorpropamide' in i:
+                    feat_cat.loc[i] = 'cat_3'
+                elif 'Glipizide' in i:
+                    feat_cat.loc[i] = 'cat_4'
+                elif 'Rosiglitazone' in i:
+                    feat_cat.loc[i] = 'cat_5'
+                elif 'Acarbose' in i:
+                    feat_cat.loc[i] = 'cat_6'
+                elif 'Miglitol' in i:
+                    feat_cat.loc[i] = 'cat_7'
         return feat_cat
 
 class Model:
@@ -785,15 +827,6 @@ def erase_missing(data,data_str):
     """
     data = data.replace({'?':np.nan})
     data = data.replace({' ?':np.nan})
-    if data_str == 'compass':
-        for i in data.columns:
-            if data[i].dtype == 'O' or data[i].dtype == 'str':
-                if len(data[i].apply(type).unique()) > 1:
-                    data[i] = data[i].apply(float)
-                    data.fillna(0,inplace=True)    
-                data.fillna('0',inplace=True)
-            else:
-                data.fillna(0,inplace=True)
     data.dropna(axis=0,how='any',inplace=True)
     data.reset_index(drop=True, inplace=True)
     return data
@@ -1269,12 +1302,86 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[df['c_charge_degree'] == 'M', 'ChargeDegree'] = 1
         processed_df.loc[df['c_charge_degree'] == 'F', 'ChargeDegree'] = 2
         processed_df = processed_df.reset_index(drop=True)
-    elif data_str == 'Diabetes':
-        data = pd.read_csv(dataset_dir+'/Diabetes/diabetes_data_upload.csv') # Requires numeric transform
-        data = erase_missing(data,data_str)
-        data = erase_duplicates(data)
-        data, lbl_encoder = nom_to_num(data)
-        train_data, test_data, train_target, test_target = train_test_split(data,data['class'],train_size=train_fraction,random_state=seed)    
+    elif data_str == 'diabetes':
+        binary = ['DiabetesMed']
+        categorical = ['Race','Sex','A1CResult','Metformin','Chlorpropamide','Glipizide','Rosiglitazone','Acarbose','Miglitol']
+        numerical = ['AgeGroup','TimeInHospital','NumProcedures','NumMedications','NumEmergency']
+        label = ['Label']
+        mace_cols = ['AgeGroup']
+        carla_categorical = ['Race','Sex','A1CResult','Metformin','Chlorpropamide','Glipizide','Rosiglitazone','Acarbose','Miglitol','DiabetesMed','AgeGroup']
+        carla_continuous = ['TimeInHospital','NumProcedures','NumMedications','NumEmergency']
+        raw_df = pd.read_csv(dataset_dir+'diabetes/diabetes.csv') # Requires numeric transform
+        cols_to_delete = ['encounter_id','patient_nbr','weight','payer_code','medical_specialty',
+                          'diag_1','diag_2','diag_3','max_glu_serum','repaglinide',
+                          'nateglinide','acetohexamide','glyburide','tolbutamide','pioglitazone',
+                          'troglitazone','tolazamide','examide','citoglipton','insulin',
+                          'glyburide-metformin','glipizide-metformin','glimepiride-pioglitazone','metformin-rosiglitazone','metformin-pioglitazone',
+                          'change','admission_type_id','discharge_disposition_id','admission_source_id','num_lab_procedures',
+                          'number_outpatient','number_inpatient','number_diagnoses']
+        raw_df.drop(cols_to_delete, inplace=True, axis=1)
+        raw_df = erase_missing(raw_df,data_str)
+        raw_df = raw_df[raw_df['readmitted'] != 'NO']
+        processed_df = pd.DataFrame(index=raw_df.index)
+        processed_df.loc[raw_df['race'] == 'Caucasian','Race'] = 1
+        processed_df.loc[raw_df['race'] == 'AfricanAmerican','Race'] = 2
+        processed_df.loc[raw_df['race'] == 'Hispanic','Race'] = 3
+        processed_df.loc[raw_df['race'] == 'Asian','Race'] = 4
+        processed_df.loc[raw_df['race'] == 'Other','Race'] = 5
+        processed_df.loc[raw_df['gender'] == 'Male','Sex'] = 1
+        processed_df.loc[raw_df['gender'] == 'Female','Sex'] = 2
+        processed_df.loc[(raw_df['age'] == '[0-10)') | (raw_df['age'] == '[10-20)'),'AgeGroup'] = 1
+        processed_df.loc[(raw_df['age'] == '[20-30)') | (raw_df['age'] == '[30-40)'),'AgeGroup'] = 2
+        processed_df.loc[(raw_df['age'] == '[40-50)') | (raw_df['age'] == '[50-60)'),'AgeGroup'] = 3
+        processed_df.loc[(raw_df['age'] == '[60-70)') | (raw_df['age'] == '[70-80)'),'AgeGroup'] = 4
+        processed_df.loc[(raw_df['age'] == '[80-90)') | (raw_df['age'] == '[90-100)'),'AgeGroup'] = 5
+        processed_df.loc[raw_df['A1Cresult'] == 'None','A1CResult'] = 1
+        processed_df.loc[raw_df['A1Cresult'] == '>7','A1CResult'] = 2
+        processed_df.loc[raw_df['A1Cresult'] == 'Norm','A1CResult'] = 3
+        processed_df.loc[raw_df['A1Cresult'] == '>8','A1CResult'] = 4
+        processed_df.loc[raw_df['metformin'] == 'No','Metformin'] = 1
+        processed_df.loc[raw_df['metformin'] == 'Steady','Metformin'] = 2
+        processed_df.loc[raw_df['metformin'] == 'Up','Metformin'] = 3
+        processed_df.loc[raw_df['metformin'] == 'Down','Metformin'] = 4
+        processed_df.loc[raw_df['chlorpropamide'] == 'No','Chlorpropamide'] = 1
+        processed_df.loc[raw_df['chlorpropamide'] == 'Steady','Chlorpropamide'] = 2
+        processed_df.loc[raw_df['chlorpropamide'] == 'Up','Chlorpropamide'] = 3
+        processed_df.loc[raw_df['chlorpropamide'] == 'Down','Chlorpropamide'] = 4
+        processed_df.loc[raw_df['glipizide'] == 'No','Glipizide'] = 1
+        processed_df.loc[raw_df['glipizide'] == 'Steady','Glipizide'] = 2
+        processed_df.loc[raw_df['glipizide'] == 'Up','Glipizide'] = 3
+        processed_df.loc[raw_df['glipizide'] == 'Down','Glipizide'] = 4
+        processed_df.loc[raw_df['rosiglitazone'] == 'No','Rosiglitazone'] = 1
+        processed_df.loc[raw_df['rosiglitazone'] == 'Steady','Rosiglitazone'] = 2
+        processed_df.loc[raw_df['rosiglitazone'] == 'Up','Rosiglitazone'] = 3
+        processed_df.loc[raw_df['rosiglitazone'] == 'Down','Rosiglitazone'] = 4
+        processed_df.loc[raw_df['acarbose'] == 'No','Acarbose'] = 1
+        processed_df.loc[raw_df['acarbose'] == 'Steady','Acarbose'] = 2
+        processed_df.loc[raw_df['acarbose'] == 'Up','Acarbose'] = 3
+        processed_df.loc[raw_df['acarbose'] == 'Down','Acarbose'] = 4
+        processed_df.loc[raw_df['miglitol'] == 'No','Miglitol'] = 1
+        processed_df.loc[raw_df['miglitol'] == 'Steady','Miglitol'] = 2
+        processed_df.loc[raw_df['miglitol'] == 'Up','Miglitol'] = 3
+        processed_df.loc[raw_df['miglitol'] == 'Down','Miglitol'] = 4
+        processed_df.loc[raw_df['diabetesMed'] == 'No','DiabetesMed'] = 0
+        processed_df.loc[raw_df['diabetesMed'] == 'Yes','DiabetesMed'] = 1
+        processed_df['TimeInHospital'] = raw_df['time_in_hospital']
+        processed_df['NumProcedures'] = raw_df['num_procedures']
+        processed_df['NumMedications'] = raw_df['num_medications']
+        processed_df['NumEmergency'] = raw_df['number_emergency']
+        processed_df.loc[raw_df['readmitted'] == '<30','Label'] = 0
+        processed_df.loc[raw_df['readmitted'] == '>30','Label'] = 1
+    elif data_str == 'student':
+        binary = ['Position','Race']
+        categorical = []
+        numerical = ['Oral','Written','Combine']
+        label = ['Promoted']
+        mace_cols = []
+        raw_df = pd.read_csv(dataset_dir+'student/student.csv',sep=';')
+        carla_categorical = ['Position','Race']
+        carla_continuous = ['Oral','Written','Combine']
+
+
+  
         
     data_obj = Dataset(seed,train_fraction,data_str,label,
                  processed_df,binary,categorical,numerical,step,

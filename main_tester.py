@@ -36,7 +36,7 @@ def load_obj(file_name):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-datasets = ['adult','kdd_census','german','dutch','bank','credit','compass'] # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass']
+datasets = ['diabetes'] # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass']
 models_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
