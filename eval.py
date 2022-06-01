@@ -15,6 +15,8 @@ from mo import min_obs
 from ft import feat_tweak
 from rt import rf_tweak
 from juice import JUICE
+import time
+import copy
 from carla import DataCatalog, MLModelCatalog
 from carla.recourse_methods import Face, Dice, CCHVAE, GrowingSpheres
 import tensorflow as tf
@@ -303,7 +305,12 @@ class Evaluator():
         """
         Method that calculates the distance between the instance of interest and the counterfactual given
         """
-        self.cf_proximity = np.round_(euclidean(self.x,self.cf_pd.to_numpy()),3)
+        if (self.x_pd.columns == self.cf_pd.columns).all():
+            self.cf_proximity = np.round_(euclidean(self.x,self.cf_pd.to_numpy()),3)
+        else:
+            instance_x_copy = copy.deepcopy(self.x_pd)
+            instance_x_copy = instance_x_copy[self.cf_pd.columns]
+            self.cf_proximity = np.round_(euclidean(instance_x_copy.to_numpy(),self.cf_pd.to_numpy()),3)
 
     def feasibility(self):
         """
@@ -363,7 +370,7 @@ class Evaluator():
         self.justifier_instance_pd = pd.DataFrame(data=[self.justifier_instance],columns=data.jce_all_cols)
         self.normal_justifier_instance = data.adjust_to_mace_format(self.justifier_instance_pd)
     
-    def evaluate_cf_models(self, x_jce_np, x_label, data, model, epsilon_ft):
+    def evaluate_cf_models(self, x_jce_np, x_label, data, model, epsilon_ft, carla_model, x_carla_pd):
         """
         Method that evaluates all the specified models
         """
@@ -383,6 +390,30 @@ class Evaluator():
             elif 'juice' in model_str:
                 results = JUICE(x_jce_np,x_label,data,model.jce_sel,'proximity',mutability_check)
                 cf, run_time = results[0], results[4]
+            elif 'cchvae' in model_str:
+                data_with_target = copy.deepcopy(data.train_pd)
+                data_with_target[data.label_str[0]] = data.train_target
+                start_time = time.time()
+                dict_cchvae = {'data_name': data.name,'p_norm':2,'vae_params':{'layers':[len(carla_model.feature_input_order),int(len(carla_model.feature_input_order)/2)]}}
+                cchvae_model = CCHVAE(carla_model, dict_cchvae, data_with_target)
+                cf_pd = cchvae_model.get_counterfactuals(x_carla_pd)
+                if isinstance(cf_pd, pd.Series) or isinstance(cf_pd, pd.DataFrame):
+                    if cf_pd.isnull().values.any():
+                        cf = None
+                        print(f'CCHVAE: Could not find feasible CF!')
+                    else:
+                        cf_pd = data.from_carla_to_jce(cf_pd)
+                        cf = np.array(cf_pd)[0]
+                elif cf_pd is None:
+                    cf = None
+                    print(f'CCHVAE: Could not find feasible CF!')
+                elif cf_pd is not None:
+                    if np.isnan(np.sum(cf_pd)):
+                        cf = None
+                        cf_pd = None
+                        print(f'CCHVAE: Could not find feasible CF!')
+                end_time = time.time() 
+                run_time = end_time - start_time
             print(f'  {model_str} (time (s): {np.round_(run_time,2)})')
             print(f'---------------------------')
             self.add_specific_cf_data(data,model_str,cf,run_time,model)

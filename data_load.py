@@ -9,8 +9,7 @@ Imports
 import os
 import copy
 import pickle
-
-from py import process
+from scipy.io import arff
 from model_params import clf_model, best_model_params
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import MinMaxScaler
@@ -102,7 +101,7 @@ class Dataset:
 
         # Stores all encoders, scalers, and train datasets
         self.jce_encoder_scaler_fit_transform_train()
-        # self.carla_encoder_scaler_fit_transform_train()
+        self.carla_encoder_scaler_fit_transform()
         self.jce_test_pd, self.jce_test_np = self.jce_encoder_scaler_transform_test(self.test_pd)
         self.undesired_class = self.undesired_class_data()
 
@@ -176,7 +175,7 @@ class Dataset:
         self.jce_all_cols = self.jce_train_pd.columns.to_list()
         self.jce_train_np = self.jce_train_pd.to_numpy()
 
-    def carla_encoder_scaler_fit_transform_train(self):
+    def carla_encoder_scaler_fit_transform(self):
         """
         Method that fits the encoder and scaler for the dataset and transforms the training dataset according to the CARLA framework
         """
@@ -226,13 +225,7 @@ class Dataset:
                                 enc_bin_data[self.oh_jce_bin_enc_cols[1:3]],num_data[self.jce_numerical[1:5]],
                                 enc_cat_data[self.oh_jce_cat_enc_cols[:7]],num_data[self.jce_numerical[-1]],
                                 enc_cat_data[self.oh_jce_cat_enc_cols[7:]]),axis=1)
-        elif self.name == 'kdd_census':
-            enc_jce_data_pd = pd.concat((enc_bin_data,num_data,enc_cat_data),axis=1)
-        elif self.name == 'german':
-            enc_jce_data_pd = pd.concat((enc_bin_data,num_data,enc_cat_data),axis=1)
-        elif self.name == 'dutch':
-            enc_jce_data_pd = pd.concat((enc_bin_data,num_data,enc_cat_data),axis=1)
-        elif self.name == 'bank':
+        elif self.name in ['kdd_census','german','dutch','bank','credit','diabetes','student','oulad','law']:
             enc_jce_data_pd = pd.concat((enc_bin_data,num_data,enc_cat_data),axis=1)
         elif self.name == 'credit':
             enc_jce_data_pd = pd.concat((enc_bin_data[self.oh_jce_bin_enc_cols[:2]],num_data[self.jce_numerical[0:9]],
@@ -300,7 +293,7 @@ class Dataset:
         """
         if self.name in ['german','credit','compass']:
             undesired_class = 1
-        elif self.name in ['adult','kdd_census','dutch','bank','diabetes']:
+        elif self.name in ['adult','kdd_census','dutch','bank','diabetes','student','oulad','law']:
             undesired_class = 0
         return undesired_class
     
@@ -494,6 +487,28 @@ class Dataset:
                     feat_type_out.loc[i] = 'num-ord'
                 elif 'TimeInHospital' in i or 'NumProcedures' in i or 'NumMedications' in i or 'NumEmergency':
                     feat_type_out.loc[i] = 'num-con'
+        elif self.name == 'student':
+            for i in feat_list:
+                if 'Age' in i or 'School' in i or 'Sex' in i or 'Address' in i or 'FamilySize' in i or 'ParentStatus' in i or 'SchoolSupport' in i or 'FamilySupport' in i or 'ExtraPaid' in i or 'ExtraActivities' in i or 'Nursery' in i or 'HigherEdu' in i or 'Internet' in i or 'Romantic' in i or 'MotherJob' in i or 'FatherJob' in i or 'SchoolReason' in i:
+                    feat_type_out.loc[i] = 'bin'
+                elif 'MotherEducation' in i or 'FatherEducation' in i:
+                    feat_type_out.loc[i] = 'num-ord'
+                elif 'TravelTime' in i or 'ClassFailures' in i or 'GoOut' in i:
+                    feat_type_out.loc[i] = 'num-con'
+        elif self.name == 'oulad':
+            for i in feat_list:
+                if 'Sex' in i or 'Disability' in i or 'Region' in i or 'CodeModule' in i or 'CodePresentation' in i or 'HighestEducation' in i or 'IMDBand' in i:
+                    feat_type_out.loc[i] = 'bin'
+                elif 'NumPrevAttempts' in i or 'StudiedCredits' in i:
+                    feat_type_out.loc[i] = 'num-con'
+                elif 'AgeGroup' in i:
+                    feat_type_out.loc[i] = 'num-ord'
+        elif self.name == 'law':
+            for i in feat_list:        
+                if 'FamilyIncome' in i or 'Tier' in i or 'Race' in i or 'WorkFullTime' in i or 'Sex' in i:
+                    feat_type_out.loc[i] = 'bin'
+                elif 'Decile1stYear' in i or 'Decile3rdYear' in i or 'LSAT' in i or 'UndergradGPA' in i or 'FirstYearGPA' in i or 'CumulativeGPA' in i:
+                    feat_type_out.loc[i] = 'num-con'
         return feat_type_out
 
     def define_protected(self):
@@ -525,6 +540,14 @@ class Dataset:
             feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
         elif self.name == 'diabetes':
             feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
+        elif self.name == 'student':
+            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
+            feat_protected_values['AgeGroup'] = {1.00:'<18', 2.00:'>=18'}
+        elif self.name == 'oulad':
+            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
+        elif self.name == 'law':
+            feat_protected_values['Sex'] = {1.00:'Male', 2.00:'Female'}
+            feat_protected_values['Race'] = {1.00:'White', 2.00:'Non-white'}
         return feat_protected_values
 
     def define_mutability(self):
@@ -604,6 +627,24 @@ class Dataset:
         elif self.name == 'diabetes':
             for i in feat_list:
                 if 'Sex' in i:
+                    feat_dir[i] = 0
+                else:
+                    feat_dir[i] = 'any'
+        elif self.name == 'student':
+            for i in feat_list:
+                if 'Sex' in i or 'Age' in i:
+                    feat_dir[i] = 0
+                else:
+                    feat_dir[i] = 'any'
+        elif self.name == 'oulad':
+            for i in feat_list:
+                if 'Sex' in i:
+                    feat_dir[i] = 0
+                else:
+                    feat_dir[i] = 'any'
+        elif self.name == 'law':
+            for i in feat_list:
+                if 'Sex' in i or 'Race' in i:
                     feat_dir[i] = 0
                 else:
                     feat_dir[i] = 'any'
@@ -687,6 +728,24 @@ class Dataset:
                     feat_cost[i] = 0
                 else:
                     feat_cost[i] = 1
+        elif self.name == 'student':
+            for i in feat_list:
+                if 'Sex' in i or 'Age' in i:
+                    feat_cost[i] = 0
+                else:
+                    feat_cost[i] = 1
+        elif self.name == 'oulad':
+            for i in feat_list:
+                if 'Sex' in i:
+                    feat_cost[i] = 0
+                else:
+                    feat_cost[i] = 1
+        elif self.name == 'law':
+            for i in feat_list:
+                if 'Sex' in i or 'Race' in i:
+                    feat_cost[i] = 0
+                else:
+                    feat_cost[i] = 1
         feat_cost = pd.Series(feat_cost)
         return feat_cost
 
@@ -727,6 +786,8 @@ class Dataset:
                     feat_cat.loc[i] = 'cat_3'
                 elif 'Relation' in i:
                     feat_cat.loc[i] = 'cat_4'
+                else:
+                    feat_cat.loc[i] = 'non'
         elif self.name == 'kdd_census':
             for i in feat_list:
                 if 'Industry' in i:
@@ -759,6 +820,8 @@ class Dataset:
                     feat_cat.loc[i] = 'cat_4'
                 elif 'MaritalStatus' in i:
                     feat_cat.loc[i] = 'cat_5'
+                else:
+                    feat_cat.loc[i] = 'non'
         elif self.name == 'bank':
             for i in feat_list:
                 if 'Job' in i:
@@ -799,6 +862,42 @@ class Dataset:
                     feat_cat.loc[i] = 'cat_6'
                 elif 'Miglitol' in i:
                     feat_cat.loc[i] = 'cat_7'
+                else:
+                    feat_cat.loc[i] = 'non'
+        elif self.name == 'student':
+            for i in feat_list:
+                if 'MotherJob' in i:
+                    feat_cat.loc[i] = 'cat_0'
+                elif 'FatherJob' in i:
+                    feat_cat.loc[i] = 'cat_1'
+                elif 'SchoolReason' in i:
+                    feat_cat.loc[i] = 'cat_2'
+                else:
+                    feat_cat.loc[i] = 'non'
+        elif self.name == 'oulad':
+            for i in feat_list:
+                if 'Region' in i:
+                    feat_cat.loc[i] = 'cat_0'
+                elif 'CodeModule' in i:
+                    feat_cat.loc[i] = 'cat_1'
+                elif 'CodePresentation' in i:
+                    feat_cat.loc[i] = 'cat_2'
+                elif 'HighestEducation' in i:
+                    feat_cat.loc[i] = 'cat_3'
+                elif 'IMDBand' in i:
+                    feat_cat.loc[i] = 'cat_4'
+                else:
+                    feat_cat.loc[i] = 'non'    
+        elif self.name == 'law':
+            for i in feat_list:
+                if 'FamilyIncome' in i:   
+                    feat_cat.loc[i] = 'cat_0'
+                elif 'Tier' in i:
+                    feat_cat.loc[i] = 'cat_1'
+                elif 'Race' in i:
+                    feat_cat.loc[i] = 'cat_2'
+                else:
+                    feat_cat.loc[i] = 'non'    
         return feat_cat
 
 class Model:
@@ -818,11 +917,10 @@ class Model:
         self.jce_sel, self.jce_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.jce_train_pd,data_obj.train_target)
         # self.carla_sel, self.carla_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.carla_train_pd,data_obj.train_target)
 
-def erase_missing(data,data_str):
+def erase_missing(data):
     """
     Function that eliminates instances with missing values
     Input data: The dataset of interest
-    Input data_str: Name of the dataset
     Output data: Filtered dataset without points with missing values
     """
     data = data.replace({'?':np.nan})
@@ -1105,14 +1203,14 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[processed_df['Occupation'] == 'Other','Occupation'] = 5
         processed_df.loc[processed_df['Label'] == ' - 50000.','Label'] = int(0)
         processed_df.loc[processed_df['Label'] == ' 50000+.','Label'] = int(1)
-        processed_df['Label']=processed_df['Label'].astype('int')
+        processed_df['Label']=processed_df['Label'].astype(int)
     elif data_str == 'german':
         binary = ['Sex','Single','Unemployed']
         categorical = ['PurposeOfLoan','InstallmentRate','Housing']
         numerical = ['Age','Credit','LoanDuration']
         label = ['Label']
         mace_cols = []
-        carla_categorical = ['Sex']
+        carla_categorical = ['Sex','Single','Unemployed','PurposeOfLoan','InstallmentRate','Housing']
         carla_continuous = ['Age','Credit','LoanDuration']
         cols = binary + numerical + categorical + label
         processed_df = pd.DataFrame()
@@ -1151,8 +1249,8 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         numerical = ['Age','EducationLevel']
         label = ['Occupation']
         mace_cols = []
-        carla_categorical = ['Sex','HouseholdPosition','HouseholdSize','Country','EconomicStatus','CurEcoActivity','MaritalStatus','AgeGroup','EducationLevel']
-        carla_continuous = []
+        carla_categorical = ['Sex','HouseholdPosition','HouseholdSize','Country','EconomicStatus','CurEcoActivity','MaritalStatus','EducationLevel']
+        carla_continuous = ['Age']
         cols = binary + numerical + categorical + label
         raw_df = pd.read_csv(dataset_dir+'/dutch/dutch.txt')
         processed_df = raw_df[cols]
@@ -1188,8 +1286,18 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[processed_df['Occupation'] == '5_4_9','Occupation'] = int(1)
         processed_df.loc[processed_df['Occupation'] == '2_1','Occupation'] = int(0)
         processed_df['Occupation']=processed_df['Occupation'].astype('int')
-        processed_df.rename({'Age': 'AgeGroup'}, inplace=True, axis=1)
-        numerical = ['AgeGroup','EducationLevel']
+        processed_df.loc[processed_df['Age'] == 4,'Age'] = 15
+        processed_df.loc[processed_df['Age'] == 5,'Age'] = 16
+        processed_df.loc[processed_df['Age'] == 6,'Age'] = 18
+        processed_df.loc[processed_df['Age'] == 7,'Age'] = 21
+        processed_df.loc[processed_df['Age'] == 8,'Age'] = 22
+        processed_df.loc[processed_df['Age'] == 9,'Age'] = 27
+        processed_df.loc[processed_df['Age'] == 10,'Age'] = 32
+        processed_df.loc[processed_df['Age'] == 11,'Age'] = 37
+        processed_df.loc[processed_df['Age'] == 12,'Age'] = 42
+        processed_df.loc[processed_df['Age'] == 13,'Age'] = 47
+        processed_df.loc[processed_df['Age'] == 14,'Age'] = 52
+        processed_df.loc[processed_df['Age'] == 15,'Age'] = 59
     elif data_str == 'bank':
         binary = ['Default','Housing','Loan']
         categorical = ['Job','MaritalStatus','Education','Contact','Month','Poutcome']
@@ -1261,10 +1369,10 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
                 'MostRecentPaymentAmount','TotalOverdueCounts','TotalMonthsOverdue','AgeGroup','EducationLevel']
         label = ['NoDefaultNextMonth (label)']
         mace_cols = ['AgeGroup','EducationLevel']
-        carla_categorical = ['isMale','isMarried','HasHistoryOfOverduePayments']
+        carla_categorical = ['isMale','isMarried','HasHistoryOfOverduePayments','AgeGroup','EducationLevel']
         carla_continuous = ['MaxBillAmountOverLast6Months','MaxPaymentAmountOverLast6Months','MonthsWithZeroBalanceOverLast6Months',
                 'MonthsWithLowSpendingOverLast6Months','MonthsWithHighSpendingOverLast6Months','MostRecentBillAmount',
-                'MostRecentPaymentAmount','TotalOverdueCounts','TotalMonthsOverdue','AgeGroup','EducationLevel']
+                'MostRecentPaymentAmount','TotalOverdueCounts','TotalMonthsOverdue']
         processed_df = pd.read_csv(dataset_dir + '/credit/credit_processed.csv') # Obtained from MACE algorithm Datasets (please, see: https://github.com/amirhk/mace)
     elif data_str == 'compass':
         processed_df = pd.DataFrame()
@@ -1371,21 +1479,164 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[raw_df['readmitted'] == '<30','Label'] = 0
         processed_df.loc[raw_df['readmitted'] == '>30','Label'] = 1
     elif data_str == 'student':
-        binary = ['Position','Race']
-        categorical = []
-        numerical = ['Oral','Written','Combine']
-        label = ['Promoted']
+        binary = ['School','Sex','AgeGroup','Address','FamilySize','ParentStatus','SchoolSupport','FamilySupport','ExtraPaid','ExtraActivities','Nursery','HigherEdu','Internet','Romantic']
+        categorical = ['MotherJob','FatherJob','SchoolReason']
+        numerical = ['MotherEducation','FatherEducation','TravelTime','ClassFailures','GoOut']
+        label = ['Grade']
         mace_cols = []
+        carla_categorical = binary + categorical
+        carla_continuous = ['MotherEducation','FatherEducation','TravelTime','ClassFailures','GoOut']
+        cols = binary + numerical + categorical + label
         raw_df = pd.read_csv(dataset_dir+'student/student.csv',sep=';')
-        carla_categorical = ['Position','Race']
-        carla_continuous = ['Oral','Written','Combine']
+        processed_df = pd.DataFrame(index=raw_df.index)
+        processed_df.loc[raw_df['age'] < 18,'AgeGroup'] = 1
+        processed_df.loc[raw_df['age'] >= 18,'AgeGroup'] = 2
+        processed_df.loc[raw_df['school'] == 'GP','School'] = 1
+        processed_df.loc[raw_df['school'] == 'MS','School'] = 2
+        processed_df.loc[raw_df['sex'] == 'Male','Sex'] = 1
+        processed_df.loc[raw_df['sex'] == 'Female','Sex'] = 2
+        processed_df.loc[raw_df['address'] == 'U','Address'] = 1
+        processed_df.loc[raw_df['address'] == 'R','address'] = 2
+        processed_df.loc[raw_df['famsize'] == 'LE3','FamilySize'] = 1
+        processed_df.loc[raw_df['famsize'] == 'GT3','FamilySize'] = 2
+        processed_df.loc[raw_df['Pstatus'] == 'T','ParentStatus'] = 1
+        processed_df.loc[raw_df['Pstatus'] == 'A','ParentStatus'] = 2
+        processed_df.loc[raw_df['schoolsup'] == 'yes','SchoolSupport'] = 1
+        processed_df.loc[raw_df['schoolsup'] == 'no','SchoolSupport'] = 2
+        processed_df.loc[raw_df['famsup'] == 'yes','FamilySupport'] = 1
+        processed_df.loc[raw_df['famsup'] == 'no','FamilySupport'] = 2
+        processed_df.loc[raw_df['paid'] == 'yes','ExtraPaid'] = 1
+        processed_df.loc[raw_df['paid'] == 'no','ExtraPaid'] = 2
+        processed_df.loc[raw_df['activities'] == 'yes','ExtraActivities'] = 1
+        processed_df.loc[raw_df['activities'] == 'no','ExtraActivities'] = 2
+        processed_df.loc[raw_df['nursery'] == 'yes','Nursery'] = 1
+        processed_df.loc[raw_df['nursery'] == 'no','Nursery'] = 2
+        processed_df.loc[raw_df['higher'] == 'yes','HigherEdu'] = 1
+        processed_df.loc[raw_df['higher'] == 'no','HigherEdu'] = 2
+        processed_df.loc[raw_df['internet'] == 'yes','Internet'] = 1
+        processed_df.loc[raw_df['internet'] == 'no','Internet'] = 2
+        processed_df.loc[raw_df['romantic'] == 'yes','Romantic'] = 1
+        processed_df.loc[raw_df['romantic'] == 'no','Romantic'] = 2
+        processed_df.loc[raw_df['Medu'] == 0,'MotherEducation'] = 1
+        processed_df.loc[raw_df['Medu'] == 1,'MotherEducation'] = 2
+        processed_df.loc[raw_df['Medu'] == 2,'MotherEducation'] = 3
+        processed_df.loc[raw_df['Medu'] == 3,'MotherEducation'] = 4
+        processed_df.loc[raw_df['Medu'] == 4,'MotherEducation'] = 5
+        processed_df.loc[raw_df['Fedu'] == 0,'FatherEducation'] = 1
+        processed_df.loc[raw_df['Fedu'] == 1,'FatherEducation'] = 2
+        processed_df.loc[raw_df['Fedu'] == 2,'FatherEducation'] = 3
+        processed_df.loc[raw_df['Fedu'] == 3,'FatherEducation'] = 4
+        processed_df.loc[raw_df['Fedu'] == 4,'FatherEducation'] = 5
+        processed_df.loc[raw_df['Mjob'] == 'at_home','MotherJob'] = 1
+        processed_df.loc[raw_df['Mjob'] == 'health','MotherJob'] = 2
+        processed_df.loc[raw_df['Mjob'] == 'services','MotherJob'] = 3
+        processed_df.loc[raw_df['Mjob'] == 'teacher','MotherJob'] = 4
+        processed_df.loc[raw_df['Mjob'] == 'other','MotherJob'] = 5
+        processed_df.loc[raw_df['Fjob'] == 'at_home','FatherJob'] = 1
+        processed_df.loc[raw_df['Fjob'] == 'health','FatherJob'] = 2
+        processed_df.loc[raw_df['Fjob'] == 'services','FatherJob'] = 3
+        processed_df.loc[raw_df['Fjob'] == 'teacher','FatherJob'] = 4
+        processed_df.loc[raw_df['Fjob'] == 'other','FatherJob'] = 5
+        processed_df.loc[raw_df['reason'] == 'course','SchoolReason'] = 1
+        processed_df.loc[raw_df['reason'] == 'home','SchoolReason'] = 2
+        processed_df.loc[raw_df['reason'] == 'reputation','SchoolReason'] = 3
+        processed_df.loc[raw_df['reason'] == 'other','SchoolReason'] = 4
+        processed_df['TravelTime'] = raw_df['traveltime'].astype('int')
+        processed_df['Failures'] = raw_df['failures'].astype('int')
+        processed_df['GoOut'] = raw_df['goout'].astype('int')
+        processed_df.loc[raw_df['G3'] < 10,'Grade'] = int(0)
+        processed_df.loc[raw_df['G3'] >= 10,'Grade'] = int(1)
+    elif data_str == 'oulad':
+        binary = ['Sex','Disability']
+        categorical = ['Region','CodeModule','CodePresentation','HighestEducation','IMDBand']
+        numerical = ['NumPrevAttempts','StudiedCredits','AgeGroup']
+        label = ['Grade']
+        carla_categorical = binary + categorical + ['AgeGroup']
+        carla_continuous = ['NumPrevAttempts','StudiedCredits']
+        mace_cols = []
+        cols = binary + numerical + categorical + label
+        raw_df = pd.read_csv(dataset_dir+'oulad/oulad.csv')
+        raw_df = erase_missing(raw_df)
+        processed_df = pd.DataFrame(index = raw_df.index)
+        processed_df.loc[raw_df['gender'] == 'M','Sex'] = 1
+        processed_df.loc[raw_df['gender'] == 'F','Sex'] = 2
+        processed_df.loc[raw_df['disability'] == 'N','Disability'] = 1
+        processed_df.loc[raw_df['disability'] == 'Y','Disability'] = 2
+        processed_df.loc[raw_df['region'] == 'East Anglian Region','Region'] = 1
+        processed_df.loc[raw_df['region'] == 'Scotland','Region'] = 2
+        processed_df.loc[raw_df['region'] == 'North Western Region','Region'] = 3
+        processed_df.loc[raw_df['region'] == 'South East Region','Region'] = 4
+        processed_df.loc[raw_df['region'] == 'West Midlands Region','Region'] = 5
+        processed_df.loc[raw_df['region'] == 'Wales','Region'] = 6
+        processed_df.loc[raw_df['region'] == 'North Region','Region'] = 7
+        processed_df.loc[raw_df['region'] == 'South Region','Region'] = 8
+        processed_df.loc[raw_df['region'] == 'Ireland','Region'] = 9
+        processed_df.loc[raw_df['region'] == 'South West Region','Region'] = 10
+        processed_df.loc[raw_df['region'] == 'East Midlands Region','Region'] = 11
+        processed_df.loc[raw_df['region'] == 'Yorkshire Region','Region'] = 12
+        processed_df.loc[raw_df['region'] == 'London Region','Region'] = 13
+        processed_df.loc[raw_df['code_module'] == 'AAA','CodeModule'] = 1
+        processed_df.loc[raw_df['code_module'] == 'BBB','CodeModule'] = 2
+        processed_df.loc[raw_df['code_module'] == 'CCC','CodeModule'] = 3
+        processed_df.loc[raw_df['code_module'] == 'DDD','CodeModule'] = 4
+        processed_df.loc[raw_df['code_module'] == 'EEE','CodeModule'] = 5
+        processed_df.loc[raw_df['code_module'] == 'FFF','CodeModule'] = 6
+        processed_df.loc[raw_df['code_module'] == 'GGG','CodeModule'] = 7
+        processed_df.loc[raw_df['code_presentation'] == '2013J','CodePresentation'] = 1
+        processed_df.loc[raw_df['code_presentation'] == '2014J','CodePresentation'] = 2
+        processed_df.loc[raw_df['code_presentation'] == '2013B','CodePresentation'] = 3
+        processed_df.loc[raw_df['code_presentation'] == '2014B','CodePresentation'] = 4
+        processed_df.loc[raw_df['highest_education'] == 'No Formal quals','HighestEducation'] = 1
+        processed_df.loc[raw_df['highest_education'] == 'Post Graduate Qualification','HighestEducation'] = 2
+        processed_df.loc[raw_df['highest_education'] == 'Lower Than A Level','HighestEducation'] = 3
+        processed_df.loc[raw_df['highest_education'] == 'A Level or Equivalent','HighestEducation'] = 4
+        processed_df.loc[raw_df['highest_education'] == 'HE Qualification','HighestEducation'] = 5
+        processed_df.loc[(raw_df['imd_band'] == '0-10%') | (raw_df['imd_band'] == '10-20'),'IMDBand'] = 1
+        processed_df.loc[(raw_df['imd_band'] == '20-30%') | (raw_df['imd_band'] == '30-40%'),'IMDBand'] = 2
+        processed_df.loc[(raw_df['imd_band'] == '40-50%') | (raw_df['imd_band'] == '50-60%'),'IMDBand'] = 3
+        processed_df.loc[(raw_df['imd_band'] == '60-70%') | (raw_df['imd_band'] == '70-80%'),'IMDBand'] = 4
+        processed_df.loc[(raw_df['imd_band'] == '80-90%') | (raw_df['imd_band'] == '90-100%'),'IMDBand'] = 5
+        processed_df.loc[raw_df['age_band'] == '0-35','AgeGorup'] = 1
+        processed_df.loc[raw_df['age_band'] == '35-55','AgeGorup'] = 2
+        processed_df.loc[raw_df['age_band'] == '55<=','AgeGorup'] = 3
+        processed_df['NumPrevAttempts'] = raw_df['num_of_prev_attempts'].astype(int)
+        processed_df['StudiedCredits'] = raw_df['studied_credits'].astype(int)
+        processed_df.loc[raw_df['final_result'] == 'Fail','Grade'] = int(0)
+        processed_df.loc[raw_df['final_result'] == 'Withdrawn','Grade'] = int(0)
+        processed_df.loc[raw_df['final_result'] == 'Pass','Grade'] = int(1)
+        processed_df.loc[raw_df['final_result'] == 'Distinction','Grade'] = int(1)
+    elif data_str == 'law':
+        binary = ['WorkFullTime','Sex']
+        categorical = ['FamilyIncome','Tier','Race']
+        numerical = ['Decile1stYear','Decile3rdYear','LSAT','UndergradGPA','FirstYearGPA','CumulativeGPA']
+        label = ['BarExam']
+        carla_categorical = binary + categorical
+        carla_continuous = numerical
+        mace_cols = []
+        cols = binary + numerical + categorical + label
+        raw_df = pd.read_csv(dataset_dir+'law/law.csv')
+        raw_df = erase_missing(raw_df)
+        processed_df = pd.DataFrame(index = raw_df.index)
+        processed_df['Decile1stYear'] = raw_df['decile1b'].astype(int)
+        processed_df['Decile3rdYear'] = raw_df['decile3'].astype(int)
+        processed_df['LSAT'] = raw_df['lsat']
+        processed_df['UndergradGPA'] = raw_df['ugpa']
+        processed_df['FirstYearGPA'] = raw_df['zfygpa']
+        processed_df['CumulativeGPA'] = raw_df['zgpa']
+        processed_df['WorkFullTime'] = raw_df['fulltime'].astype(int)
+        processed_df['FamilyIncome'] = raw_df['fam_inc'].astype(int)
+        processed_df[raw_df['male'] == 0.0,'Sex'] = 2
+        processed_df[raw_df['male'] == 1.0,'Sex'] = 1
+        processed_df['Tier'] = raw_df['tier'].astype(int)
+        processed_df['Race'] = raw_df['race'].astype(int)
+        processed_df[(raw_df['race'] == 1.0) | (raw_df['race'] == 2.0) | (raw_df['race'] == 3.0) | (raw_df['race'] == 4.0) | (raw_df['race'] == 5.0) | (raw_df['race'] == 6.0) | (raw_df['race'] == 8.0),'Race'] = 2
+        processed_df[raw_df['race'] == 7.0,'Race'] = 1
+        processed_df['BarExam'] = raw_df['pass_bar'].astype(int)
 
-
-  
-        
     data_obj = Dataset(seed,train_fraction,data_str,label,
                  processed_df,binary,categorical,numerical,step,
                  mace_cols,carla_categorical,carla_continuous)
+    
     if path_here is not None:
         model_obj = Model(data_obj,path_here)
         data_obj.filter_undesired_class(model_obj,mace_prediction_consideration=False)

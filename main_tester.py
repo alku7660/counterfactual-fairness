@@ -36,7 +36,7 @@ def load_obj(file_name):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-datasets = ['diabetes'] # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass']
+datasets = ['adult','kdd_census','german','dutch','bank','credit','compass'] # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass']
 models_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -46,15 +46,15 @@ epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feat
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 perc = 1             # Percentage of test samples to consider for the counterfactuals search
-instances_per_protected_class = 30
+instances_per_protected_class = 2
 
 np.random.seed(seed_int)
 
 for data_str in datasets:
 
     data, model = load_model_dataset(data_str,train_fraction,seed_int,step,path_here)
-    # carla_data = MyOwnDataSet(data)
-    # carla_model = MyOwnModel(carla_data,data,model)
+    carla_data = MyOwnDataSet(data)
+    carla_model = MyOwnModel(carla_data,data,model)
     cf_evaluator = Evaluator(data,n_feat,models_to_run)
 
     print(f'---------------------------------------')  
@@ -63,8 +63,8 @@ for data_str in datasets:
     print(f'         Test dataset shape: {data.test_undesired_pd.shape}')
     print(f'   JCE model train accuracy: {np.round_(model.jce_sel.score(data.jce_train_pd,data.train_target),2)}')
     print(f'    JCE model test accuracy: {np.round_(model.jce_sel.score(data.jce_test_undesired_pd,data.test_undesired_target),2)}')
-    # print(f' CARLA model train accuracy: {np.round_(carla_model._mymodel.score(data.carla_train_pd,data.train_target),2)}')
-    # print(f'  CARLA model test accuracy: {np.round_(carla_model._mymodel.score(data.carla_test_pd,data.test_target),2)}')
+    print(f' CARLA model train accuracy: {np.round_(carla_model._mymodel.score(data.carla_train_pd,data.train_target),2)}')
+    print(f'  CARLA model test accuracy: {np.round_(carla_model._mymodel.score(data.carla_test_pd,data.test_target),2)}')
     print(f'---------------------------------------')
 
     save_obj(model,data_str+'_model.pkl')
@@ -105,7 +105,7 @@ for data_str in datasets:
                 x_label = model.jce_sel.predict(x_jce_np.reshape(1,-1))
                 data.add_sorted_train_data(x_jce_pd)
                 cf_evaluator.add_specific_x_data(idx,x_jce_np,x_test_pd,x_label,x_target,data)
-                cf_evaluator.evaluate_cf_models(x_jce_np,x_label,data,model,epsilon_ft)
+                cf_evaluator.evaluate_cf_models(x_jce_np,x_label,data,model,epsilon_ft,carla_model,x_carla_pd)
                 # if 'nn' in models_to_run:
                 #     nn_cf, nn_time = nn(x_jce_np,x_label,data)
                 #     cf_evaluator.add_specific_cf_data(data,'nn',nn_cf,nn_time,model.jce_sel,nn_cf,1,1)

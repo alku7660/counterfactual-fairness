@@ -24,41 +24,41 @@ class MyOwnDataSet(Data):
     # should not be changed by the recourse method
     @property
     def immutables(self):
-        if self._name == 'synthetic_disease':
-            immutable = ['Age']
-        elif self._name == 'synthetic_simple':
-            immutable = ['x2']
-        elif self._name == 'ionosphere':
-            immutable = ['0']
-        elif self._name == 'compass':
-            immutable = ['Race','Sex','AgeGroup']
+        if self._name == 'adult':
+            immutables = ['Sex','Race','AgeGroup']
+        elif self._name == 'kdd_census' or self._name == 'compass' or self._name == 'law':
+            immutables = ['Sex','Race']
+        elif self._name == 'german' or self._name == 'dutch' or self._name == 'diabetes' or self._name == 'oulad':
+            immutables = ['Sex']
+        elif self._name == 'bank':
+            immutables = ['AgeGroup','MaritalStatus']
         elif self._name == 'credit':
-            immutable = ['isMale','AgeGroup']
-        elif self._name == 'adult':
-            immutable = ['Sex','Age','NativeCountry']
-        elif self._name in ['german','heart','synthetic_athlete']:
-            immutable = ['Age','Sex']
-        elif self._name == 'cervical':
-            immutable = ['Age','First sexual intercourse','Smokes (years)','Hormonal Contraceptives (years)','IUD (years)']
-        return immutable
+            immutables = ['isMale','isMarried','EducationLevel']
+        elif self._name == 'student':
+            immutables = ['Sex','AgeGroup']
+        return immutables
 
     # Feature name of the target column
     @property
     def target(self):
-        if self._name in ['synthetic_simple','adult','ionosphere']:
+        if self._name == 'adult':
             label = 'label'
-        elif self._name in ['synthetic_disease','synthetic_athlete']:
+        elif self._name == 'kdd_census' or self._name == 'german' or self._name == 'diabetes':
             label = 'Label'
-        elif self._name == 'compass':
-            label = 'TwoYearRecid (label)'
+        elif self._name == 'dutch':
+            label = 'Occupation'
+        elif self._name == 'bank':
+            label = 'Subscribed'
         elif self._name == 'credit':
             label = 'NoDefaultNextMonth (label)'
+        elif self._name == 'compass':
+            label = 'TwoYearRecid (label)'
         elif self._name == 'german':
             label = 'GoodCustomer (label)'
-        elif self._name == 'heart':
-            label = 'class'
-        elif self._name == 'cervical':
-            label = 'Biopsy'
+        elif self._name == 'student' or self._name == 'oulad':
+            label = 'Grade'
+        elif self._name == 'law':
+            label = 'BarExam'
         return label
 
     # Non-encoded and  non-normalized, raw data set
