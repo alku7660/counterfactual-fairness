@@ -455,8 +455,10 @@ class Dataset:
             for i in feat_list:
                 if 'Sex' in i or 'HouseholdPosition' in i or 'HouseholdSize' in i or 'Country' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i:
                     feat_type_out.loc[i] = 'bin'
-                elif 'AgeGroup' in i or 'EducationLevel' in i:
+                elif 'EducationLevel' in i:
                     feat_type_out.loc[i] = 'num-ord'
+                elif 'Age' in i:
+                    feat_type_out.loc[i] = 'num-con'
         elif self.name == 'bank':
             for i in feat_list:
                 if 'Default' in i or 'Housing' in i or 'Loan' in i or 'Job' in i or 'MaritalStatus' in i or 'Education' in i or 'Contact' in i or 'Month' in i or 'Poutcome' in i:
@@ -915,7 +917,7 @@ class Model:
         grid_search_results = pd.read_csv(str(self.model_params_path)+'/Results/grid_search/grid_search_final.csv',index_col = ['dataset','model'])
         sel_model_str, params_best, params_rf = best_model_params(grid_search_results,data_obj.name)
         self.jce_sel, self.jce_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.jce_train_pd,data_obj.train_target)
-        # self.carla_sel, self.carla_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.carla_train_pd,data_obj.train_target)
+        self.carla_sel, self.carla_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.carla_train_pd,data_obj.train_target)
 
 def erase_missing(data):
     """
@@ -1018,7 +1020,6 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
                 attrs_to_vals[k] = []
         for file_name in data_files:
             full_file_name = os.path.join(this_files_directory, file_name)
-            print(full_file_name)
             for line in open(full_file_name):
                 line = line.strip()
                 if line == "":
@@ -1427,7 +1428,7 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
                           'change','admission_type_id','discharge_disposition_id','admission_source_id','num_lab_procedures',
                           'number_outpatient','number_inpatient','number_diagnoses']
         raw_df.drop(cols_to_delete, inplace=True, axis=1)
-        raw_df = erase_missing(raw_df,data_str)
+        raw_df = erase_missing(raw_df)
         raw_df = raw_df[raw_df['readmitted'] != 'NO']
         processed_df = pd.DataFrame(index=raw_df.index)
         processed_df.loc[raw_df['race'] == 'Caucasian','Race'] = 1
@@ -1542,7 +1543,7 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[raw_df['reason'] == 'reputation','SchoolReason'] = 3
         processed_df.loc[raw_df['reason'] == 'other','SchoolReason'] = 4
         processed_df['TravelTime'] = raw_df['traveltime'].astype('int')
-        processed_df['Failures'] = raw_df['failures'].astype('int')
+        processed_df['ClassFailures'] = raw_df['failures'].astype('int')
         processed_df['GoOut'] = raw_df['goout'].astype('int')
         processed_df.loc[raw_df['G3'] < 10,'Grade'] = int(0)
         processed_df.loc[raw_df['G3'] >= 10,'Grade'] = int(1)
@@ -1596,9 +1597,9 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[(raw_df['imd_band'] == '40-50%') | (raw_df['imd_band'] == '50-60%'),'IMDBand'] = 3
         processed_df.loc[(raw_df['imd_band'] == '60-70%') | (raw_df['imd_band'] == '70-80%'),'IMDBand'] = 4
         processed_df.loc[(raw_df['imd_band'] == '80-90%') | (raw_df['imd_band'] == '90-100%'),'IMDBand'] = 5
-        processed_df.loc[raw_df['age_band'] == '0-35','AgeGorup'] = 1
-        processed_df.loc[raw_df['age_band'] == '35-55','AgeGorup'] = 2
-        processed_df.loc[raw_df['age_band'] == '55<=','AgeGorup'] = 3
+        processed_df.loc[raw_df['age_band'] == '0-35','AgeGroup'] = 1
+        processed_df.loc[raw_df['age_band'] == '35-55','AgeGroup'] = 2
+        processed_df.loc[raw_df['age_band'] == '55<=','AgeGroup'] = 3
         processed_df['NumPrevAttempts'] = raw_df['num_of_prev_attempts'].astype(int)
         processed_df['StudiedCredits'] = raw_df['studied_credits'].astype(int)
         processed_df.loc[raw_df['final_result'] == 'Fail','Grade'] = int(0)
@@ -1625,12 +1626,12 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df['CumulativeGPA'] = raw_df['zgpa']
         processed_df['WorkFullTime'] = raw_df['fulltime'].astype(int)
         processed_df['FamilyIncome'] = raw_df['fam_inc'].astype(int)
-        processed_df[raw_df['male'] == 0.0,'Sex'] = 2
-        processed_df[raw_df['male'] == 1.0,'Sex'] = 1
+        processed_df.loc[raw_df['male'] == 0.0,'Sex'] = 2
+        processed_df.loc[raw_df['male'] == 1.0,'Sex'] = 1
         processed_df['Tier'] = raw_df['tier'].astype(int)
         processed_df['Race'] = raw_df['race'].astype(int)
-        processed_df[(raw_df['race'] == 1.0) | (raw_df['race'] == 2.0) | (raw_df['race'] == 3.0) | (raw_df['race'] == 4.0) | (raw_df['race'] == 5.0) | (raw_df['race'] == 6.0) | (raw_df['race'] == 8.0),'Race'] = 2
-        processed_df[raw_df['race'] == 7.0,'Race'] = 1
+        processed_df.loc[(raw_df['race'] == 1.0) | (raw_df['race'] == 2.0) | (raw_df['race'] == 3.0) | (raw_df['race'] == 4.0) | (raw_df['race'] == 5.0) | (raw_df['race'] == 6.0) | (raw_df['race'] == 8.0),'Race'] = 2
+        processed_df.loc[raw_df['race'] == 7.0,'Race'] = 1
         processed_df['BarExam'] = raw_df['pass_bar'].astype(int)
 
     data_obj = Dataset(seed,train_fraction,data_str,label,

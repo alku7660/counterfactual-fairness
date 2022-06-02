@@ -15,10 +15,14 @@ from mo import min_obs
 from ft import feat_tweak
 from rt import rf_tweak
 from juice import JUICE
+from cchvae_cf import cchvae_function
+from face_cf import face_function
+from gs_cf import gs_function
+from dice_cf import dice_function
 import time
 import copy
 from carla import DataCatalog, MLModelCatalog
-from carla.recourse_methods import Face, Dice, CCHVAE, GrowingSpheres
+from carla.recourse_methods import Face, Dice, GrowingSpheres
 import tensorflow as tf
 from carla_adapter import MyOwnDataSet, MyOwnModel
 
@@ -194,10 +198,10 @@ class Evaluator():
         """
         Method that adds the fairness metrics Statistical Parity and Equalized Odds
         """
-        stat_proba = self.statistical_parity_proba(data_obj, model)
-        odds_proba = self.equalized_odds_proba(data_obj, model)
-        self.stat_parity = self.statistical_parity_eval(stat_proba)
-        self.eq_odds = self.equalized_odds_eval(odds_proba)
+        stat_proba, stat_length = self.statistical_parity_proba(data_obj, model)
+        odds_proba, odds_length = self.equalized_odds_proba(data_obj, model)
+        self.stat_parity = self.statistical_parity_eval(stat_proba, stat_length)
+        self.eq_odds = self.equalized_odds_eval(odds_proba, odds_length)
 
     def add_specific_x_data(self,idx,x,original_x,x_label,x_target,data_obj):
         """
@@ -387,33 +391,17 @@ class Evaluator():
                 cf, run_time = feat_tweak(x_jce_np,model.jce_rf,epsilon_ft)
             elif 'rt' in model_str:
                 cf, run_time = rf_tweak(x_jce_np,x_label,model.jce_rf,data,True,mutability_check)
+            elif 'cchvae' in model_str:
+                cf, run_time = cchvae_function(data, carla_model, x_carla_pd)
+            elif 'face' in model_str:
+                cf, run_time = face_function(data, carla_model, x_carla_pd)
+            elif 'gs' in model_str:
+                cf, run_time = gs_function(data, carla_model, x_carla_pd)
+            elif 'dice' in model_str:
+                cf, run_time = dice_function(data, carla_model, x_carla_pd)
             elif 'juice' in model_str:
                 results = JUICE(x_jce_np,x_label,data,model.jce_sel,'proximity',mutability_check)
                 cf, run_time = results[0], results[4]
-            elif 'cchvae' in model_str:
-                data_with_target = copy.deepcopy(data.train_pd)
-                data_with_target[data.label_str[0]] = data.train_target
-                start_time = time.time()
-                dict_cchvae = {'data_name': data.name,'p_norm':2,'vae_params':{'layers':[len(carla_model.feature_input_order),int(len(carla_model.feature_input_order)/2)]}}
-                cchvae_model = CCHVAE(carla_model, dict_cchvae, data_with_target)
-                cf_pd = cchvae_model.get_counterfactuals(x_carla_pd)
-                if isinstance(cf_pd, pd.Series) or isinstance(cf_pd, pd.DataFrame):
-                    if cf_pd.isnull().values.any():
-                        cf = None
-                        print(f'CCHVAE: Could not find feasible CF!')
-                    else:
-                        cf_pd = data.from_carla_to_jce(cf_pd)
-                        cf = np.array(cf_pd)[0]
-                elif cf_pd is None:
-                    cf = None
-                    print(f'CCHVAE: Could not find feasible CF!')
-                elif cf_pd is not None:
-                    if np.isnan(np.sum(cf_pd)):
-                        cf = None
-                        cf_pd = None
-                        print(f'CCHVAE: Could not find feasible CF!')
-                end_time = time.time() 
-                run_time = end_time - start_time
             print(f'  {model_str} (time (s): {np.round_(run_time,2)})')
             print(f'---------------------------')
             self.add_specific_cf_data(data,model_str,cf,run_time,model)
