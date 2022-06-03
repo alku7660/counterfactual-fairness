@@ -13,11 +13,11 @@ from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 from matplotlib import cm
 
-def load_obj(file_name):
+def load_obj(file_name, study_str, file):
     """
     Method to read an Evaluator object containing the evaluation results for all the instances of a given dataset
     """
-    with open(results_cf_obj_dir+file_name+'_mutability_eval.pkl', 'rb') as input:
+    with open(results_cf_obj_dir+file_name+'_'+study_str+'_'+file+'.pkl', 'rb') as input:
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
@@ -103,7 +103,7 @@ def create_box_bar_plot_handles(feat, feat_unique_val, colors, protected_feat, l
         list_handles.extend([handle])
     return list_handles
 
-def create_acc_burden_handles(protected_feat_keys, colors):
+def create_metric_burden_handles(protected_feat_keys, colors):
     """
     Method that creates legend handles to print in the image
     """
@@ -211,7 +211,7 @@ def method_box_plot(datasets, methods_to_run, metric, colors):
     dataset_names = get_data_names(datasets)
     metric_names = get_metric_names([metric])
     for data_str in datasets:
-        eval_obj = load_obj(data_str)
+        eval_obj = load_obj(data_str, 'mutability', 'eval')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -252,7 +252,7 @@ def attainable_cf_plot(datasets, methods_to_run):
     methods_names = get_methods_names(methods_to_run)
     dataset_names = get_data_names(datasets)
     for data_str in datasets:
-        eval_obj = load_obj(data_str)
+        eval_obj = load_obj(data_str, 'mutability', 'eval')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -292,7 +292,7 @@ def feature_ratio_change_cf_plot(datasets, methods_to_run):
     methods_names = get_methods_names(methods_to_run)
     dataset_names = get_data_names(datasets)
     for data_str in datasets:
-        eval_obj = load_obj(data_str)
+        eval_obj = load_obj(data_str, 'mutability', 'eval')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -331,7 +331,7 @@ def accuracy_burden_plot(datasets, method, metric, colors):
     methods_names = get_methods_names([method])
     dataset_names = get_data_names(datasets)
     for data_str in datasets:
-        eval_obj = load_obj(data_str)
+        eval_obj = load_obj(data_str, 'mutability', 'eval')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -358,7 +358,7 @@ def accuracy_burden_plot(datasets, method, metric, colors):
                 ax.text(x=accuracy_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c,fc='none'),
                         s=f'{feat_val_name}', fontstyle='italic', color=c, size=9)
             ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
-        legend_handles = create_acc_burden_handles(protected_feat_keys, colors)
+        legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
         ax.set_ylim(y_max*(1.01),y_min*(0.99))
         ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
@@ -375,7 +375,7 @@ def statistical_parity_burden_plot(datasets, method, metric, colors):
     methods_names = get_methods_names([method])
     dataset_names = get_data_names(datasets)
     for data_str in datasets:
-        eval_obj = load_obj(data_str)
+        eval_obj = load_obj(data_str, 'mutability', 'eval')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -402,7 +402,7 @@ def statistical_parity_burden_plot(datasets, method, metric, colors):
                 ax.text(x=stat_parity_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c,fc='none'),
                         s=feat_val_name, fontstyle='italic', color=c, size=9)
             ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
-        legend_handles = create_acc_burden_handles(protected_feat_keys, colors)
+        legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
         ax.set_ylim(y_max*(1.01),y_min*(0.99))
         ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
@@ -419,7 +419,7 @@ def equalized_odds_burden_plot(datasets, method, metric, colors):
     methods_names = get_methods_names([method])
     dataset_names = get_data_names(datasets)
     for data_str in datasets:
-        eval_obj = load_obj(data_str)
+        eval_obj = load_obj(data_str, 'mutability', 'eval')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -446,7 +446,7 @@ def equalized_odds_burden_plot(datasets, method, metric, colors):
                 ax.text(x=stat_parity_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c,fc='none'),
                         s=feat_val_name, fontstyle='italic', color=c, size=9)
             ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
-        legend_handles = create_acc_burden_handles(protected_feat_keys, colors)
+        legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
         ax.set_ylim(y_max*(1.01),y_min*(0.99))
         ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
@@ -455,6 +455,60 @@ def equalized_odds_burden_plot(datasets, method, metric, colors):
         ax.legend(handles=legend_handles) #loc=(-0.1,-0.1*len(legend_elements))
         plt.tight_layout()
         plt.savefig(results_cf_plots_dir+f'{data_str}_eq_odds_burden_fairness.png',dpi=400)
+
+def false_negative_plot(datasets, method, metric, colors):
+    """
+    Method that obtains false negative rate plots for each sensitive feature
+    """
+    methods_names = get_methods_names([method])
+    dataset_names = get_data_names(datasets)
+    for data_str in datasets:
+        eval_obj = load_obj(data_str, 'fnr', 'eval')
+        data_obj = load_obj(data_str, 'fnr', 'data')
+        model_obj = load_obj(data_str, 'fnr', 'model')
+        eval_x_df = eval_obj.all_x_data
+        eval_cf_df = eval_obj.all_cf_data
+        protected_feat = eval_obj.feat_protected
+        protected_feat_keys = list(protected_feat.keys())
+        x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
+        desired_ground_truth_jce_test_pd = data_obj.jce_test_pd.loc[data_obj.test_target != data_obj.undesired_class]
+        desired_ground_truth_test_pd = data_obj.test_pd.loc[data_obj.test_target != data_obj.undesired_class]
+        desired_ground_truth_target = data_obj.test_target[data_obj.test_target != data_obj.undesired_class]
+        predicted_label_desired_ground_truth_jce_test_pd = model_obj.jce_sel.predict(desired_ground_truth_jce_test_pd)
+        false_undesired_jce_test_pd = desired_ground_truth_jce_test_pd.loc[predicted_label_desired_ground_truth_jce_test_pd == data_obj.undesired_class]
+        false_undesired_test_pd = desired_ground_truth_test_pd.loc[predicted_label_desired_ground_truth_jce_test_pd == data_obj.undesired_class]
+        false_undesired_target = desired_ground_truth_target[predicted_label_desired_ground_truth_jce_test_pd == data_obj.undesired_class]
+        fig, ax = plt.subplots(figsize=(8,6))
+        for prot_feat_idx in range(len(protected_feat_keys)):
+            feat = protected_feat_keys[prot_feat_idx]
+            feat_unique_val = desired_ground_truth_test_pd[feat].unique()
+            len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+            x_pos_list = []
+            mean_data_val_list = []
+            # std_data_val_list = []
+            for feat_idx in range(len(feat_unique_val)):
+                feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
+                total_ground_truth_feat_val = np.sum(desired_ground_truth_test_pd[feat] == feat_unique_val[feat_idx])
+                total_false_undesired_feat_val = np.sum(false_undesired_test_pd[feat] == feat_unique_val[feat_idx])
+                fnr_feat_val = total_false_undesired_feat_val/total_ground_truth_feat_val
+                x_pos_list.append(fnr_feat_val)
+                feat_method_data = cf_df[(cf_df['cf_method'] == method) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
+                feat_method_data_values = feat_method_data[metric].values
+                mean_data_val_list.append(np.mean(feat_method_data_values))
+                # std_data_val_list.append(np.std(feat_method_data_values,ddof=1))
+                c = colors[prot_feat_idx]
+                ax.text(x=fnr_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c,fc='none'),
+                        s=feat_val_name, fontstyle='italic', color=c, size=9)
+            ax.scatter(x=x_pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
+        legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
+        y_min, y_max = ax.get_ylim()
+        ax.set_ylim(y_max*(1.01),y_min*(0.99))
+        ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
+        ax.set_ylabel('Burden')
+        ax.set_xlabel('False Negative Ratio')
+        ax.legend(handles=legend_handles) #loc=(-0.1,-0.1*len(legend_elements))
+        plt.tight_layout()
+        plt.savefig(results_cf_plots_dir+f'{data_str}_fnr_burden_fairness.png',dpi=400)
 
 datasets = ['adult','kdd_census','german','dutch','bank','credit','compass']  # Name of the dataset to be analyzed ['adult','kdd_census','dutch','bank','compass']
 methods_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']

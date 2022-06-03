@@ -1494,8 +1494,8 @@ def load_model_dataset(data_str,train_fraction,seed,step,path_here = None):
         processed_df.loc[raw_df['age'] >= 18,'AgeGroup'] = 2
         processed_df.loc[raw_df['school'] == 'GP','School'] = 1
         processed_df.loc[raw_df['school'] == 'MS','School'] = 2
-        processed_df.loc[raw_df['sex'] == 'Male','Sex'] = 1
-        processed_df.loc[raw_df['sex'] == 'Female','Sex'] = 2
+        processed_df.loc[raw_df['sex'] == 'M','Sex'] = 1
+        processed_df.loc[raw_df['sex'] == 'F','Sex'] = 2
         processed_df.loc[raw_df['address'] == 'U','Address'] = 1
         processed_df.loc[raw_df['address'] == 'R','address'] = 2
         processed_df.loc[raw_df['famsize'] == 'LE3','FamilySize'] = 1
