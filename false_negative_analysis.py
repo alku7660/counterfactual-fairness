@@ -26,7 +26,7 @@ def load_obj(file_name):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-datasets = ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','oulad','law'] # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
+datasets = ['law'] # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
 models_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt','cchvae','face'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -35,7 +35,7 @@ k = 50                     # Number of training dataset neighbors to consider fo
 epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feature tweaking algorithm
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
-perc = 1                   # Percentage of false negative test samples to consider for the counterfactuals search
+perc = 0.2                  # Percentage of false negative test samples to consider for the counterfactuals search
 
 np.random.seed(seed_int)
 
@@ -67,7 +67,7 @@ for data_str in datasets:
     false_undesired_target = desired_ground_truth_target[predicted_label_desired_ground_truth_test_pd == data.undesired_class]
     for i in range(int(len(false_undesired_test_pd)*perc)):
         idx = false_undesired_test_pd.index.tolist()[i]
-        x_instance = false_undesired_test_pd.loc[idx].to_frame().T
+        x_instance = false_undesired_test_pd.loc[idx]
         x_target = false_undesired_target[i]
         print(f'---------------------------')
         print(f'     Dataset: {data_str}')
