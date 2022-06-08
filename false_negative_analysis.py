@@ -26,7 +26,7 @@ def load_obj(file_name):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-datasets = ['law'] # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
+datasets = ['adult'] # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
 models_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt','cchvae','face'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -56,8 +56,8 @@ for data_str in datasets:
     print(f'  CARLA model test accuracy: {np.round_(carla_model._mymodel.score(data.carla_test_pd,data.test_target),2)}')
     print(f'---------------------------------------')
 
-    save_obj(model,data_str+'_fnr_model.pkl')
-    save_obj(data,data_str+'_fnr_data.pkl')
+    # save_obj(model,data_str+'_fnr_model.pkl')
+    # save_obj(data,data_str+'_fnr_data.pkl')
     
     cf_evaluator.add_fairness_measures(data, model)
     desired_ground_truth_test_pd = data.jce_test_pd.loc[data.test_target != data.undesired_class]
@@ -79,7 +79,7 @@ for data_str in datasets:
         x_carla_pd = data.test_pd.loc[idx].to_frame().T
         x_label = model.jce_sel.predict(x_jce_np.reshape(1,-1))
         data.add_sorted_train_data(x_instance)
-        cf_evaluator.add_specific_x_data(idx,x_jce_np,x_instance,x_label,x_target,data)
+        cf_evaluator.add_specific_x_data(idx,x_jce_np,x_carla_pd,x_label,x_target,data)
         cf_evaluator.evaluate_cf_models(x_jce_np,x_label,data,model,epsilon_ft,carla_model,x_carla_pd)
                     
     print(f'---------------------------')

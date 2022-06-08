@@ -21,7 +21,7 @@ def load_obj(file_name, study_str, file):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-def extract_x_cd_df(eval_cf_df, eval_x_df, cf_metrics=None):
+def extract_x_cd_df(eval_cf_df, eval_x_df, cf_metrics=None, data_obj=None):
     """
     Method that joins accuracy, proximity and sparsity from the eval object and outputs the join as a single dataframe
     Input eval_cf_df: DataFrame with all CF
@@ -32,11 +32,14 @@ def extract_x_cd_df(eval_cf_df, eval_x_df, cf_metrics=None):
     full_df_cf_list = eval_cf_df['cf'].tolist()
     full_df_original_cf_list = eval_cf_df['original_cf'].tolist()
     full_df_x_list = eval_x_df['x'].tolist()
-    full_df_original_x_list = eval_x_df['original_x'].tolist()
     cf_df = pd.concat(full_df_cf_list)
     original_cf_df = pd.concat(full_df_original_cf_list)
     x_df = pd.concat(full_df_x_list)
-    original_x_df = pd.concat(full_df_original_x_list)
+    if data_obj is None:
+        full_df_x_original_list = eval_x_df['original_x'].tolist()
+        original_x_df = pd.concat(full_df_x_original_list)
+    else:
+        original_x_df = data_obj.test_pd.loc[x_df.index]
     if cf_metrics is not None:
         full_df_metrics = eval_cf_df[['cf_method','valid']+cf_metrics]
     else:
@@ -118,22 +121,31 @@ def get_data_names(datasets):
     """
     Method that gets the names of the datasets for plotting
     """
+    'adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law'
     data_dict = {}
     for i in datasets:
         if i == 'adult':
             data_dict[i] = 'Adult'
         elif i == 'kdd_census':
             data_dict[i] = 'Census'
-        elif i == 'dutch':
-            data_dict[i] = 'Dutch'
-        elif i == 'credit':
-            data_dict[i] = 'Credit'
         elif i == 'german':
             data_dict[i] = 'German'
+        elif i == 'dutch':
+            data_dict[i] = 'Dutch'
         elif i == 'bank':
             data_dict[i] = 'Bank'
+        elif i == 'credit':
+            data_dict[i] = 'Credit'
         elif i == 'compass':
             data_dict[i] = 'Compas'
+        elif i == 'diabetes':
+            data_dict[i] = 'Diabetes'
+        elif i == 'student':
+            data_dict[i] = 'Student'
+        elif i == 'oulad':
+            data_dict[i] = 'Oulad'
+        elif i == 'law':
+            data_dict[i] = 'Law'
     return data_dict
 
 def get_metric_names(metrics):
@@ -239,7 +251,7 @@ def method_box_plot(datasets, methods_to_run, metric, colors):
             ax.set_xticks(xaxis_pos_labels, labels=method_feat_labels)
             ax.set_xticklabels(method_feat_labels, rotation = 10, ha='center')
             ax.set_title(f'{dataset_names[data_str]} Dataset: {metric_names[metric]} by {feat}')
-            ax.set_ylabel('CF Distance to Instance of Interest (Euclidean)')
+            ax.set_ylabel('Burden (Lower is Better)')
             ax.set_xlabel('Counterfactual Method')
             ax.legend(handles=legend_elements) #loc=(-0.1,-0.1*len(legend_elements))
             plt.tight_layout()
@@ -360,9 +372,10 @@ def accuracy_burden_plot(datasets, method, metric, colors):
             ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
         legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
-        ax.set_ylim(y_max*(1.01),y_min*(0.99))
+        # ax.set_ylim(y_max*(1.01),y_min*(0.99))
+        ax.set_ylim(y_min*(0.99),y_max*(1.01))
         ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
-        ax.set_ylabel('Burden')
+        ax.set_ylabel('Burden (Lower is Better)')
         ax.set_xlabel('Classification Accuracy')
         ax.legend(handles=legend_handles) #loc=(-0.1,-0.1*len(legend_elements))
         plt.tight_layout()
@@ -404,9 +417,10 @@ def statistical_parity_burden_plot(datasets, method, metric, colors):
             ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
         legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
-        ax.set_ylim(y_max*(1.01),y_min*(0.99))
+        # ax.set_ylim(y_max*(1.01),y_min*(0.99))
+        ax.set_ylim(y_min*(0.99),y_max*(1.01))
         ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
-        ax.set_ylabel('Burden')
+        ax.set_ylabel('Burden (Lower is Better)')
         ax.set_xlabel('Statistical Parity')
         ax.legend(handles=legend_handles) #loc=(-0.1,-0.1*len(legend_elements))
         plt.tight_layout()
@@ -448,9 +462,10 @@ def equalized_odds_burden_plot(datasets, method, metric, colors):
             ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
         legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
-        ax.set_ylim(y_max*(1.01),y_min*(0.99))
+        # ax.set_ylim(y_max*(1.01),y_min*(0.99))
+        ax.set_ylim(y_min*(0.99),y_max*(1.01))
         ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
-        ax.set_ylabel('Burden')
+        ax.set_ylabel('Burden (Lower is Better)')
         ax.set_xlabel('Equalized Odds')
         ax.legend(handles=legend_handles) #loc=(-0.1,-0.1*len(legend_elements))
         plt.tight_layout()
@@ -470,7 +485,7 @@ def false_negative_plot(datasets, method, metric, colors):
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
         protected_feat_keys = list(protected_feat.keys())
-        x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
+        x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric], data_obj)
         desired_ground_truth_jce_test_pd = data_obj.jce_test_pd.loc[data_obj.test_target != data_obj.undesired_class]
         desired_ground_truth_test_pd = data_obj.test_pd.loc[data_obj.test_target != data_obj.undesired_class]
         desired_ground_truth_target = data_obj.test_target[data_obj.test_target != data_obj.undesired_class]
@@ -502,21 +517,23 @@ def false_negative_plot(datasets, method, metric, colors):
             ax.scatter(x=x_pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
         legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
-        ax.set_ylim(y_max*(1.01),y_min*(0.99))
+        # ax.set_ylim(y_max*(1.01),y_min*(0.99))
+        ax.set_ylim(y_min*(0.99),y_max*(1.01))
         ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
-        ax.set_ylabel('Burden')
+        ax.set_ylabel('Burden (Lower is Better)')
         ax.set_xlabel('False Negative Ratio')
         ax.legend(handles=legend_handles) #loc=(-0.1,-0.1*len(legend_elements))
         plt.tight_layout()
         plt.savefig(results_cf_plots_dir+f'{data_str}_fnr_burden_fairness.png',dpi=400)
 
-datasets = ['adult','kdd_census','german','dutch','bank','credit','compass']  # Name of the dataset to be analyzed ['adult','kdd_census','dutch','bank','compass']
-methods_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
+datasets = ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']  # Name of the dataset to be analyzed ['adult','kdd_census','dutch','bank','compass']
+methods_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt','cchvae','face'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 colors = ['red', 'purple', 'tab:brown', 'blue', 'lightgreen', 'gold', 'orange']
 
-# attainable_cf_plot(datasets, methods_to_run)
-# feature_ratio_change_cf_plot(datasets, methods_to_run)
-# method_box_plot(datasets, methods_to_run, 'proximity', colors)
-# accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
-# statistical_parity_burden_plot(datasets, 'mo', 'proximity', colors)
+attainable_cf_plot(datasets, methods_to_run)
+feature_ratio_change_cf_plot(datasets, methods_to_run)
+method_box_plot(datasets, methods_to_run, 'proximity', colors)
+accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
+statistical_parity_burden_plot(datasets, 'mo', 'proximity', colors)
 equalized_odds_burden_plot(datasets, 'mo', 'proximity', colors)
+false_negative_plot(datasets, 'mo', 'proximity', colors)

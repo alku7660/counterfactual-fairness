@@ -209,9 +209,8 @@ class Evaluator():
         """
         self.idx = idx
         self.x = x
-        self.original_x = original_x
+        self.x_original_pd = original_x
         self.x_pd = pd.DataFrame(data=[self.x], index=[self.idx], columns=self.data_cols)
-        self.x_original_pd = pd.DataFrame(data=[self.original_x], index=[self.idx], columns=self.raw_data_cols)
         # self.normal_x = data_obj.adjust_to_mace_format(self.x_pd) (REQUIRES ADJUSTMENT FOR MACE)
         self.normal_x = self.x_pd
         self.x_label = x_label
