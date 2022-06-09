@@ -488,11 +488,8 @@ def false_negative_plot(datasets, method, metric, colors):
         x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric], data_obj)
         desired_ground_truth_jce_test_pd = data_obj.jce_test_pd.loc[data_obj.test_target != data_obj.undesired_class]
         desired_ground_truth_test_pd = data_obj.test_pd.loc[data_obj.test_target != data_obj.undesired_class]
-        desired_ground_truth_target = data_obj.test_target[data_obj.test_target != data_obj.undesired_class]
         predicted_label_desired_ground_truth_jce_test_pd = model_obj.jce_sel.predict(desired_ground_truth_jce_test_pd)
-        false_undesired_jce_test_pd = desired_ground_truth_jce_test_pd.loc[predicted_label_desired_ground_truth_jce_test_pd == data_obj.undesired_class]
         false_undesired_test_pd = desired_ground_truth_test_pd.loc[predicted_label_desired_ground_truth_jce_test_pd == data_obj.undesired_class]
-        false_undesired_target = desired_ground_truth_target[predicted_label_desired_ground_truth_jce_test_pd == data_obj.undesired_class]
         fig, ax = plt.subplots(figsize=(8,6))
         for prot_feat_idx in range(len(protected_feat_keys)):
             feat = protected_feat_keys[prot_feat_idx]
@@ -526,13 +523,15 @@ def false_negative_plot(datasets, method, metric, colors):
         plt.tight_layout()
         plt.savefig(results_cf_plots_dir+f'{data_str}_fnr_burden_fairness.png',dpi=400)
 
-def accuracy_weighted_burden_plot(datasets, method, metric, colors):
+def accuracy_weighted_burden_plot(datasets, methods, metric, colors):
     """
     Method that obtains the accuracy weighted burden for each method and each dataset
     """
-    methods_names = get_methods_names([method])
+    methods_names = get_methods_names(methods)
     dataset_names = get_data_names(datasets)
-    for data_str in datasets:
+    fig, ax = plt.subplots(nrows=len(datasets),ncols=len(methods),sharex=True,sharey=True,figsize=(8,11))
+    for i in range(len(datasets)):
+        data_str = datasets[i]
         eval_obj = load_obj(data_str, 'fnr', 'eval')
         data_obj = load_obj(data_str, 'fnr', 'data')
         model_obj = load_obj(data_str, 'fnr', 'model')
@@ -543,52 +542,51 @@ def accuracy_weighted_burden_plot(datasets, method, metric, colors):
         x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric], data_obj)
         desired_ground_truth_jce_test_pd = data_obj.jce_test_pd.loc[data_obj.test_target != data_obj.undesired_class]
         desired_ground_truth_test_pd = data_obj.test_pd.loc[data_obj.test_target != data_obj.undesired_class]
-        desired_ground_truth_target = data_obj.test_target[data_obj.test_target != data_obj.undesired_class]
         predicted_label_desired_ground_truth_jce_test_pd = model_obj.jce_sel.predict(desired_ground_truth_jce_test_pd)
-        false_undesired_jce_test_pd = desired_ground_truth_jce_test_pd.loc[predicted_label_desired_ground_truth_jce_test_pd == data_obj.undesired_class]
         false_undesired_test_pd = desired_ground_truth_test_pd.loc[predicted_label_desired_ground_truth_jce_test_pd == data_obj.undesired_class]
-        false_undesired_target = desired_ground_truth_target[predicted_label_desired_ground_truth_jce_test_pd == data_obj.undesired_class]
-        fig, ax = plt.subplots(figsize=(8,6))
-        for prot_feat_idx in range(len(protected_feat_keys)):
-            feat = protected_feat_keys[prot_feat_idx]
-            feat_unique_val = desired_ground_truth_test_pd[feat].unique()
-            len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
-            x_pos_list = []
-            mean_data_val_list = []
-            # std_data_val_list = []
-            for feat_idx in range(len(feat_unique_val)):
-                feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
-                total_ground_truth_feat_val = np.sum(desired_ground_truth_test_pd[feat] == feat_unique_val[feat_idx])
-                total_false_undesired_feat_val = np.sum(false_undesired_test_pd[feat] == feat_unique_val[feat_idx])
-                fnr_feat_val = total_false_undesired_feat_val/total_ground_truth_feat_val
-                x_pos_list.append(fnr_feat_val)
-                feat_method_data = cf_df[(cf_df['cf_method'] == method) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
-                feat_method_data_values = feat_method_data[metric].values
-                mean_data_val_list.append(np.mean(feat_method_data_values))
-                # std_data_val_list.append(np.std(feat_method_data_values,ddof=1))
-                c = colors[prot_feat_idx]
-                ax.text(x=fnr_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c,fc='none'),
-                        s=feat_val_name, fontstyle='italic', color=c, size=9)
-            ax.scatter(x=x_pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
-        legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
-        y_min, y_max = ax.get_ylim()
-        # ax.set_ylim(y_max*(1.01),y_min*(0.99))
-        ax.set_ylim(y_min*(0.99),y_max*(1.01))
-        ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
-        ax.set_ylabel('Burden (Lower is Better)')
-        ax.set_xlabel('False Negative Ratio')
-        ax.legend(handles=legend_handles) #loc=(-0.1,-0.1*len(legend_elements))
-        plt.tight_layout()
-        plt.savefig(results_cf_plots_dir+f'{data_str}_fnr_burden_fairness.png',dpi=400)
+        for j in range(len(methods)):
+            method = methods[j]
+            awb_list = []
+            feat_list = []
+            colors_list = []
+            for prot_feat_idx in range(len(protected_feat_keys)):
+                feat = protected_feat_keys[prot_feat_idx]
+                feat_unique_val = desired_ground_truth_test_pd[feat].unique()
+                len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+                mean_data_val_list = []
+                # std_data_val_list = []
+                for feat_idx in range(len(feat_unique_val)):
+                    feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
+                    total_ground_truth_feat_val = np.sum(desired_ground_truth_test_pd[feat] == feat_unique_val[feat_idx])
+                    total_false_undesired_feat_val = np.sum(false_undesired_test_pd[feat] == feat_unique_val[feat_idx])
+                    fnr = total_false_undesired_feat_val/total_ground_truth_feat_val
+                    feat_method_data = cf_df[(cf_df['cf_method'] == method) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
+                    mean_burden = np.mean(feat_method_data[metric].values)
+                    awb = fnr*mean_burden
+                    awb_list.append(awb)
+                    feat_list.append(feat_val_name)
+                    colors_list.append(colors[prot_feat_idx])
+            ax[i,j].bar(x=feat_list,height=awb_list,color=colors_list)
+            ax[i,j].set_aspect('equal')
+            if i < len(datasets) - 1:
+                ax[i,j].axes.xaxis.set_visible(False)
+    for i in range(len(datasets)):
+        ax[i,0].set_ylabel(dataset_names[datasets[i]])
+    for j in range(len(methods)):
+        ax[0,j].set_title(methods_names[methods[j]])
+    fig.suptitle('Accuracy Weighted Burden (AWB)')
+    plt.tight_layout()
+    plt.savefig(results_cf_plots_dir+'awb.pdf',format='pdf',dpi=400)
 
 datasets = ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']  # Name of the dataset to be analyzed ['adult','kdd_census','dutch','bank','compass']
 methods_to_run = ['mutable-nn','mutable-mo','mutable-rt','cchvae'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
 colors = ['red', 'purple', 'tab:brown', 'blue', 'lightgreen', 'gold', 'orange']
 
-attainable_cf_plot(datasets, methods_to_run)
-feature_ratio_change_cf_plot(datasets, methods_to_run)
-method_box_plot(datasets, methods_to_run, 'proximity', colors)
-accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
-statistical_parity_burden_plot(datasets, 'mo', 'proximity', colors)
-equalized_odds_burden_plot(datasets, 'mo', 'proximity', colors)
-false_negative_plot(datasets, 'mo', 'proximity', colors)
+# attainable_cf_plot(datasets, methods_to_run)
+# feature_ratio_change_cf_plot(datasets, methods_to_run)
+# method_box_plot(datasets, methods_to_run, 'proximity', colors)
+# accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
+# statistical_parity_burden_plot(datasets, 'mo', 'proximity', colors)
+# equalized_odds_burden_plot(datasets, 'mo', 'proximity', colors)
+# false_negative_plot(datasets, 'mo', 'proximity', colors)
+accuracy_weighted_burden_plot(datasets, methods_to_run, 'proximity', colors)
