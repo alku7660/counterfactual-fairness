@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 12})
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
-from matplotlib import cm
+from matplotlib import cm, colors
 
 def load_obj(file_name, study_str, file):
     """
@@ -523,13 +523,50 @@ def false_negative_plot(datasets, method, metric, colors):
         plt.tight_layout()
         plt.savefig(results_cf_plots_dir+f'{data_str}_fnr_burden_fairness.png',dpi=400)
 
-def accuracy_weighted_burden_plot(datasets, methods, metric, colors):
+# def create_handles_awb(cmap, norm):
+#     """
+#     Method that creates the handles for the legends of the AWB plot
+#     """
+#     list_handles = []
+#     counter = 0
+#     for i in range(len(datasets)):
+#         data_str = datasets[i]
+#         eval_obj = load_obj(data_str, 'fnr', 'eval')
+#         data_obj = load_obj(data_str, 'fnr', 'data')
+#         protected_feat = eval_obj.feat_protected
+#         protected_feat_keys = list(protected_feat.keys())
+#         desired_ground_truth_test_pd = data_obj.test_pd.loc[data_obj.test_target != data_obj.undesired_class]
+#         for prot_feat_idx in range(len(protected_feat_keys)):
+#             feat = protected_feat_keys[prot_feat_idx]
+#             feat_unique_val = desired_ground_truth_test_pd[feat].unique()
+#             for feat_idx in range(len(feat_unique_val)):
+#                 feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
+#                 handle = Line2D([0], [0], color=cmap(norm((counter))), lw=2, label=f'{counter}:{feat_val_name}')
+#                 list_handles.extend([handle])
+#                 counter += 1
+#     return list_handles
+
+def create_handles_awb(colors_dict):
+    """
+    Method that obtains the accuracy weighted burden for each method and each dataset
+    """
+    list_handles = []
+    for i in range(len(colors_dict.keys())):
+        key = list(colors_dict.keys())[i]
+        color = colors_dict[key]
+        handle = Line2D([0], [0], color=color, lw=2, label=f'{key}')
+        list_handles.extend([handle])
+    return list_handles
+
+def accuracy_weighted_burden_plot(datasets, methods, metric, colors_dict):
     """
     Method that obtains the accuracy weighted burden for each method and each dataset
     """
     methods_names = get_methods_names(methods)
     dataset_names = get_data_names(datasets)
-    fig, ax = plt.subplots(nrows=len(datasets),ncols=len(methods),sharex=True,sharey=True,figsize=(8,11))
+    fig, ax = plt.subplots(nrows=len(datasets),ncols=len(methods),sharex=False,sharey=False,figsize=(8,13))
+    norm = colors.Normalize(vmin=0, vmax=20, clip=True)
+    cmap = plt.cm.turbo
     for i in range(len(datasets)):
         data_str = datasets[i]
         eval_obj = load_obj(data_str, 'fnr', 'eval')
@@ -549,6 +586,7 @@ def accuracy_weighted_burden_plot(datasets, methods, metric, colors):
             awb_list = []
             feat_list = []
             colors_list = []
+            counter = 0
             for prot_feat_idx in range(len(protected_feat_keys)):
                 feat = protected_feat_keys[prot_feat_idx]
                 feat_unique_val = desired_ground_truth_test_pd[feat].unique()
@@ -565,22 +603,34 @@ def accuracy_weighted_burden_plot(datasets, methods, metric, colors):
                     awb = fnr*mean_burden
                     awb_list.append(awb)
                     feat_list.append(feat_val_name)
-                    colors_list.append(colors[prot_feat_idx])
+                    # feat_list.append(counter)
+                    colors_list.append(colors_dict[feat_val_name])
+                    counter += 1
             ax[i,j].bar(x=feat_list,height=awb_list,color=colors_list)
-            ax[i,j].set_aspect('equal')
-            if i < len(datasets) - 1:
-                ax[i,j].axes.xaxis.set_visible(False)
+            ax[i,j].set_xticklabels(feat_list, rotation = 30, ha='right')
+            # ax[i,j].set_aspect('equal')
+            # if i < len(datasets) - 1:
+            #     ax[i,j].axes.xaxis.set_visible(False)
+            ax[i,j].axes.xaxis.set_visible(False)
+    legend_handles = create_handles_awb(colors_dict)
+    fig.subplots_adjust(wspace=0.1, hspace=0.1)
     for i in range(len(datasets)):
         ax[i,0].set_ylabel(dataset_names[datasets[i]])
     for j in range(len(methods)):
         ax[0,j].set_title(methods_names[methods[j]])
     fig.suptitle('Accuracy Weighted Burden (AWB)')
+    fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.00), ncol=6, fancybox=True, shadow=True, handles=legend_handles)
     plt.tight_layout()
     plt.savefig(results_cf_plots_dir+'awb.pdf',format='pdf',dpi=400)
 
 datasets = ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']  # Name of the dataset to be analyzed ['adult','kdd_census','dutch','bank','compass']
 methods_to_run = ['mutable-nn','mutable-mo','mutable-rt','cchvae'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
-colors = ['red', 'purple', 'tab:brown', 'blue', 'lightgreen', 'gold', 'orange']
+colors_list = ['red', 'purple', 'tab:brown', 'blue', 'lightgreen', 'gold', 'orange']
+colors_dict = {'Male':'red','Female':'blue','White':'green','Non-white':'gold',
+               '<25':'purple','25-60':'magenta','>60':'crimson','Married':'peachpuff',
+               'Single':'peru','Divorced':'saddlebrown','True':'cyan','False':'darkcyan',
+               'Other':'olive','HS':'darkkhaki','University':'bisque','Graduate':'darkorange',
+               'African-American':'midnightblue','Caucasian':'mediumpurple','<18':'silver','>=18':'dimgray'}
 
 # attainable_cf_plot(datasets, methods_to_run)
 # feature_ratio_change_cf_plot(datasets, methods_to_run)
@@ -589,4 +639,4 @@ colors = ['red', 'purple', 'tab:brown', 'blue', 'lightgreen', 'gold', 'orange']
 # statistical_parity_burden_plot(datasets, 'mo', 'proximity', colors)
 # equalized_odds_burden_plot(datasets, 'mo', 'proximity', colors)
 # false_negative_plot(datasets, 'mo', 'proximity', colors)
-accuracy_weighted_burden_plot(datasets, methods_to_run, 'proximity', colors)
+accuracy_weighted_burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
