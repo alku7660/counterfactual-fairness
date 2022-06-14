@@ -13,6 +13,7 @@ from matplotlib.lines import Line2D
 from matplotlib import colors
 from matplotlib.ticker import FormatStrFormatter
 matplotlib.rc('ytick', labelsize=9)
+matplotlib.rc('xtick', labelsize=9)
 
 def load_obj(file_name, study_str, file):
     """
@@ -128,7 +129,7 @@ def get_data_names(datasets):
         if i == 'adult':
             data_dict[i] = 'Adult'
         elif i == 'kdd_census':
-            data_dict[i] = 'Census'
+            data_dict[i] = 'KDD Census'
         elif i == 'german':
             data_dict[i] = 'German'
         elif i == 'dutch':
@@ -472,13 +473,17 @@ def equalized_odds_burden_plot(datasets, method, metric, colors):
         plt.tight_layout()
         plt.savefig(results_cf_plots_dir+f'{data_str}_eq_odds_burden_fairness.png',dpi=400)
 
-def fnr_burden_plot(datasets, method, metric, colors):
+def fnr_burden_plot(datasets, methods, metric, colors):
     """
     Method that obtains false negative rate plots for each sensitive feature
     """
-    methods_names = get_methods_names([method])
+    methods_names = get_methods_names(methods)
     dataset_names = get_data_names(datasets)
-    for data_str in datasets:
+    fig, ax = plt.subplots(nrows=len(datasets),ncols=len(methods),sharex=False,sharey=False,figsize=(8,13))
+    fig.supxlabel('$FNR_s$')
+    fig.supylabel('$Burden_s$ (Lower is Better)')
+    for i in range(len(datasets)):
+        data_str = datasets[i]
         eval_obj = load_obj(data_str, 'fnr', 'eval')
         data_obj = load_obj(data_str, 'fnr', 'data')
         model_obj = load_obj(data_str, 'fnr', 'model')
@@ -491,38 +496,48 @@ def fnr_burden_plot(datasets, method, metric, colors):
         desired_ground_truth_test_pd = data_obj.test_pd.loc[data_obj.test_target != data_obj.undesired_class]
         predicted_label_desired_ground_truth_jce_test_pd = model_obj.jce_sel.predict(desired_ground_truth_jce_test_pd)
         false_undesired_test_pd = desired_ground_truth_test_pd.loc[predicted_label_desired_ground_truth_jce_test_pd == data_obj.undesired_class]
-        fig, ax = plt.subplots(figsize=(8,6))
-        for prot_feat_idx in range(len(protected_feat_keys)):
-            feat = protected_feat_keys[prot_feat_idx]
-            feat_unique_val = desired_ground_truth_test_pd[feat].unique()
-            len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
-            x_pos_list = []
-            mean_data_val_list = []
-            # std_data_val_list = []
-            for feat_idx in range(len(feat_unique_val)):
-                feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
-                total_ground_truth_feat_val = np.sum(desired_ground_truth_test_pd[feat] == feat_unique_val[feat_idx])
-                total_false_undesired_feat_val = np.sum(false_undesired_test_pd[feat] == feat_unique_val[feat_idx])
-                fnr_feat_val = total_false_undesired_feat_val/total_ground_truth_feat_val
-                x_pos_list.append(fnr_feat_val)
-                feat_method_data = cf_df[(cf_df['cf_method'] == method) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
-                feat_method_data_values = feat_method_data[metric].values
-                mean_data_val_list.append(np.mean(feat_method_data_values))
-                # std_data_val_list.append(np.std(feat_method_data_values,ddof=1))
-                c = colors[prot_feat_idx]
-                ax.text(x=fnr_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c,fc='none'),
-                        s=feat_val_name, fontstyle='italic', color=c, size=9)
-            ax.scatter(x=x_pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
         legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
-        y_min, y_max = ax.get_ylim()
-        # ax.set_ylim(y_max*(1.01),y_min*(0.99))
-        ax.set_ylim(y_min*(0.99),y_max*(1.01))
-        ax.set_title(f'{dataset_names[data_str]} Dataset: {methods_names[method]} Method')
-        ax.set_ylabel('Burden (Lower is Better)')
-        ax.set_xlabel('False Negative Ratio')
-        ax.legend(handles=legend_handles) #loc=(-0.1,-0.1*len(legend_elements))
-        plt.tight_layout()
-        plt.savefig(results_cf_plots_dir+f'{data_str}_fnr_burden_fairness.png',dpi=400)
+        for j in range(len(methods)):
+            method = methods[j]
+            for prot_feat_idx in range(len(protected_feat_keys)):
+                feat = protected_feat_keys[prot_feat_idx]
+                feat_unique_val = desired_ground_truth_test_pd[feat].unique()
+                len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+                x_pos_list = []
+                mean_data_val_list = []
+                for feat_idx in range(len(feat_unique_val)):
+                    feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
+                    total_ground_truth_feat_val = np.sum(desired_ground_truth_test_pd[feat] == feat_unique_val[feat_idx])
+                    total_false_undesired_feat_val = np.sum(false_undesired_test_pd[feat] == feat_unique_val[feat_idx])
+                    fnr_feat_val = total_false_undesired_feat_val/total_ground_truth_feat_val
+                    x_pos_list.append(fnr_feat_val)
+                    feat_method_data = cf_df[(cf_df['cf_method'] == method) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
+                    feat_method_data_values = feat_method_data[metric].values
+                    mean_data_val_list.append(np.mean(feat_method_data_values))
+                    c = colors[prot_feat_idx]
+                    if feat_val_name == 'African-American':
+                        feat_val_name = 'African-Am'
+                    ax[i,j].text(x=fnr_feat_val, y=np.mean(feat_method_data_values), #bbox=dict(ec=c,fc='none'),
+                            s=feat_val_name, fontstyle='italic', color=c, size=7)
+                ax[i,j].scatter(x=x_pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=12)
+                # ax[i,j].axes.xaxis.set_visible(False)
+                ax[i,j].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+                ax[i,j].xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+    for i in range(len(datasets)):
+        ax[i,0].set_ylabel(dataset_names[datasets[i]])
+        # ax[i,0].legend(handles=legend_handles)
+    for j in range(len(methods)):
+        ax[0,j].set_title(methods_names[methods[j]])
+        ax[-1,j].axes.xaxis.set_visible(True)
+    # plt.tight_layout()
+    fig.suptitle('$Burden_s$ vs. $FNR_s$')
+    plt.subplots_adjust(left=0.11,
+                    bottom=0.04, 
+                    right=0.95, 
+                    top=0.94, 
+                    wspace=0.24, 
+                    hspace=0.27)
+    plt.savefig(results_cf_plots_dir+'fnr_burden.pdf',format='pdf',dpi=400)
 
 def create_handles_awb(colors_dict):
     """
@@ -580,7 +595,7 @@ def fnr_plot(datasets, metric, colors_dict):
         flat_ax[i].set_title(dataset_names[datasets[i]])
     legend_handles = create_handles_awb(colors_dict)
     fig.subplots_adjust(wspace=0.1, hspace=0.1)
-    fig.suptitle('False Negative Rate per Sensitive Feature ($FNR_s$)')
+    fig.suptitle('False Negative Rate per Sensitive Group ($FNR_s$)')
     fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.00), ncol=6, fancybox=True, shadow=True, handles=legend_handles, prop={'size': 10})
     plt.subplots_adjust(left=0.05,
                     bottom=0.2, 
@@ -702,17 +717,17 @@ def accuracy_weighted_burden_plot(datasets, methods, metric, colors_dict):
         ax[0,j].set_title(methods_names[methods[j]])
     fig.suptitle('Accuracy Weighted Burden (AWB)')
     fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.00), ncol=6, fancybox=True, shadow=True, handles=legend_handles, prop={'size': 10})
-    plt.subplots_adjust(left=0.075,
+    plt.subplots_adjust(left=0.09,
                     bottom=0.08, 
                     right=0.975, 
                     top=0.94, 
                     wspace=0.25, 
-                    hspace=0.05)
+                    hspace=0.1)
     plt.savefig(results_cf_plots_dir+'awb.pdf',format='pdf',dpi=400)
 
 datasets = ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']  # Name of the dataset to be analyzed ['adult','kdd_census','dutch','bank','compass']
 methods_to_run = ['nn','mo','rt','cchvae'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
-colors_list = ['red', 'purple', 'tab:brown', 'blue', 'lightgreen', 'gold', 'orange']
+colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
 
 colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'black',
                '<25':'thistle','25-60':'violet','>60':'purple','<18':'green','>=18':'yellow','Single':'peachpuff',
@@ -726,7 +741,7 @@ colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'bla
 # accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
 # statistical_parity_burden_plot(datasets, 'mo', 'proximity', colors)
 # equalized_odds_burden_plot(datasets, 'mo', 'proximity', colors)
-# fnr_plot(datasets, 'proximity', colors_dict)
-burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
-# fnr_burden_plot(datasets, 'mo', 'proximity', colors)
+fnr_plot(datasets, 'proximity', colors_dict)
+# burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
+# fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
 # accuracy_weighted_burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
