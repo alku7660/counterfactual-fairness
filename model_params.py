@@ -18,9 +18,9 @@ def best_model_params(grid_search_pd,data_str):
     Output params_best: The parameters of the best performing model
     Output params_rf: The parameters of the RF model
     """
-    if data_str in ['adult','kdd_census','dutch','bank','compass','student']:
+    if data_str in ['adult','kdd_census','dutch','bank','student']:
         best = 'rf'
-    elif data_str in ['credit','german','diabetes','oulad','law']:
+    elif data_str in ['credit','german','diabetes','oulad','law','compass']:
         best = 'mlp'
     params_best = ast.literal_eval(grid_search_pd.loc[(data_str,best),'params'])[0]
     params_rf = ast.literal_eval(grid_search_pd.loc[(data_str,'rf'),'params'])[0]
