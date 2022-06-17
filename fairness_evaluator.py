@@ -516,10 +516,10 @@ def fnr_burden_plot(datasets, methods, metric, colors):
                     mean_data_val_list.append(np.mean(feat_method_data_values))
                     c = colors[prot_feat_idx]
                     if feat_val_name == 'African-American':
-                        feat_val_name = 'African-Am'
+                        feat_val_name = 'African'
                     ax[i,j].text(x=fnr_feat_val, y=np.mean(feat_method_data_values), #bbox=dict(ec=c,fc='none'),
-                            s=feat_val_name, fontstyle='italic', color=c, size=7)
-                ax[i,j].scatter(x=x_pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=12)
+                            s=feat_val_name, fontstyle='italic', color=c, size=9)
+                ax[i,j].scatter(x=x_pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=10)
                 # ax[i,j].axes.xaxis.set_visible(False)
                 ax[i,j].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
                 ax[i,j].xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
@@ -581,6 +581,7 @@ def fnr_plot(datasets, metric, colors_dict):
             for feat_idx in range(len(feat_unique_val)):
                 feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
                 total_ground_truth_feat_val = np.sum(desired_ground_truth_test_pd[feat] == feat_unique_val[feat_idx])
+                print(f'{data_str}, s{feat_val_name}:{total_ground_truth_feat_val}')
                 total_false_undesired_feat_val = np.sum(false_undesired_test_pd[feat] == feat_unique_val[feat_idx])
                 fnr = total_false_undesired_feat_val/total_ground_truth_feat_val
                 if feat in ['isMale','isMarried']:
@@ -699,7 +700,7 @@ def accuracy_weighted_burden_plot(datasets, methods, metric, colors_dict):
                     fnr = total_false_undesired_feat_val/total_ground_truth_feat_val
                     feat_method_data = cf_df[(cf_df['cf_method'] == method) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
                     mean_burden = np.mean(feat_method_data[metric].values)
-                    awb = fnr*mean_burden
+                    awb = fnr*mean_burden/data_obj.test_pd.shape[1]
                     if feat in ['isMale','isMarried']:
                         feat_val_name = feat+': '+feat_val_name
                     awb_list.append(awb)
@@ -715,7 +716,7 @@ def accuracy_weighted_burden_plot(datasets, methods, metric, colors_dict):
         ax[i,0].set_ylabel(dataset_names[datasets[i]])
     for j in range(len(methods)):
         ax[0,j].set_title(methods_names[methods[j]])
-    fig.suptitle('Accuracy Weighted Burden (AWB)')
+    fig.suptitle('Normalized Accuracy Weighted Burden (NAWB)')
     fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.00), ncol=6, fancybox=True, shadow=True, handles=legend_handles, prop={'size': 10})
     plt.subplots_adjust(left=0.09,
                     bottom=0.08, 
@@ -741,7 +742,7 @@ colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'bla
 # accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
 # statistical_parity_burden_plot(datasets, 'mo', 'proximity', colors)
 # equalized_odds_burden_plot(datasets, 'mo', 'proximity', colors)
-fnr_plot(datasets, 'proximity', colors_dict)
+# fnr_plot(datasets, 'proximity', colors_dict)
 # burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
-# fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
+fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
 # accuracy_weighted_burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
