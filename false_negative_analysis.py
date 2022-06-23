@@ -26,8 +26,8 @@ def load_obj(file_name):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-datasets = ['adult'] # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
-models_to_run = ['nn','mutable-nn','mo','mutable-mo','rt','mutable-rt','cchvae','face'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
+datasets = ['adult','kdd_census','german','dutch','bank','compass','diabetes','student','oulad','law'] # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
+models_to_run = ['nn','mo','rt','cchvae'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice'] 'dutch','credit','diabetes','oulad','law'
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -35,7 +35,7 @@ k = 50                     # Number of training dataset neighbors to consider fo
 epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feature tweaking algorithm
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
-perc = 0.2                  # Percentage of false negative test samples to consider for the counterfactuals search
+perc = 1                  # Percentage of false negative test samples to consider for the counterfactuals search
 
 np.random.seed(seed_int)
 
@@ -56,8 +56,8 @@ for data_str in datasets:
     print(f'  CARLA model test accuracy: {np.round_(carla_model._mymodel.score(data.carla_test_pd,data.test_target),2)}')
     print(f'---------------------------------------')
 
-    # save_obj(model,data_str+'_fnr_model.pkl')
-    # save_obj(data,data_str+'_fnr_data.pkl')
+    save_obj(model,data_str+'_fnr_model.pkl')
+    save_obj(data,data_str+'_fnr_data.pkl')
     
     cf_evaluator.add_fairness_measures(data, model)
     desired_ground_truth_test_pd = data.jce_test_pd.loc[data.test_target != data.undesired_class]

@@ -96,8 +96,6 @@ class Dataset:
         self.unique_val = self.unique_values()
         self.train_pd, self.test_pd, self.train_target, self.test_target = train_test_split(self.raw_df,self.raw_df[self.label_str],train_size=self.train_fraction,random_state=self.seed)
         self.data_balancing_target_filter() 
-        # self.mace_df, self.mace_cf, self.mace_time = self.load_mace()
-        # self.mace_prox_df, self.mace_prox_cf, self.mace_prox_time = self.load_prox_mace()
 
         # Stores all encoders, scalers, and train datasets
         self.jce_encoder_scaler_fit_transform_train()
