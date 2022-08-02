@@ -15,8 +15,8 @@ import pandas as pd
 import numpy as np
 
 path_here = os.path.abspath('')
-datasets = ['diabetes','student','oulad','law'] # Name of the dataset to be analyzed ['diabetes','student','oulad','law'] 
-seed_int = 54321             # Seed integer value
+datasets = ['diabetes','student','oulad','law'] # Name of the datasets to be analyzed 
+seed_int = 54321
 train_fraction = 0.95
 step = 0.01
 

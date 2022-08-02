@@ -8,21 +8,15 @@ Imports
 
 import numpy as np
 import pandas as pd
-from naj import verify_justification
 from support import euclidean, sort_data_distance
 from nt import nn
 from mo import min_obs
-from ft import feat_tweak
 from rt import rf_tweak
-from juice import JUICE
 from cchvae_cf import cchvae_function
-from face_cf import face_function
-from gs_cf import gs_function
-from dice_cf import dice_function
 import time
 import copy
 from carla import DataCatalog, MLModelCatalog
-from carla.recourse_methods import Face, Dice, GrowingSpheres
+# from carla.recourse_methods import Face, Dice, GrowingSpheres (REQUIRES ADJUSTMENT / FUTURE WORK)
 import tensorflow as tf
 from carla_adapter import MyOwnDataSet, MyOwnModel
 
@@ -48,12 +42,12 @@ class Evaluator():
        (16) raw_data_cols:             All dataset columns before preprocessing,
        (17) undesired_class:           Dataset undesired class,
        (18) desired_class:             Dataset desired class,
-       (19) n_feat:                    Number of instances to generate per feature in the continuous feature space (only used to verify Justification and run Juice),
+       (19) n_feat:                    Number of instances to generate per feature in the continuous feature space (only used to verify Justification and run Juice algo),
        (20) models:                    List of models names to run ['nn','mo','rt','cchvae'],
-       (21) x_columns:                 Justifier instance to the counterfactual,
-       (22) normal_justifier_instance: Justifier instance to the counterfactual after transformation (inverse scaling and inverse encoding),
-       (23) found_justifiable_cf:      The JCF algorithm found a justifiable counterfactual according to the model,
-       (24) n_feat:                    Number of features to generate per feature in the continuous feature space
+       (21) x_columns:                 Instance of Interest information,
+       (22) eval_columns:              Evaluation columns names (mainly performance metrics related to counterfactuals),
+       (23) all_x_data:                Instance of Interest pandas DataFrame,
+       (24) all_cf_data:               Counterfactuals pandas DataFrame.
     """
 
     def __init__(self,data_obj,n_feat,models):
@@ -78,9 +72,6 @@ class Evaluator():
         self.models = models
         self.x_columns = ['x','normal_x','original_x',
                           'x_pred','x_target','accuracy']
-        # self.eval_columns = ['instance_index','cf_method','cf','normal_cf',
-        #                      'proximity','feasibility','sparsity',
-        #                      'justification','justifier','normal_justifier','time']
         self.eval_columns = ['cf_method','cf','normal_cf',
                              'original_cf','proximity','feasibility',
                              'sparsity','valid','time']
@@ -94,7 +85,6 @@ class Evaluator():
         train_desired_class = data.jce_train_np[data.train_target != self.undesired_class]
         sorted_train_x = sort_data_distance(self.x,train_desired_class,data.train_target[data.train_target != self.undesired_class])
         penalize_instance = sorted_train_x[-1][0]
-        # penalize_instance = np.mean(train_desired_class, axis=0)
         return penalize_instance
 
     def statistical_parity_eval(self, prob, length):
@@ -211,7 +201,6 @@ class Evaluator():
         self.x = x
         self.x_original_pd = original_x
         self.x_pd = pd.DataFrame(data=[self.x], index=[self.idx], columns=self.data_cols)
-        # self.normal_x = data_obj.adjust_to_mace_format(self.x_pd) (REQUIRES ADJUSTMENT FOR MACE)
         self.normal_x = self.x_pd
         self.x_label = x_label
         self.x_target = x_target
@@ -240,7 +229,7 @@ class Evaluator():
             original_instance_pd = pd.concat((original_instance_pd,instance_cat_pd),axis=1)
         return original_instance_pd
 
-    def add_specific_cf_data(self,data_obj,cf_method_name,cf,cf_time,model,justifier_instance = None,cf_justification = None,found_justifiable_jcf = None):
+    def add_specific_cf_data(self,data_obj,cf_method_name,cf,cf_time):
         """
         Method that calculates and stores a cf method result and performance metrics into the Pandas DataFrame found in the Evaluator
         """
@@ -260,7 +249,6 @@ class Evaluator():
                     nn_to_cf = i[0]
                     label_nn_to_cf = i[2]
                     break
-            # normal_cf = data_obj.adjust_to_mace_format(self.cf_pd) (REQUIRES ADJUSTMENT FOR MACE)
             normal_cf = self.x_pd
             self.cf_valid = True
         else:
@@ -277,22 +265,6 @@ class Evaluator():
         self.feasibility()
         self.sparsity(data_obj)
         self.cf_time = cf_time
-        # if cf_justification is None:
-        #     self.justification(model,data_obj)
-        # else:
-        #     self.cf_justification = cf_justification
-        #     self.justifier_instance = justifier_instance
-        #     justifier_instance_pd = pd.DataFrame(data = [self.justifier_instance], index = [self.idx], columns = data_obj.jce_all_cols) 
-        #     self.normal_justifier_instance = data_obj.adjust_to_mace_format(justifier_instance_pd)
-        # df_cf_row = pd.DataFrame(data = [[self.cf_method_name, self.cf_pd, self.normal_cf,
-        #                                   self.cf_proximity, self.cf_feasibility, self.cf_sparsity,
-        #                                   self.cf_justification, self.justifier_instance, self.normal_justifier_instance, self.cf_time]],
-        #                                   columns = self.eval_columns)
-        # self.found_justifiable_cf = found_justifiable_jcf
-        # df_cf_row = pd.DataFrame(data = [[self.idx, self.cf_method_name, self.cf_pd, self.normal_cf,
-        #                                   self.cf_proximity, self.cf_feasibility, self.cf_sparsity,
-        #                                   self.cf_justification, self.justifier_instance, self.normal_justifier_instance, self.cf_time]],
-        #                                   columns = self.eval_columns)
         df_cf_row = pd.DataFrame(data = [[self.cf_method_name, self.cf_pd, self.normal_cf,
                                           self.original_cf_pd, self.cf_proximity, self.cf_feasibility,
                                           self.cf_sparsity, self.cf_valid, self.cf_time]], columns = self.eval_columns)
@@ -364,15 +336,7 @@ class Evaluator():
         else:
             sparsity = np.round_(1 - n_changed/len(self.x),3)
         self.cf_sparsity = sparsity
-
-    def justification(self,model,data):
-        """
-        Method that finds whether the instance of interest is justified or not
-        """
-        self.justifier_instance, self.cf_justification = verify_justification(self,model,data)
-        self.justifier_instance_pd = pd.DataFrame(data=[self.justifier_instance],columns=data.jce_all_cols)
-        self.normal_justifier_instance = data.adjust_to_mace_format(self.justifier_instance_pd)
-    
+   
     def evaluate_cf_models(self, x_jce_np, x_label, data, model, epsilon_ft, carla_model, x_carla_pd):
         """
         Method that evaluates all the specified models
@@ -386,21 +350,24 @@ class Evaluator():
                 cf, run_time = nn(x_jce_np,x_label,data,mutability_check)
             elif 'mo' in model_str:
                 cf, run_time = min_obs(x_jce_np,x_label,data,mutability_check)
-            elif 'ft' in model_str:
-                cf, run_time = feat_tweak(x_jce_np,model.jce_rf,epsilon_ft)
             elif 'rt' in model_str:
                 cf, run_time = rf_tweak(x_jce_np,x_label,model.jce_rf,data,True,mutability_check)
             elif 'cchvae' in model_str:
                 cf, run_time = cchvae_function(data, carla_model, x_carla_pd)
-            elif 'face' in model_str:
-                cf, run_time = face_function(data, carla_model, x_carla_pd)
-            elif 'gs' in model_str:
-                cf, run_time = gs_function(data, carla_model, x_carla_pd)
-            elif 'dice' in model_str:
-                cf, run_time = dice_function(data, carla_model, x_carla_pd)
-            elif 'juice' in model_str:
-                results = JUICE(x_jce_np,x_label,data,model.jce_sel,'proximity',mutability_check)
-                cf, run_time = results[0], results[4]
+            
+            # WORK IN PROGRESS:
+            # elif 'ft' in model_str:
+            #     cf, run_time = feat_tweak(x_jce_np,model.jce_rf,epsilon_ft)
+            # elif 'face' in model_str:
+            #     cf, run_time = face_function(data, carla_model, x_carla_pd)
+            # elif 'gs' in model_str:
+            #     cf, run_time = gs_function(data, carla_model, x_carla_pd)
+            # elif 'dice' in model_str:
+            #     cf, run_time = dice_function(data, carla_model, x_carla_pd)
+            # elif 'juice' in model_str:
+            #     results = JUICE(x_jce_np,x_label,data,model.jce_sel,'proximity',mutability_check)
+            #     cf, run_time = results[0], results[4]
+
             print(f'  {model_str} (time (s): {np.round_(run_time,2)})')
             print(f'---------------------------')
             self.add_specific_cf_data(data,model_str,cf,run_time,model)

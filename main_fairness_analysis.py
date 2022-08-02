@@ -26,12 +26,11 @@ def load_obj(file_name):
         evaluator_obj = pickle.load(input)
     return evaluator_obj
 
-datasets = ['adult','kdd_census','german','dutch','bank','compass','diabetes','student','oulad','law'] # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
-models_to_run = ['nn','mo','rt','cchvae'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice'] 'dutch','credit','diabetes','oulad','law'
+datasets = ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law'] # Name of the dataset to be analyzed
+models_to_run = ['nn','mo','rt','cchvae'] #['nn','mo','ft','rt','gs','face','dice','cchvae'] 
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
-k = 50                     # Number of training dataset neighbors to consider for the correlation matrix calculation for the CIJN method
 epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feature tweaking algorithm
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals

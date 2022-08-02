@@ -8,7 +8,6 @@ path_here = os.path.abspath('')
 dataset_dir = '/home/alku7660/Repos/fairness/Datasets/'
 results_cf_obj_dir = str(path_here)+'/Results/cf_obj/'
 results_cf_plots_dir = str(path_here)+'/Results/cf_plots/'
-results_mace_dir = str(path_here)+'/Results/mace/'
 
 def euclidean(x1,x2):
     """
