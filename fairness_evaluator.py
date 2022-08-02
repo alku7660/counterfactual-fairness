@@ -567,7 +567,6 @@ def fnr_plot(datasets, metric, colors_dict):
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
         protected_feat_keys = list(protected_feat.keys())
-        x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric], data_obj)
         desired_ground_truth_jce_test_pd = data_obj.jce_test_pd.loc[data_obj.test_target != data_obj.undesired_class]
         desired_ground_truth_test_pd = data_obj.test_pd.loc[data_obj.test_target != data_obj.undesired_class]
         predicted_label_desired_ground_truth_jce_test_pd = model_obj.jce_sel.predict(desired_ground_truth_jce_test_pd)
@@ -581,7 +580,8 @@ def fnr_plot(datasets, metric, colors_dict):
             for feat_idx in range(len(feat_unique_val)):
                 feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
                 total_ground_truth_feat_val = np.sum(desired_ground_truth_test_pd[feat] == feat_unique_val[feat_idx])
-                print(f'{data_str}, {feat}:{feat_val_name}: {total_ground_truth_feat_val} ({total_ground_truth_feat_val/desired_ground_truth_test_pd.shape[0]})')
+                # print(f' ground truth {data_str}, {feat}:{feat_val_name}: {total_ground_truth_feat_val} ({total_ground_truth_feat_val/desired_ground_truth_test_pd.shape[0]})')
+                # print(f' {data_str}, {feat}:{feat_val_name}: {np.sum(data_obj.test_pd[feat] == feat_unique_val[feat_idx])}')
                 total_false_undesired_feat_val = np.sum(false_undesired_test_pd[feat] == feat_unique_val[feat_idx])
                 fnr = total_false_undesired_feat_val/total_ground_truth_feat_val
                 if feat in ['isMale','isMarried']:
@@ -728,8 +728,8 @@ def accuracy_weighted_burden_plot(datasets, methods, metric, colors_dict):
                     hspace=0.1)
     plt.savefig(results_cf_plots_dir+'normal_awb.pdf',format='pdf',dpi=400)
 
-datasets = ['adult','credit','diabetes']  # Name of the dataset to be analyzed ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
-methods_to_run = ['nn','mo','rt','cchvae'] #['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice']
+datasets = ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']  # Name of the datasets to be analyzed
+methods_to_run = ['nn','mo','rt','cchvae'] #['nn','mo','rt','cchvae']
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
 
 colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'black',
@@ -744,7 +744,7 @@ colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'bla
 # accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
 # statistical_parity_burden_plot(datasets, 'mo', 'proximity', colors)
 # equalized_odds_burden_plot(datasets, 'mo', 'proximity', colors)
-# fnr_plot(datasets, 'proximity', colors_dict)
+fnr_plot(datasets, 'proximity', colors_dict)
 # burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
-fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
+# fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
 # accuracy_weighted_burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
