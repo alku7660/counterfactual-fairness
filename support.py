@@ -5,7 +5,7 @@ Support functions & imports
 import os
 import numpy as np
 path_here = os.path.abspath('')
-dataset_dir = '/home/alku7660/Repos/fairness/Datasets/'
+dataset_dir = str(path_here)+'/Datasets/'
 results_cf_obj_dir = str(path_here)+'/Results/cf_obj/'
 results_cf_plots_dir = str(path_here)+'/Results/cf_plots/'
 
