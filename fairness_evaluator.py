@@ -517,8 +517,12 @@ def fnr_burden_plot(datasets, methods, metric, colors):
                     c = colors[prot_feat_idx]
                     if feat_val_name == 'African-American':
                         feat_val_name = 'African'
-                    ax[i,j].text(x=fnr_feat_val, y=np.mean(feat_method_data_values), #bbox=dict(ec=c,fc='none'),
-                            s=feat_val_name, fontstyle='italic', color=c, size=9)
+                    if feat_val_name == 'Non-white':
+                        ax[i,j].text(x=fnr_feat_val, y=np.mean(feat_method_data_values), #bbox=dict(ec=c,fc='none'),
+                                s=feat_val_name, fontstyle='italic', color=c, size=9, ha='right', va='top')
+                    else:
+                        ax[i,j].text(x=fnr_feat_val, y=np.mean(feat_method_data_values), #bbox=dict(ec=c,fc='none'),
+                                s=feat_val_name, fontstyle='italic', color=c, size=9)
                 ax[i,j].scatter(x=x_pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=10)
                 # ax[i,j].axes.xaxis.set_visible(False)
                 ax[i,j].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
@@ -728,7 +732,7 @@ def accuracy_weighted_burden_plot(datasets, methods, metric, colors_dict):
                     hspace=0.1)
     plt.savefig(results_cf_plots_dir+'normal_awb.pdf',format='pdf',dpi=400)
 
-datasets = ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']  # Name of the datasets to be analyzed
+datasets = ['compass','law','diabetes']  # Name of the datasets to be analyzed
 methods_to_run = ['nn','mo','rt','cchvae'] #['nn','mo','rt','cchvae']
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
 
@@ -744,7 +748,7 @@ colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'bla
 # accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
 # statistical_parity_burden_plot(datasets, 'mo', 'proximity', colors)
 # equalized_odds_burden_plot(datasets, 'mo', 'proximity', colors)
-fnr_plot(datasets, 'proximity', colors_dict)
+# fnr_plot(datasets, 'proximity', colors_dict)
 # burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
-# fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
+fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
 # accuracy_weighted_burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
