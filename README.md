@@ -1,4 +1,4 @@
-# counterfactual-fairness
+# Measuring the Burden of (Un)fairness Using Counterfactuals  
 Repository for Counterfactual Fairness  
 The following datasets where obtained from the specified URL:    
 Dutch Dataset: Available at https://github.com/tailequy/fairness_dataset/tree/main/Dutch_census  
