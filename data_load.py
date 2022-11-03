@@ -20,20 +20,29 @@ from support import dataset_dir
 
 def euclidean(x1,x2):
     """
-    Calculation of the euclidean distance between two different instances
-    Input x1: Instance 1
-    Input x2: Instance 2
-    Output euclidean distance between x1 and x2
+    DESCRIPTION:    Calculation of the euclidean distance between two different instances
+    
+    INPUT:
+    x1:             Instance 1
+    x2:             Instance 2
+    
+    OUTPUT:
+    distance:       Euclidean distance between x1 and x2
     """
-    return np.sqrt(np.sum((x1-x2)**2))
+    distance = np.sqrt(np.sum((x1-x2)**2))
+    return distance
 
 def sort_data_distance(x,data,data_label):
     """
-    Function to organize dataset with respect to distance to instance x
-    Input x: Instance (can be the instane of interest or a synthetic instance)
-    Input data: Training dataset
-    Input data_label: Training dataset label
-    Output data_sorted_distance: Training dataset sorted by distance to the instance of interest x
+    DESCRIPTION:    Function to organize dataset with respect to distance to instance x
+    
+    INPUT:
+    x:              Instance (can be the instance of interest or a synthetic instance)
+    data:           Training dataset (Numpy array format)
+    data_label:     Training dataset label (Numpy array format)
+    
+    OUTPUT:
+    data_sorted_distance: Training dataset sorted by distance w.r.t. the instance of interest x
     """
     sort_data_distance = []
     for i in range(len(data)):
@@ -45,53 +54,26 @@ def sort_data_distance(x,data,data_label):
 class Dataset:
     """
     **Parts of this class are adapted from the MACE algorithm methodology (please, see: https://github.com/amirhk/mace)**
-    Dataset Class: The class contains the following attributes:
-        (1) seed:                   Seed integer number
-        (2) train_fraction:         Dataset fraction used for training,
-        (3) name:                   Dataset name,
-        (4) label_str:              Label of the target column,
-        (5) raw_df:                 Raw DataFrame,
-        (6) raw_df_cols:            Raw DataFrame columns,
-        (7) jce_binary:             Binary column names after preprocessing for CE,
-        (8) jce_categorical:        Categorical column names after preprocessing for CE,
-        (9) jce_numerical:          Numerical column names after preprocessing for CE,
-       (10) oh_jce_bin_enc:         One-Hot Encoder for binary features,
-       (11) step:                   Size of the step to be used for continuous variable changes, 
-       (12) carla_categorical:      Categorical features used by the CARLA framework, 
-       (13) carla continuous:       Continuous features used by the CARLA framework,
-       (14) train_pd:               Training pandas DataFrame, 
-       (15) test_pd:                Testing pandas DataFrame,
-       (16) train_target:           Training target Series,
-       (17) test_target:            Testing target Series,
-       (18) oh_jce_bin_enc_cols:    One-Hot Encoder columns for binary features,
-       (19) oh_jce_cat_enc:         One-Hot Encoder for categorical features,
-       (20) oh_jce_cat_enc_cols:    One-Hot Encoder columns for categorical features,
-       (21) jce_scaler:             Scaler for numerical (ordinal and continuous) features,
-       (22) jce_train_pd:           Pandas DataFrame of the preprocessed training dataset,
-       (23) jce_train_np:           Numpy array of the preprocessed training dataset,
-       (24) jce_test_pd:            Pandas DataFrame of the preprocessed testing dataset,
-       (25) jce_test_np:            Numpy array of the preprocessed testing dataset,
-       (26) jce_all_cols:           Columns of the preprocessed dataset,
-       (27) oh_carla_enc_cols:      CARLA framework One-Hot Encoder columns for categorical features,
-       (28) carla_scaler:           Scaler for numerical (ordinal and continuous) features,
-       (29) carla_train_pd:         Pandas DataFrame for the training dataset preprocessed for the CARLA framework,
-       (30) carla_trained_features: Pandas DataFrame columns for the training dataset preprocessed for the CARLA framework,
-       (31) carla_test_pd:          Pandas DataFrame for the testing dataset preprocessed for the CARLA framework,
-       (32) undesired_class:        Dataset undesired class (0 or 1),
-       (33) feat_type:              Feature type Series ('bin', 'num-ord', 'num-con'),
-       (34) feat_protected:         Feature dictionary containing the sensitive feature values for all features,
-       (35) feat_mutable:           Feature Series indicating the mutability of each feature (protected features should not be able to change),
-       (36) feat_dir:               Feature Series indicating the direction of change of each feature,
-       (37) feat_cost:              Feature cost Series (for now all features are assumed to have the same cost of change),
-       (38) feat_step:              Feature step size Series,
-       (39) feat_cat:               Feature categorical group indicator Series 
-       (40) unique_val:             Pandas DataFrame holding the unique values for each feature
-       (41) train_sorted:           Sorted training dataset with respect to a given instance (initialized as needed when an instance is required)
+    DESCRIPTION:    Dataset Class
+
+    INPUT:          
+    seed_int:           Seed integer number
+    train_fraction:     Fraction of the dataset to be used for training and validation
+    data_str:           Name of the dataset to be loaded
+    label_str:          Name of the column corresponding to the label of the dataset
+    raw_df:             Unprocessed dataset
+    raw_df_cols:        List of original names of the features (before preprocessing)
+    binary:             Original binary feature names
+    categorical:        Original categorical feature names
+    numerical:          Original numerical feature names (ordinal and continuous)
+    step:               Step size to be used in continuous feature discretization
+    carla_categorical:  Categorial feature names used in the CARLA framework
+    carla_continuous:   Continuous feature names used in the CARLA framework
     """
 
-    def __init__(self,seed_int,train_fraction,data_str,label_str,
-                 raw_df,binary,categorical,numerical,step,
-                 carla_categorical,carla_continuous):
+    def __init__(self, seed_int, train_fraction, data_str, label_str,
+                 raw_df, binary, categorical, numerical, step,
+                 carla_categorical, carla_continuous):
 
         self.seed = seed_int
         self.train_fraction = train_fraction
@@ -99,22 +81,21 @@ class Dataset:
         self.label_str = label_str
         self.raw_df = raw_df
         self.raw_df_cols = raw_df.columns
-        self.jce_binary = binary
-        self.jce_categorical = categorical
-        self.jce_numerical = numerical
-        self.oh_jce_bin_enc = None
+        self.binary = binary
+        self.categorical = categorical
+        self.numerical = numerical
+        self.bin_enc = None
         self.step = step
         self.carla_categorical = carla_categorical
         self.carla_continuous = carla_continuous
-        self.train_pd, self.test_pd, self.train_target, self.test_target = train_test_split(self.raw_df,self.raw_df[self.label_str],train_size=self.train_fraction,random_state=self.seed)
-        self.data_balancing_target_filter() 
-
-        # Stores all encoders, scalers, and train datasets
-        self.jce_encoder_scaler_fit_transform_train()
-        self.carla_encoder_scaler_fit_transform()
-        self.jce_test_pd, self.jce_test_np = self.jce_encoder_scaler_transform_test(self.test_pd)
+        self.train_df, self.test_df, self.train_target, self.test_target = train_test_split(self.raw_df,self.raw_df[self.label_str],train_size=self.train_fraction,random_state=self.seed)
+        self.train_df, self.train_target, self.test_df = self.data_balancing_target_filter() 
+        self.bin_enc, self.cat_enc, self.scaler, self.bin_enc_cols, self.cat_enc_cols = self.encoder_scaler_fit()
+        self.transformed_train_df, self.transformed_train_np, self.transformed_cols = self.transform_train()
+        self.transformed_test_df, self.transformed_test_np = self.transform_test(self.test_df)
+        self.carla_enc, self.carla_scaler, self.carla_enc_cols = self.carla_encoder_scaler_fit()
+        self.carla_transformed_train_df, self.carla_transformed_test_df, self.carla_transformed_cols = self.carla_transform_train_test()
         self.undesired_class = self.undesired_class_data()
-
         self.feat_type = self.define_feat_type()
         self.feat_protected = self.define_protected()
         self.feat_mutable = self.define_mutability()
@@ -126,111 +107,196 @@ class Dataset:
 
     def data_balancing_target_filter(self):
         """
-        Method that balances the training dataset (Adapted from MACE algorithm methodology - please see: https://github.com/amirhk/mace)
+        DESCRIPTION:    Method that balances the training dataset (Adapted from MACE algorithm methodology - please see: https://github.com/amirhk/mace)
+        
+        INPUT:
+        self
+        
+        OUTPUT:
+        train_df:       Training dataset DataFrame
+        train_target:   Training target column
+        test_df:        Testing dataset DataFrame 
         """
         unique_values_and_count = self.train_target.value_counts()
         number_of_subsamples_per_class = unique_values_and_count.min() // 10 * 10
-        self.train_pd = pd.concat([self.train_pd[(self.train_pd[self.label_str] == 0).to_numpy()].sample(number_of_subsamples_per_class, random_state = self.seed),
-        self.train_pd[(self.train_pd[self.label_str] == 1).to_numpy()].sample(number_of_subsamples_per_class, random_state = self.seed),]).sample(frac = 1, random_state = self.seed)
-        self.train_target = self.train_pd[self.label_str]
-        del self.train_pd[self.label_str[0]]
-        del self.test_pd[self.label_str[0]]
+        train_df = pd.concat([self.train_df[(self.train_df[self.label_str] == 0).to_numpy()].sample(number_of_subsamples_per_class, random_state = self.seed),
+        self.train_df[(self.train_df[self.label_str] == 1).to_numpy()].sample(number_of_subsamples_per_class, random_state = self.seed),]).sample(frac = 1, random_state = self.seed)
+        train_target = self.train_df[self.label_str]
+        test_df = self.test_df.copy()
+        del train_df[self.label_str[0]]
+        del test_df[self.label_str[0]]
+        return train_df, train_target, test_df
 
-    def jce_encoder_scaler_fit_transform_train(self):
+    def encoder_scaler_fit(self):
         """
-        Method that fits the encoder and scaler for the dataset and processes the training dataset
-        """
-        oh_jce_bin_enc = OneHotEncoder(drop='if_binary',dtype=np.uint8,handle_unknown='ignore')
-        oh_jce_cat_enc = OneHotEncoder(drop='if_binary',dtype=np.uint8,handle_unknown='ignore')
-        jce_scaler = MinMaxScaler(clip=True)
-        jce_train_data_bin, jce_train_data_cat, jce_train_data_num = self.train_pd[self.jce_binary], self.train_pd[self.jce_categorical], self.train_pd[self.jce_numerical]
-        enc_jce_train_data_bin = oh_jce_bin_enc.fit_transform(jce_train_data_bin).toarray()
-        enc_jce_train_data_cat = oh_jce_cat_enc.fit_transform(jce_train_data_cat).toarray()
-        scaled_jce_train_data_num = jce_scaler.fit_transform(jce_train_data_num)
-        self.oh_jce_bin_enc, self.oh_jce_bin_enc_cols = oh_jce_bin_enc, oh_jce_bin_enc.get_feature_names_out(self.jce_binary)
-        self.oh_jce_cat_enc, self.oh_jce_cat_enc_cols = oh_jce_cat_enc, oh_jce_cat_enc.get_feature_names_out(self.jce_categorical)
-        self.jce_scaler = jce_scaler
-        scaled_jce_train_data_num_pd = pd.DataFrame(scaled_jce_train_data_num,index=jce_train_data_num.index,columns=self.jce_numerical)
-        enc_jce_train_data_bin_pd = pd.DataFrame(enc_jce_train_data_bin,index=jce_train_data_bin.index,columns=self.oh_jce_bin_enc_cols)
-        enc_jce_train_data_cat_pd = pd.DataFrame(enc_jce_train_data_cat,index=jce_train_data_cat.index,columns=self.oh_jce_cat_enc_cols)
-        self.jce_train_pd = self.transform_to_jce_format(scaled_jce_train_data_num_pd,enc_jce_train_data_bin_pd,enc_jce_train_data_cat_pd)
-        self.jce_all_cols = self.jce_train_pd.columns.to_list()
-        self.jce_train_np = self.jce_train_pd.to_numpy()
-
-    def carla_encoder_scaler_fit_transform(self):
-        """
-        Method that fits the encoder and scaler for the dataset and transforms the training dataset according to the CARLA framework
-        """
-        oh_carla_enc = OneHotEncoder(drop='if_binary',dtype=np.uint8,handle_unknown='ignore',sparse=False)
-        carla_scaler = MinMaxScaler(clip=True)
-        carla_train_data_cat, carla_train_data_cont = self.train_pd[self.carla_categorical], self.train_pd[self.carla_continuous]
-        enc_carla_train_data_cat = oh_carla_enc.fit_transform(carla_train_data_cat)
-        scaled_carla_train_data_cont = carla_scaler.fit_transform(carla_train_data_cont)
-        self.oh_carla_enc = oh_carla_enc
-        self.oh_carla_enc_cols = self.oh_carla_enc.get_feature_names_out(self.carla_categorical)
-        self.carla_scaler = carla_scaler
-        enc_carla_train_data_cat_pd = pd.DataFrame(enc_carla_train_data_cat,index=carla_train_data_cat.index,columns=self.oh_carla_enc_cols)
-        scaled_carla_train_data_cont_pd = pd.DataFrame(scaled_carla_train_data_cont,index=carla_train_data_cont.index,columns=self.carla_continuous)
-        self.carla_train_pd = pd.concat((scaled_carla_train_data_cont_pd,enc_carla_train_data_cat_pd),axis=1)
-        self.carla_trained_features = self.carla_train_pd.columns.to_list()
-        carla_test_data_cat, carla_test_data_cont = self.test_pd[self.carla_categorical], self.test_pd[self.carla_continuous]
-        enc_carla_test_data_cat = oh_carla_enc.transform(carla_test_data_cat)
-        scaled_carla_test_data_cont = carla_scaler.transform(carla_test_data_cont)
-        enc_carla_test_data_cat_pd = pd.DataFrame(enc_carla_test_data_cat,index=carla_test_data_cat.index,columns=self.oh_carla_enc_cols)
-        scaled_carla_test_data_cont_pd = pd.DataFrame(scaled_carla_test_data_cont,index=carla_test_data_cont.index,columns=self.carla_continuous)
-        self.carla_test_pd = pd.concat((scaled_carla_test_data_cont_pd,enc_carla_test_data_cat_pd),axis=1)
+        DESCRIPTION:    Method that fits the encoder and scaler for the dataset
         
-    def jce_encoder_scaler_transform_test(self,test_df):
-        """
-        Method that uses the encoder and scaler for the dataset and processes the testing dataset
-        """
-        jce_test_data_bin, jce_test_data_cat, jce_test_data_num = test_df[self.jce_binary], test_df[self.jce_categorical], test_df[self.jce_numerical]
-        enc_jce_test_data_bin, enc_jce_test_data_cat = self.oh_jce_bin_enc.transform(jce_test_data_bin).toarray(), self.oh_jce_cat_enc.transform(jce_test_data_cat).toarray()
-        scaled_jce_test_data_num = self.jce_scaler.transform(jce_test_data_num)
-        enc_jce_test_data_bin_pd = pd.DataFrame(enc_jce_test_data_bin,index=jce_test_data_bin.index,columns=self.oh_jce_bin_enc_cols)
-        enc_jce_test_data_cat_pd = pd.DataFrame(enc_jce_test_data_cat,index=jce_test_data_cat.index,columns=self.oh_jce_cat_enc_cols)
-        scaled_jce_test_data_num_pd = pd.DataFrame(scaled_jce_test_data_num,index=jce_test_data_num.index,columns=self.jce_numerical)
-        jce_test_pd = self.transform_to_jce_format(scaled_jce_test_data_num_pd,enc_jce_test_data_bin_pd,enc_jce_test_data_cat_pd)
-        jce_test_np = jce_test_pd.to_numpy()
-        return jce_test_pd, jce_test_np
+        INPUT:
+        self
 
-    def transform_to_jce_format(self,num_data,enc_bin_data,enc_cat_data):
+        OUTPUT:
+        bin_enc:        Fitted binary encoder
+        cat_enc:        Fitted categorical encoder
+        scaler:         Fitted scaler
+        bin_enc_cols:   Binary encoded feature names
+        cat_enc_cols:   Categorical encoded feature names
         """
-        Method that transforms an instance of interest to a comparable format according to the dataset features
-        Input num_data: The numerical (continuous) variables in DataFrame transformed
-        Input enc_bin_data: The binary variables transformed in DataFrame
-        Input enc_cat_cata: The categorical variables transformed in DataFrame
-        Output enc_jce_data_pd: The instance in pandas DataFrame
-        """
-        if self.name == 'adult':
-            enc_jce_data_pd = pd.concat((enc_bin_data[self.oh_jce_bin_enc_cols[0]],num_data[self.jce_numerical[0]],
-                                enc_bin_data[self.oh_jce_bin_enc_cols[1:3]],num_data[self.jce_numerical[1:5]],
-                                enc_cat_data[self.oh_jce_cat_enc_cols[:7]],num_data[self.jce_numerical[-1]],
-                                enc_cat_data[self.oh_jce_cat_enc_cols[7:]]),axis=1)
-        elif self.name in ['kdd_census','german','dutch','bank','credit','diabetes','student','oulad','law']:
-            enc_jce_data_pd = pd.concat((enc_bin_data,num_data,enc_cat_data),axis=1)
-        elif self.name == 'credit':
-            enc_jce_data_pd = pd.concat((enc_bin_data[self.oh_jce_bin_enc_cols[:2]],num_data[self.jce_numerical[0:9]],
-                                enc_bin_data[self.oh_jce_bin_enc_cols[2:]],num_data[self.jce_numerical[9:]]),axis=1)
-        elif self.name == 'compass':
-            enc_jce_data_pd = pd.concat((enc_bin_data[self.oh_jce_bin_enc_cols[:2]],num_data[self.jce_numerical[0]],
-                                enc_bin_data[self.oh_jce_bin_enc_cols[2:]],num_data[self.jce_numerical[1]]),axis=1)
-        return enc_jce_data_pd
+        bin_enc = OneHotEncoder(drop='if_binary',dtype=np.uint8,handle_unknown='ignore')
+        cat_enc = OneHotEncoder(drop='if_binary',dtype=np.uint8,handle_unknown='ignore')
+        scaler = MinMaxScaler(clip=True)
+        train_data_bin, train_data_cat, train_data_num = self.train_df[self.binary], self.train_df[self.categorical], self.train_df[self.numerical]
+        bin_enc.fit(train_data_bin)
+        cat_enc.fit(train_data_cat)
+        scaler.fit(train_data_num)
+        bin_enc_cols = bin_enc.get_feature_names_out(self.binary)
+        cat_enc_cols = cat_enc.get_feature_names_out(self.categorical)
+        return bin_enc, cat_enc, scaler, bin_enc_cols, cat_enc_cols
 
-    def filter_undesired_class(self,model):
+    def transform_train(self):
         """
-        Method that obtains the undesired class instances according to the selected model
-        Input model: Model object containing the trained models
-        """
-        self.jce_test_pd['pred'] = model.jce_sel.predict(self.jce_test_pd)
-        self.jce_test_undesired_pd = self.jce_test_pd.loc[self.jce_test_pd['pred'] == self.undesired_class]
-        del self.jce_test_undesired_pd['pred']
-        self.jce_test_undesired_np = self.jce_test_undesired_pd.to_numpy()
-        self.test_undesired_target = self.test_target.loc[self.jce_test_pd['pred'] == self.undesired_class]
-        self.test_undesired_pd = self.test_pd.loc[self.jce_test_pd['pred'] == self.undesired_class]
-        del self.jce_test_pd['pred']
-        self.test_undesired_np = self.test_undesired_pd.to_numpy()
+        DESCRIPTION:            Method that fits the encoder and scaler for the dataset and processes the training dataset
 
+        INPUT:
+        self
+
+        OUTPUT:
+        transformed_train_df:   Transformed training dataset DataFrame
+        transformed_train_np:   Transformed training dataset Numpy array
+        transformed_cols:       Columns of the transformed dataset
+        """
+        train_data_bin, train_data_cat, train_data_num = self.train_df[self.binary], self.train_df[self.categorical], self.train_df[self.numerical]
+        enc_train_data_bin = self.bin_enc.transform(train_data_bin).toarray()
+        enc_train_data_cat = self.cat_enc.transform(train_data_cat).toarray()
+        scaled_train_data_num = self.scaler.transform(train_data_num)
+        scaled_train_data_num_df = pd.DataFrame(scaled_train_data_num, index=train_data_num.index, columns=self.numerical)
+        enc_train_data_bin_df = pd.DataFrame(enc_train_data_bin, index=train_data_bin.index, columns=self.bin_enc_cols)
+        enc_train_data_cat_df = pd.DataFrame(enc_train_data_cat, index=train_data_cat.index, columns=self.oh_cat_enc_cols)
+        transformed_train_df = pd.concat((enc_train_data_bin_df, enc_train_data_cat_df, scaled_train_data_num_df),axis=1)
+        transformed_cols = self.transformed_train_df.columns.to_list()
+        transformed_train_np = self.transformed_train_df.to_numpy()
+        return transformed_train_df, transformed_train_np, transformed_cols
+
+    def carla_encoder_scaler_fit(self):
+        """
+        DESCRIPTION:        Method that fits the encoder and scaler for the dataset and transforms the training dataset according to the CARLA framework
+
+        INPUT:
+        self
+
+        OUTPUT:
+        carla_enc:          Fitted encoder used for the CARLA framework
+        carla_scaler:       Fitted scaler for the CARLA framework
+        carla_enc_cols:     CARLA framework encoder columns 
+        """
+        carla_enc = OneHotEncoder(drop='if_binary',dtype=np.uint8,handle_unknown='ignore',sparse=False)
+        carla_scaler = MinMaxScaler(clip=True)
+        carla_train_data_cat, carla_train_data_cont = self.train_df[self.carla_categorical], self.train_df[self.carla_continuous]
+        carla_enc.fit(carla_train_data_cat)
+        carla_scaler.fit(carla_train_data_cont)
+        carla_enc_cols = self.carla_enc.get_feature_names_out(self.carla_categorical)
+        return carla_enc, carla_scaler, carla_enc_cols
+
+    def carla_transform_train_test(self):
+        """
+        DESCRIPTION:                Method that fits the encoder and scaler for the dataset and transforms the training dataset according to the CARLA framework
+
+        INPUT:
+        self
+
+        OUTPUT:
+        carla_transformed_train_df: CARLA transformed training dataset (DataFrame)
+        carla_transformed_test_df:  CARLA transformed testing dataset (DataFrame)
+        carla_transformed_cols:     CARLA transformed feature names
+        """
+        carla_train_data_cat, carla_train_data_cont = self.train_df[self.carla_categorical], self.train_df[self.carla_continuous]
+        enc_carla_train_data_cat = self.carla_enc.transform(carla_train_data_cat)
+        scaled_carla_train_data_cont = self.carla_scaler.transform(carla_train_data_cont)
+        enc_carla_train_data_cat_df = pd.DataFrame(enc_carla_train_data_cat, index=carla_train_data_cat.index, columns=self.carla_enc_cols)
+        scaled_carla_train_data_cont_df = pd.DataFrame(scaled_carla_train_data_cont, index=carla_train_data_cont.index, columns=self.carla_continuous)
+        carla_transformed_train_df = pd.concat((scaled_carla_train_data_cont_df,enc_carla_train_data_cat_df),axis=1)
+        carla_transformed_cols = carla_transformed_train_df.columns.to_list()
+
+        carla_test_data_cat, carla_test_data_cont = self.test_df[self.carla_categorical], self.test_df[self.carla_continuous]
+        enc_carla_test_data_cat = self.carla_enc.transform(carla_test_data_cat)
+        scaled_carla_test_data_cont = self.carla_scaler.transform(carla_test_data_cont)
+        enc_carla_test_data_cat_df = pd.DataFrame(enc_carla_test_data_cat, index=carla_test_data_cat.index, columns=self.carla_enc_cols)
+        scaled_carla_test_data_cont_df = pd.DataFrame(scaled_carla_test_data_cont, index=carla_test_data_cont.index, columns=self.carla_continuous)
+        carla_transformed_test_df = pd.concat((scaled_carla_test_data_cont_df, enc_carla_test_data_cat_df), axis=1)
+        return carla_transformed_train_df, carla_transformed_test_df, carla_transformed_cols
+        
+    def transform_test(self, df):
+        """
+        DESCRIPTION:                Method that uses the encoder and scaler for the dataset and processes the testing dataset
+
+        INPUT:
+        df:                         DataFrame on which to apply the transformation (could be different to the testing dataset)
+
+        OUTPUT:
+        df:                         Data DataFrame transformed using the corresponding encoder and scaler
+        arr:                        Numpy array version of the DataFrame
+        """
+        data_bin, data_cat, data_num = df[self.binary], df[self.categorical], df[self.numerical]
+        enc_data_bin, enc_data_cat = self.bin_enc.transform(data_bin).toarray(), self.cat_enc.transform(data_cat).toarray()
+        scaled_data_num = self.scaler.transform(data_num)
+        enc_data_bin_df = pd.DataFrame(enc_data_bin,index=data_bin.index,columns=self.bin_enc_cols)
+        enc_data_cat_df = pd.DataFrame(enc_data_cat,index=data_cat.index,columns=self.oh_cat_enc_cols)
+        scaled_data_num_df = pd.DataFrame(scaled_data_num,index=data_num.index,columns=self.numerical)
+        df = pd.concat((enc_data_bin_df, enc_data_cat_df, scaled_data_num_df),axis=1)
+        arr = df.to_numpy()
+        return df, arr
+
+    # def transform_to_jce_format(self,num_data,enc_bin_data,enc_cat_data):
+    #     """
+    #     Method that transforms an instance of interest to a comparable format according to the dataset features
+    #     Input num_data: The numerical (continuous) variables in DataFrame transformed
+    #     Input enc_bin_data: The binary variables transformed in DataFrame
+    #     Input enc_cat_cata: The categorical variables transformed in DataFrame
+    #     Output enc_jce_data_df: The instance in pandas DataFrame
+    #     """
+    #     if self.name == 'adult':
+    #         enc_jce_data_df = pd.concat((enc_bin_data[self.bin_enc_cols[0]],num_data[self.numerical[0]],
+    #                             enc_bin_data[self.bin_enc_cols[1:3]],num_data[self.numerical[1:5]],
+    #                             enc_cat_data[self.oh_jce_cat_enc_cols[:7]],num_data[self.numerical[-1]],
+    #                             enc_cat_data[self.oh_jce_cat_enc_cols[7:]]),axis=1)
+    #     elif self.name in ['kdd_census','german','dutch','bank','credit','diabetes','student','oulad','law']:
+    #         enc_jce_data_df = pd.concat((enc_bin_data,num_data,enc_cat_data),axis=1)
+    #     elif self.name == 'credit':
+    #         enc_jce_data_df = pd.concat((enc_bin_data[self.bin_enc_cols[:2]],num_data[self.numerical[0:9]],
+    #                             enc_bin_data[self.bin_enc_cols[2:]],num_data[self.numerical[9:]]),axis=1)
+    #     elif self.name == 'compass':
+    #         enc_jce_data_df = pd.concat((enc_bin_data[self.bin_enc_cols[:2]],num_data[self.numerical[0]],
+    #                             enc_bin_data[self.bin_enc_cols[2:]],num_data[self.numerical[1]]),axis=1)
+    #     return enc_jce_data_df
+
+    def filter_undesired_class(self, model):
+        """
+        DESCRIPTION:                        Method that obtains the undesired class instances according to the selected model
+        
+        INPUT:
+        model:                              Model object containing the trained models
+        
+        OUTPUT: (None)
+        undesired_test_df:                  DataFrame containing the original instances with the undesired predicted label
+        undesired_test_np:                  Numpy array containing the original instances with the undesired predicted label
+        undesired_transformed_test_df:      DataFrame containing the original instances with the undesired predicted label
+        undesired_transformed_test_np:      Numpy array containing the original instances with the undesired predicted label
+        undesired_test_target:              Ground truth label of the instances predicted with the undesired label
+        """
+        undesired_test_df = self.test_df.copy()
+        undesired_transformed_test_df = self.transformed_test_df.copy()
+        undesired_test_df['pred'] = model.sel.predict(self.transformed_test_df)
+        undesired_test_df = undesired_test_df.loc[undesired_test_df['pred'] == self.undesired_class]
+        undesired_test_target = self.test_target.loc[undesired_test_df['pred'] == self.undesired_class]
+        undesired_transformed_test_df = undesired_transformed_test_df.loc[undesired_test_df['pred'] == self.undesired_class]
+        del undesired_test_df['pred']
+        undesired_test_np = undesired_test_df.to_numpy()
+        undesired_transformed_test_np = undesired_transformed_test_df.to_numpy()
+        self.undesired_test_df = undesired_test_df
+        self.undesired_test_np = undesired_test_np
+        self.undesired_transformed_test_df = undesired_transformed_test_df
+        self.undesired_transformed_test_np = undesired_transformed_test_np
+        self.undesired_test_target = undesired_test_target
+        
     def change_targets_to_numpy(self):
         """
         Method that changes the targets to numpy if they are dataframes
@@ -266,38 +332,42 @@ class Dataset:
             undesired_class = 0
         return undesired_class
 
-    def from_carla_to_jce(self,pd_instance):
+    def from_carla(self, df_instance):
         """
-        Method to transform from the CARLA instance format to the normal instance format
-        Input pd_instance: Pandas DataFrame instance of interest to change from the CARLA to the normal format
-        Output jce_instance: Dataframe containing the instance in the normal format
+        DESCRIPTION:        Method to transform from the CARLA instance format to the normal instance format
+        
+        INPUT:
+        df_instance:        DataFrame instance of interest to change from the CARLA framework format to normal format
+        
+        OUTPUT:
+        normal_instance:    Dataframe containing the instance in the normal format
         """
         if len(self.carla_categorical) > 0:
-            pd_jce_categorical = pd.DataFrame(self.oh_carla_enc.inverse_transform(pd_instance[self.oh_carla_enc_cols]),columns=self.carla_categorical)
+            df_categorical = pd.DataFrame(self.carla_enc.inverse_transform(df_instance[self.carla_enc_cols]),columns=self.carla_categorical)
         else:
-            pd_jce_categorical = pd.DataFrame()
-        pd_jce_continuous = pd.DataFrame(self.carla_scaler.inverse_transform(pd_instance[self.carla_continuous]),columns=self.carla_continuous)
-        pd_jce = pd.concat((pd_jce_continuous,pd_jce_categorical),axis=1)
-        bin_data, cat_data, num_data = pd_jce[self.jce_binary], pd_jce[self.jce_categorical], pd_jce[self.jce_numerical]
-        enc_bin_data, enc_cat_data = self.oh_jce_bin_enc.transform(bin_data).toarray(), self.oh_jce_cat_enc.transform(cat_data).toarray()
-        enc_bin_data = pd.DataFrame(enc_bin_data,index=bin_data.index,columns=self.oh_jce_bin_enc_cols)
-        enc_cat_data = pd.DataFrame(enc_cat_data,index=cat_data.index,columns=self.oh_jce_cat_enc_cols)
-        scaled_num_data = pd.DataFrame(self.jce_scaler.transform(num_data),index=num_data.index,columns=self.jce_numerical)
-        jce_instance = self.transform_to_jce_format(scaled_num_data,enc_bin_data,enc_cat_data)
-        return jce_instance
+            df_categorical = pd.DataFrame()
+        df_continuous = pd.DataFrame(self.carla_scaler.inverse_transform(df_instance[self.carla_continuous]),columns=self.carla_continuous)
+        df = pd.concat((df_continuous, df_categorical),axis=1)
+        bin_data, cat_data, num_data = pd[self.binary], pd[self.categorical], pd[self.numerical]
+        enc_bin_data, enc_cat_data = self.bin_enc.transform(bin_data).toarray(), self.cat_enc.transform(cat_data).toarray()
+        enc_bin_data = pd.DataFrame(enc_bin_data,index=bin_data.index, columns=self.bin_enc_cols)
+        enc_cat_data = pd.DataFrame(enc_cat_data,index=cat_data.index, columns=self.cat_enc_cols)
+        scaled_num_data = pd.DataFrame(self.scaler.transform(num_data), index=num_data.index, columns=self.numerical)
+        normal_instance = pd.concat((enc_bin_data, enc_cat_data, scaled_num_data),axis=1)
+        return normal_instance
 
     def store_test_undesired(self):
         """
         Method that stores the test_data_undesired information
         """
-        pickle.dump(self.jce_test_undesired_pd, open(f'{dataset_dir}{self.name}/{self.name}_jce_test_undesired.pkl', 'wb'))
+        pickle.dump(self.jce_test_undesired_df, open(f'{dataset_dir}{self.name}/{self.name}_jce_test_undesired.pkl', 'wb'))
 
     def define_feat_type(self):
         """
         Method that obtains a feature type vector corresponding to each of the features
         Output feat_type: Dataset feature type series
         """
-        feat_type = self.jce_train_pd.dtypes
+        feat_type = self.jce_train_df.dtypes
         feat_type_out = copy.deepcopy(feat_type)
         feat_list = feat_type.index.tolist()
         if self.name == 'adult':
@@ -785,8 +855,8 @@ class Model:
         """
         grid_search_results = pd.read_csv(str(self.model_params_path)+'/Results/grid_search/grid_search_final.csv',index_col = ['dataset','model'])
         sel_model_str, params_best, params_rf = best_model_params(grid_search_results,data_obj.name)
-        self.jce_sel, self.jce_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.jce_train_pd,data_obj.train_target)
-        self.carla_sel, self.carla_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.carla_train_pd,data_obj.train_target)
+        self.jce_sel, self.jce_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.jce_train_df,data_obj.train_target)
+        self.carla_sel, self.carla_rf = clf_model(sel_model_str,params_best,params_rf,data_obj.carla_train_df,data_obj.train_target)
 
 def erase_missing(data):
     """

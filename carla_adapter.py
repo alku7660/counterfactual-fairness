@@ -1,6 +1,13 @@
 from carla import Data
 from carla import MLModel
 
+
+ # This file is adapted from the CARLA framework. The CARLA framework is meant 
+ # for Counterfactual Explanation method applications. Please, see the follwing links for further information:
+ # ArXiv paper:   https://arxiv.org/pdf/2108.00783.pdf
+ # GitHub repo:   https://github.com/carla-recourse/CARLA
+ # Documentation: https://carla-counterfactual-and-recourse-library.readthedocs.io/en/latest/
+
  # Custom data set implementations need to inherit from the Data interface
 class MyOwnDataSet(Data):
     def __init__(self,data_obj):
@@ -75,6 +82,7 @@ class MyOwnModel(MLModel):
         # arbitrary black-box-model
         self._mymodel = model.carla_sel
         self.undesired_class = data.undesired_class
+        
         # Define a fitted sklearn scaler to normalize input data
         self.scaler = data.carla_scaler
 

@@ -6,7 +6,16 @@ from carla.recourse_methods import CCHVAE
 
 def cchvae_function(data, carla_model, x_carla_pd):
     """
-    Method that runs the CCHVAE model
+    DESCRIPTION:    Method that runs the CCHVAE model
+    
+    INPUT
+    data:           Dataset object containing the dataset and related relevant information
+    carla_model:    CARLA framework model
+    x_carla_pd:     Instance of interest loaded with the preprocessing for the CARLA framework
+
+    OUTPUT
+    cf:             Counterfactual instance obtained from the CCHVAE method
+    run_time:       Run time of the CCHVAE method        
     """
     data_with_target = copy.deepcopy(data.train_pd)
     data_with_target[data.label_str[0]] = data.train_target
