@@ -4,7 +4,7 @@ Imports
 import warnings
 warnings.filterwarnings("ignore")
 from eval import Evaluator
-from data_load import load_model_dataset
+from data_model_load import load_model_dataset
 import pickle
 import numpy as np
 import pandas as pd

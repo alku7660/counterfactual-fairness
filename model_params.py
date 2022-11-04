@@ -9,32 +9,40 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 import copy
 
-def best_model_params(grid_search_pd,data_str):
+def best_model_params(grid_search_pd, data_str):
     """
-    Method that delivers the best model and its parameters according to the Grid Search done
-    Input grid_search_pd: DataFrame containing the parameters of the models tested in the Grid Search
-    Input data_str: String containing the name of the dataset
-    Output best: The name of the best performing model
-    Output params_best: The parameters of the best performing model
-    Output params_rf: The parameters of the RF model
+    DESCRIPTION:        Delivers the best model and its parameters according to the Grid Search done
+    
+    INPUT:
+    grid_search_pd:     DataFrame containing the parameters of the models tested in the Grid Search
+    data_str:           String containing the name of the dataset
+    
+    OUTPUT:
+    best:               The name of the best performing model
+    params_best:        The parameters of the best performing model
+    params_rf:          The parameters of the RF model
     """
     if data_str in ['adult','kdd_census','dutch','bank','student']:
         best = 'rf'
     elif data_str in ['credit','german','diabetes','oulad','law','compass']:
         best = 'mlp'
-    params_best = ast.literal_eval(grid_search_pd.loc[(data_str,best),'params'])[0]
-    params_rf = ast.literal_eval(grid_search_pd.loc[(data_str,'rf'),'params'])[0]
+    params_best = ast.literal_eval(grid_search_pd.loc[(data_str,best), 'params'])[0]
+    params_rf = ast.literal_eval(grid_search_pd.loc[(data_str,'rf'), 'params'])[0]
     return best, params_best, params_rf
 
-def clf_model(model_str,best_params,rf_params,train_data,train_target):
+def clf_model(model_str, best_params, rf_params, train_data, train_target):
     """
-    Method that outputs the best trained model according to Grid Search done
-    Input model_str: The name of the best performing model
-    Input best_params: Parameters of the best performing model
-    Input rf_params: Parameters of the RF model
-    Input train_data: Training dataset
-    Input train_target: Target of the training dataset
-    Output model: Trained best performing model
+    DESCRIPTION:        Outputs the best trained model according to Grid Search done
+    
+    INPUT:
+    model_str:          The name of the best performing model
+    best_params:        Parameters of the best performing model
+    rf_params:          Parameters of the RF model
+    train_data:         Training dataset
+    train_target:       Target of the training dataset
+
+    OUTPUT:
+    model:              Trained best performing model
     """
     random_st = 54321 
     if model_str == 'svm':

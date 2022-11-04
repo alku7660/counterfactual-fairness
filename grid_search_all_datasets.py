@@ -10,7 +10,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import GridSearchCV
-from data_load import load_model_dataset
+from data_model_load import load_model_dataset
 import pandas as pd
 import numpy as np
 
