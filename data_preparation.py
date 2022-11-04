@@ -627,8 +627,6 @@ def prepare_data(data_str):
         processed_df['BarExam'] = raw_df['pass_bar'].astype(int)
     
     processed_df.to_csv(f'{dataset_dir}/{data_str}/preprocessed_{data_str}.csv')
-    processed_df_2 = pd.read_csv(f'{dataset_dir}/{data_str}/preprocessed_{data_str}.csv', index_col=0)
-    check = 1
 
 data_str = 'law'
-prepare_data(data_str)
+# prepare_data(data_str)

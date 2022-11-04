@@ -5,9 +5,6 @@ Dataset loader
 """
 Imports
 """
-
-import os
-import copy
 import pickle
 from model_params import clf_model, best_model_params
 from dataset_parameters import define_all_parameters
@@ -71,7 +68,6 @@ class Dataset:
     carla_categorical:  Categorial feature names used in the CARLA framework
     carla_continuous:   Continuous feature names used in the CARLA framework
     """
-
     def __init__(self, seed_int, train_fraction, data_str, label_str,
                  raw_df, binary, categorical, ordinal, continuous,
                  step, carla_categorical, carla_continuous):

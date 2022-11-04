@@ -3,6 +3,7 @@ Support functions & imports
 """
 
 import os
+import pickle
 import numpy as np
 path_here = os.path.abspath('')
 dataset_dir = str(path_here)+'/Datasets/'
@@ -70,3 +71,18 @@ def verify_feasibility(x,cf,mutable_feat,feat_type,feat_step,feat_dir,mutability
         if not np.array_equal(x[np.where(mutable_feat == 0)],cf[np.where(mutable_feat == 0)]):
             feasibility = False
     return feasibility
+
+def save_obj(evaluator_obj, file_name):
+    """
+    Method to store an Evaluator object containing the evaluation results for all the instances of a given dataset
+    """
+    with open(results_cf_obj_dir+file_name, 'wb') as output:
+        pickle.dump(evaluator_obj, output, pickle.HIGHEST_PROTOCOL)
+
+def load_obj(file_name):
+    """
+    Method to read an Evaluator object containing the evaluation results for all the instances of a given dataset
+    """
+    with open(results_cf_obj_dir+file_name, 'rb') as input:
+        evaluator_obj = pickle.load(input)
+    return evaluator_obj

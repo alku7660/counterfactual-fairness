@@ -10,14 +10,18 @@ import time
 from support import sort_data_distance, verify_feasibility
 
 #Minimum Observable method
-def min_obs(x,x_label,data,mutability_check=True):
+def min_obs(x, x_label, data, mutability_check=True):
     """
-    Function that returns the minimum observable counterfactual with respect to instance of interest x
-    Input x: Instance of interest
-    Input x_label: Label of instance of interest x
-    Input data: Dataset object
-    Output mo_cf: Minimum observable counterfactual to the instance of interest x
-    Output mo_cf_dist_x: Distance between mo_cf and instance of interest x
+    DESCRIPTION:        Returns the minimum observable counterfactual with respect to instance of interest x
+    
+    INPUT:
+    x:                  Instance of interest
+    x_label:            Label of instance of interest x
+    data:               Dataset object
+
+    OUTPUT:
+    mo_cf:              Minimum observable counterfactual to the instance of interest x
+    mo_cf_dist_x:       Distance between mo_cf and instance of interest x
     """
     start_time = time.time()
     mo_cf = None
