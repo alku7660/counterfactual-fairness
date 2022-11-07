@@ -28,8 +28,14 @@ for data_str in datasets:
     data, model = load_model_dataset(data_str, train_fraction, seed_int, step, path_here)
     carla_data = MyOwnDataSet(data)
     carla_model = MyOwnModel(carla_data, data, model)
+    desired_ground_truth_test_df = data.transformed_test_df.loc[data.test_target != data.undesired_class]
+    desired_ground_truth_target = data.test_target[data.test_target != data.undesired_class]
+    predicted_label_desired_ground_truth_test_df = model.sel.predict(desired_ground_truth_test_df)
+    false_undesired_test_df = desired_ground_truth_test_df.loc[predicted_label_desired_ground_truth_test_df == data.undesired_class]
+    false_undesired_target = desired_ground_truth_target[predicted_label_desired_ground_truth_test_df == data.undesired_class]
     save_obj(model, data_str+'_fnr_model.pkl')
     save_obj(data, data_str+'_fnr_data.pkl')
+    print(f'  Total instances: {int(len(false_undesired_test_df)*perc)}')
     
     for method_str in methods_to_run:
     
@@ -46,11 +52,6 @@ for data_str in datasets:
         
         cf_evaluator = Evaluator(data, n_feat, method_str)        
         cf_evaluator.add_fairness_measures(data, model)
-        desired_ground_truth_test_df = data.transformed_test_df.loc[data.test_target != data.undesired_class]
-        desired_ground_truth_target = data.test_target[data.test_target != data.undesired_class]
-        predicted_label_desired_ground_truth_test_df = model.sel.predict(desired_ground_truth_test_df)
-        false_undesired_test_df = desired_ground_truth_test_df.loc[predicted_label_desired_ground_truth_test_df == data.undesired_class]
-        false_undesired_target = desired_ground_truth_target[predicted_label_desired_ground_truth_test_df == data.undesired_class]
         for i in range(int(len(false_undesired_test_df)*perc)):
             idx = false_undesired_test_df.index.tolist()[i]
             x_instance = false_undesired_test_df.loc[idx]
@@ -60,7 +61,6 @@ for data_str in datasets:
             print(f'      Method: {method_str}')
             print(f'  Test instance number: {i}')
             print(f'  Idx number: {idx}')
-            print(f'  Total instances: {int(len(false_undesired_test_df)*perc)}')
             print(f'---------------------------')
             x_np = x_instance.to_numpy()
             x_carla_df = data.test_df.loc[idx].to_frame().T

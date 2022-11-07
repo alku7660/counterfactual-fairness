@@ -12,23 +12,25 @@ plt.rcParams.update({'font.size': 12})
 from matplotlib.lines import Line2D
 from matplotlib import colors
 from matplotlib.ticker import FormatStrFormatter
+from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
 
-def load_obj(file_name, study_str, file):
-    """
-    Method to read an Evaluator object containing the evaluation results for all the instances of a given dataset
-    """
-    with open(results_cf_obj_dir+file_name+'_'+study_str+'_'+file+'.pkl', 'rb') as input:
-        evaluator_obj = pickle.load(input)
-    return evaluator_obj
-
 def extract_x_cd_df(eval_cf_df, eval_x_df, cf_metrics=None, data_obj=None):
     """
-    Method that joins accuracy, proximity and sparsity from the eval object and outputs the join as a single dataframe
-    Input eval_cf_df: DataFrame with all CF
-    Input eval_x_df: DataFrame containing all the instances of interest information
-    Output full_df: DataFrame containing all the instances of interest and corresponding CFs information
+    DESCRIPTION:        Joins accuracy, proximity and sparsity from the eval object and outputs a set of joined DataFrames useful for plotting
+
+    INPUT:
+    eval_cf_df:         DataFrame containing all CF
+    eval_x_df:          DataFrame containing all the instances of interest
+    cf_metrics:         Name of the performance metrics to be plot
+    data_obj:           Dataset object
+
+    OUTPUT:
+    x_df:               DataFrame containing all the instances of interest and corresponding accuracy (validity) information
+    cf_df:              DataFrame containing all CFs and the performance metrics information
+    original_x_df:      DataFrame containing all the instances of interest in the original format and corresponding accuracy (validity) information
+    original_cf_df:     DataFrame containing all CFs in the original format and the performance metrics information       
     """
     eval_cf_df.dropna(inplace=True)
     full_df_cf_list = eval_cf_df['cf'].tolist()
@@ -43,24 +45,17 @@ def extract_x_cd_df(eval_cf_df, eval_x_df, cf_metrics=None, data_obj=None):
     else:
         original_x_df = data_obj.test_pd.loc[x_df.index]
     if cf_metrics is not None:
-        full_df_metrics = eval_cf_df[['cf_method','valid']+cf_metrics]
+        full_cf_metrics = eval_cf_df[['valid']+cf_metrics]
     else:
-        full_df_metrics = eval_cf_df[['cf_method','valid']]
-    full_df_metrics.index = cf_df.index
-    full_x_metrics = eval_x_df[['accuracy']]
-    full_x_metrics.index = x_df.index
-    cf_df = pd.concat((cf_df,full_df_metrics),axis=1)
-    x_df = pd.concat((x_df,full_x_metrics),axis=1)
-    original_cf_df = pd.concat((original_cf_df,full_df_metrics),axis=1)
-    original_x_df = pd.concat((original_x_df,full_x_metrics),axis=1)
+        full_cf_metrics = eval_cf_df[['valid']]
+    full_cf_metrics.index = cf_df.index
+    x_accuracy = eval_x_df[['accuracy']]
+    x_accuracy.index = x_df.index
+    cf_df = pd.concat((cf_df, full_cf_metrics), axis=1)
+    x_df = pd.concat((x_df, x_accuracy), axis=1)
+    original_cf_df = pd.concat((original_cf_df, full_cf_metrics), axis=1)
+    original_x_df = pd.concat((original_x_df, x_accuracy), axis=1)
     return x_df, cf_df, original_x_df, original_cf_df
-
-def extract_values_labels(cf_df, method, idx_list):
-    """
-    Method that extracts the values of the metric and method of interest in the feature value specified
-    """
-    feat_metric_method_data = cf_df[(cf_df['cf_method'] == method) & (cf_df['instance_index'].isin(idx_list))]
-    return feat_metric_method_data
 
 def extract_changed_values_ratio(x_df, cf_df, method, feat, idx_list):
     """
@@ -78,7 +73,16 @@ def extract_changed_values_ratio(x_df, cf_df, method, feat, idx_list):
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
     """
-    Method that extracts the number of instances per value of a feature of interest
+    DESCRIPTION:        Extracts the number of instances per value of a feature of interest
+
+    INPUT:
+    original_x_df:      DataFrame containing all the instances of interest in the original format and corresponding accuracy (validity) information
+    feat_name:          Name of the feature of interest
+    feat_unique_val:    List of unique values of the feature of interest
+
+    OUTPUT:
+    len_feat_values:    Number of instances belonging to each feature value
+    idx_feat_values:    List of indices of the instances belonging to each feature value
     """
     len_feat_values, idx_feat_values = [], []
     for i in range(len(feat_unique_val)):
@@ -217,47 +221,99 @@ def get_feature_name(feat, protected_feat_keys):
         prot_feat_found = True
     return feat_name, prot_feat_found
 
-def method_box_plot(datasets, methods_to_run, metric, colors):
+def method_box_plot(datasets, methods, metric, colors):
     """
-    Method that plots the metric differences among features, datasets and methods
+    DESCRIPTION:        Method that plots the differences w.r.t. the metric of interest among sensitive groups, for all datasets and methods
+
+    INPUT:
+    datasets:           Names of the datasets
+    methods:            Names of the methods
+    metric:             Name of the metric
+    colors:             List of colors to be used
+
+    OUTPUT: (None: plot stored)
     """
-    methods_names = get_methods_names(methods_to_run)
+    methods_names = get_methods_names(methods)
     dataset_names = get_data_names(datasets)
     metric_names = get_metric_names([metric])
-    for data_str in datasets:
-        eval_obj = load_obj(data_str, 'mutability', 'eval')
-        eval_x_df = eval_obj.all_x_data
-        eval_cf_df = eval_obj.all_cf_data
-        protected_feat = eval_obj.feat_protected
-        protected_feat_keys = list(protected_feat.keys())
-        x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
-        for feat in protected_feat_keys:
-            feat_unique_val = original_x_df[feat].unique()
-            len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
-            fig, ax = plt.subplots(figsize=(8,6))
-            xaxis_pos_labels = np.arange((len(feat_unique_val)-1)/2,len(methods_to_run)*len(feat_unique_val),len(feat_unique_val))
-            xaxis_pos_box = np.arange(len(methods_to_run)*len(feat_unique_val))
-            method_feat_labels = []
-            for method_idx in range(len(methods_to_run)):
+    fig, ax = plt.subplots(nrows=len(datasets), ncols=len(methods), sharex=False, sharey=False, figsize=(8,13))
+    for dataset_idx in range(len(datasets)):
+        data_str = datasets[dataset_idx]
+        for method_idx in range(len(methods)):
+            method_str = methods[method_idx]
+            eval_obj = load_obj(f'{data_str}_{method_str}_mutability_eval.pkl')
+            eval_x_df = eval_obj.all_x_data
+            eval_cf_df = eval_obj.all_cf_data
+            protected_feat = eval_obj.feat_protected
+            protected_feat_keys = list(protected_feat.keys())
+            x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
+            for feat in protected_feat_keys:
+                feat_unique_val = original_x_df[feat].unique()
+                len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+                xaxis_pos_labels = np.arange((len(feat_unique_val)-1)/2, len(methods)*len(feat_unique_val), len(feat_unique_val))
+                xaxis_pos_box = np.arange(len(methods)*len(feat_unique_val))
+                method_feat_labels = []
                 for feat_idx in range(len(feat_unique_val)):
                     box_feat_val_pos = xaxis_pos_box[method_idx*len(feat_unique_val)+feat_idx]
-                    feat_method_data = cf_df[(cf_df['cf_method'] == methods_to_run[method_idx]) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
+                    feat_method_data = cf_df[cf_df.index.isin(idx_feat_values[feat_idx])]
                     feat_method_data_values = feat_method_data[metric].values
                     c = colors[feat_idx]
-                    ax.boxplot(x=feat_method_data_values, positions=[box_feat_val_pos], boxprops=dict(color=c),
-                               capprops=dict(color=c), showfliers=False, whiskerprops=dict(color=c),
-                               medianprops=dict(color=c), widths=0.9, showmeans=True,
-                               meanprops=dict(markerfacecolor=c, markeredgecolor=c, marker='D'), flierprops=dict(markeredgecolor=c), notch=False)
-                method_feat_labels.append(methods_names[methods_to_run[method_idx]])
+                    ax[dataset_idx, method_idx].boxplot(x=feat_method_data_values, positions=[box_feat_val_pos], boxprops=dict(color=c),
+                            capprops=dict(color=c), showfliers=False, whiskerprops=dict(color=c),
+                            medianprops=dict(color=c), widths=0.9, showmeans=True,
+                            meanprops=dict(markerfacecolor=c, markeredgecolor=c, marker='D'), flierprops=dict(markeredgecolor=c), notch=False)
+                method_feat_labels.append(methods_names[methods[method_idx]])
             legend_elements = create_box_bar_plot_handles(feat, feat_unique_val, colors, protected_feat, len_feat_values)
-            ax.set_xticks(xaxis_pos_labels, labels=method_feat_labels)
-            ax.set_xticklabels(method_feat_labels, rotation = 10, ha='center')
-            ax.set_title(f'{dataset_names[data_str]} Dataset: {metric_names[metric]} by {feat}')
-            ax.set_ylabel('Burden (Lower is Better)')
-            ax.set_xlabel('Counterfactual Method')
-            ax.legend(handles=legend_elements) #loc=(-0.1,-0.1*len(legend_elements))
-            plt.tight_layout()
-            plt.savefig(results_cf_plots_dir+f'{data_str}_{feat}_{metric}_method_feat_burden.png',dpi=400)
+            ax[dataset_idx, method_idx].set_xticks(xaxis_pos_labels, labels=method_feat_labels)
+            ax[dataset_idx, method_idx].set_xticklabels(method_feat_labels, rotation = 10, ha='center')
+            ax[dataset_idx, method_idx].set_title(f'{dataset_names[data_str]} Dataset: {metric_names[metric]} by {feat}')
+            ax[dataset_idx, method_idx].set_xlabel('Counterfactual Method')
+    fig.legend(handles=legend_elements) #loc=(-0.1,-0.1*len(legend_elements))
+    plt.tight_layout()
+    plt.savefig(results_cf_plots_dir+f'{data_str}_{method_str}_{metric}_comparison_across_feat.png',dpi=400)
+
+# def method_box_plot(datasets, methods_to_run, metric, colors):
+#     """
+#     Method that plots the metric differences among features, datasets and methods
+#     """
+#     methods_names = get_methods_names(methods_to_run)
+#     dataset_names = get_data_names(datasets)
+#     metric_names = get_metric_names([metric])
+#     for data_str in datasets:
+#         for method_str in methods_to_run:
+#             eval_obj = load_obj(f'{data_str}_{method_str}_mutability_eval.pkl')
+#             eval_x_df = eval_obj.all_x_data
+#             eval_cf_df = eval_obj.all_cf_data
+#             protected_feat = eval_obj.feat_protected
+#             protected_feat_keys = list(protected_feat.keys())
+#             x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
+#         for feat in protected_feat_keys:
+#             feat_unique_val = original_x_df[feat].unique()
+#             len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+#             fig, ax = plt.subplots(figsize=(8,6))
+#             xaxis_pos_labels = np.arange((len(feat_unique_val)-1)/2,len(methods_to_run)*len(feat_unique_val),len(feat_unique_val))
+#             xaxis_pos_box = np.arange(len(methods_to_run)*len(feat_unique_val))
+#             method_feat_labels = []
+#             for method_idx in range(len(methods_to_run)):
+#                 for feat_idx in range(len(feat_unique_val)):
+#                     box_feat_val_pos = xaxis_pos_box[method_idx*len(feat_unique_val)+feat_idx]
+#                     feat_method_data = cf_df[(cf_df['cf_method'] == methods_to_run[method_idx]) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
+#                     feat_method_data_values = feat_method_data[metric].values
+#                     c = colors[feat_idx]
+#                     ax.boxplot(x=feat_method_data_values, positions=[box_feat_val_pos], boxprops=dict(color=c),
+#                                capprops=dict(color=c), showfliers=False, whiskerprops=dict(color=c),
+#                                medianprops=dict(color=c), widths=0.9, showmeans=True,
+#                                meanprops=dict(markerfacecolor=c, markeredgecolor=c, marker='D'), flierprops=dict(markeredgecolor=c), notch=False)
+#                 method_feat_labels.append(methods_names[methods_to_run[method_idx]])
+#             legend_elements = create_box_bar_plot_handles(feat, feat_unique_val, colors, protected_feat, len_feat_values)
+#             ax.set_xticks(xaxis_pos_labels, labels=method_feat_labels)
+#             ax.set_xticklabels(method_feat_labels, rotation = 10, ha='center')
+#             ax.set_title(f'{dataset_names[data_str]} Dataset: {metric_names[metric]} by {feat}')
+#             ax.set_ylabel('Burden (Lower is Better)')
+#             ax.set_xlabel('Counterfactual Method')
+#             ax.legend(handles=legend_elements) #loc=(-0.1,-0.1*len(legend_elements))
+#             plt.tight_layout()
+#             plt.savefig(results_cf_plots_dir+f'{data_str}_{feat}_{metric}_method_feat_burden.png',dpi=400)
 
 def attainable_cf_plot(datasets, methods_to_run):
     """
@@ -266,7 +322,7 @@ def attainable_cf_plot(datasets, methods_to_run):
     methods_names = get_methods_names(methods_to_run)
     dataset_names = get_data_names(datasets)
     for data_str in datasets:
-        eval_obj = load_obj(data_str, 'mutability', 'eval')
+        eval_obj = load_obj(f'{data_str}_mutability_eval.pkl')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -306,7 +362,7 @@ def feature_ratio_change_cf_plot(datasets, methods_to_run):
     methods_names = get_methods_names(methods_to_run)
     dataset_names = get_data_names(datasets)
     for data_str in datasets:
-        eval_obj = load_obj(data_str, 'mutability', 'eval')
+        eval_obj = load_obj(f'{data_str}_mutability_eval.pkl')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -345,7 +401,7 @@ def accuracy_burden_plot(datasets, method, metric, colors):
     methods_names = get_methods_names([method])
     dataset_names = get_data_names(datasets)
     for data_str in datasets:
-        eval_obj = load_obj(data_str, 'mutability', 'eval')
+        eval_obj = load_obj(f'{data_str}_mutability_eval.pkl')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -390,7 +446,7 @@ def statistical_parity_burden_plot(datasets, method, metric, colors):
     methods_names = get_methods_names([method])
     dataset_names = get_data_names(datasets)
     for data_str in datasets:
-        eval_obj = load_obj(data_str, 'mutability', 'eval')
+        eval_obj = load_obj(f'{data_str}_mutability_eval.pkl')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -435,7 +491,7 @@ def equalized_odds_burden_plot(datasets, method, metric, colors):
     methods_names = get_methods_names([method])
     dataset_names = get_data_names(datasets)
     for data_str in datasets:
-        eval_obj = load_obj(data_str, 'mutability', 'eval')
+        eval_obj = load_obj(f'{data_str}_mutability_eval.pkl')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -484,9 +540,9 @@ def fnr_burden_plot(datasets, methods, metric, colors):
     fig.supylabel('$Burden_s$ (Lower is Better)')
     for i in range(len(datasets)):
         data_str = datasets[i]
-        eval_obj = load_obj(data_str, 'fnr', 'eval')
-        data_obj = load_obj(data_str, 'fnr', 'data')
-        model_obj = load_obj(data_str, 'fnr', 'model')
+        eval_obj = load_obj(f'{data_str}_fnr_eval.pkl')
+        data_obj = load_obj(f'{data_str}_fnr_data.pkl')
+        model_obj = load_obj(f'{data_str}_fnr_model.pkl')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -564,9 +620,9 @@ def fnr_plot(datasets, metric, colors_dict):
     flat_ax = ax.flatten()
     for i in range(len(datasets)):
         data_str = datasets[i]
-        eval_obj = load_obj(data_str, 'fnr', 'eval')
-        data_obj = load_obj(data_str, 'fnr', 'data')
-        model_obj = load_obj(data_str, 'fnr', 'model')
+        eval_obj = load_obj(f'{data_str}_fnr_eval.pkl')
+        data_obj = load_obj(f'{data_str}_fnr_data.pkl')
+        model_obj = load_obj(f'{data_str}_fnr_model.pkl')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -620,9 +676,9 @@ def burden_plot(datasets, methods, metric, colors_dict):
     fig, ax = plt.subplots(nrows=len(datasets),ncols=len(methods),sharex=False,sharey=False,figsize=(8,13))
     for i in range(len(datasets)):
         data_str = datasets[i]
-        eval_obj = load_obj(data_str, 'fnr', 'eval')
-        data_obj = load_obj(data_str, 'fnr', 'data')
-        model_obj = load_obj(data_str, 'fnr', 'model')
+        eval_obj = load_obj(f'{data_str}_fnr_eval.pkl')
+        data_obj = load_obj(f'{data_str}_fnr_data.pkl')
+        model_obj = load_obj(f'{data_str}_fnr_model.pkl')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected
@@ -678,9 +734,9 @@ def accuracy_weighted_burden_plot(datasets, methods, metric, colors_dict):
     fig, ax = plt.subplots(nrows=len(datasets),ncols=len(methods),sharex=False,sharey=False,figsize=(8,13))
     for i in range(len(datasets)):
         data_str = datasets[i]
-        eval_obj = load_obj(data_str, 'fnr', 'eval')
-        data_obj = load_obj(data_str, 'fnr', 'data')
-        model_obj = load_obj(data_str, 'fnr', 'model')
+        eval_obj = load_obj(f'{data_str}_fnr_eval.pkl')
+        data_obj = load_obj(f'{data_str}_fnr_data.pkl')
+        model_obj = load_obj(f'{data_str}_fnr_model.pkl')
         eval_x_df = eval_obj.all_x_data
         eval_cf_df = eval_obj.all_cf_data
         protected_feat = eval_obj.feat_protected

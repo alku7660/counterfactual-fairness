@@ -26,6 +26,7 @@ class Evaluator():
     """
     def __init__(self, data_obj, n_feat, method_str):
         self.data_name = data_obj.name
+        self.method_name = method_str
         self.feat_type = data_obj.feat_type
         self.feat_mutable = data_obj.feat_mutable
         self.feat_cost = data_obj.feat_cost
@@ -43,7 +44,6 @@ class Evaluator():
         self.undesired_class = data_obj.undesired_class
         self.desired_class = 1 - self.undesired_class
         self.n_feat = n_feat
-        self.method_name = method_str
         self.x_columns = ['x','normal_x','original_x',
                           'x_pred','x_target','accuracy']
         self.eval_columns = ['cf','normal_cf','original_cf',
@@ -261,13 +261,12 @@ class Evaluator():
             original_instance_df = pd.concat((original_instance_df,instance_cat_pd),axis=1)
         return original_instance_df
 
-    def add_specific_cf_data(self, data_obj, method_str, cf, cf_time):
+    def add_specific_cf_data(self, data_obj, cf, cf_time):
         """
         DESCRIPTION:        Calculates and stores a cf method result and performance metrics into the Pandas DataFrame found in the Evaluator
 
         INPUT:
         data_obj:           Dataset object
-        method_str:         Name of the counterfactual method used
         cf:                 Counterfactual instance obtained
         cf_time:            Run time for the counterfactual method used
         """
@@ -437,4 +436,4 @@ class Evaluator():
 
         print(f'  {self.method_name} (time (s): {np.round_(run_time,2)})')
         print(f'---------------------------')
-        self.add_specific_cf_data(data_obj, self.method_name, cf, run_time, model_obj)
+        self.add_specific_cf_data(data_obj, cf, run_time, model_obj)
