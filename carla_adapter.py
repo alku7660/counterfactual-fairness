@@ -1,6 +1,4 @@
-from carla import Data
-from carla import MLModel
-
+from carla import Data, MLModel
 
  # This file is adapted from the CARLA framework. The CARLA framework is meant 
  # for Counterfactual Explanation method applications. Please, see the follwing links for further information:
@@ -10,21 +8,23 @@ from carla import MLModel
 
  # Custom data set implementations need to inherit from the Data interface
 class MyOwnDataSet(Data):
-    def __init__(self,data_obj):
+    def __init__(self, data_obj):
         # The data set can e.g. be loaded in the constructor
-        self._dataset = data_obj.train_pd
+        self._dataset = data_obj.raw_df
+        self._dataset_train = data_obj.train_df
+        self._dataset_test = data_obj.test_df
         self._name = data_obj.name
         self._categorical = data_obj.carla_categorical
         self._continuous = data_obj.carla_continuous
 
     # List of all categorical features
     @property
-    def categoricals(self):
+    def categorical(self):
         return self._categorical
 
     # List of all continous features
     @property
-    def continous(self):
+    def continuous(self):
         return self._continuous
 
     # List of all immutable features which
@@ -70,8 +70,22 @@ class MyOwnDataSet(Data):
 
     # Non-encoded and  non-normalized, raw data set
     @property
-    def raw(self):
+    def df(self):
         return self._dataset
+
+    @property
+    def df_train(self):
+        return self._dataset_train
+
+    @property
+    def df_test(self):
+        return self._dataset_test
+
+    def transform(self, df):
+        return super().transform(df)
+    
+    def inverse_transform(self, df):
+        return super().inverse_transform(df)
 
  # Custom black-box models need to inherit from
  # the MLModel interface
@@ -87,8 +101,8 @@ class MyOwnModel(MLModel):
         self.scaler = data.carla_scaler
 
         # Define a fitted sklearn encoder for binary input data
-        self.encoder = data.oh_carla_enc
-        self.features = data.carla_trained_features
+        self.encoder = data.carla_enc
+        self.features = data.carla_transformed_cols
 
     # List of the feature order the ml model was trained on
     @property

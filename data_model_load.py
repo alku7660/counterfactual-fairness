@@ -83,17 +83,18 @@ class Dataset:
         self.ordinal = ordinal
         self.continuous = continuous
         self.numerical = self.ordinal + self.continuous
+        self.features = self.binary + self.categorical + self.numerical
         self.bin_enc = None
         self.step = step
         self.carla_categorical = carla_categorical
         self.carla_continuous = carla_continuous
-        self.train_df, self.test_df, self.train_target, self.test_target = train_test_split(self.raw_df,self.raw_df[self.label_str],train_size=self.train_fraction,random_state=self.seed)
+        self.train_df, self.test_df, self.train_target, self.test_target = train_test_split(self.raw_df, self.raw_df[self.label_str], train_size=self.train_fraction, random_state=self.seed)
         self.train_df, self.train_target, self.test_df = self.data_balancing_target_filter() 
         self.bin_enc, self.cat_enc, self.scaler, self.bin_enc_cols, self.cat_enc_cols = self.encoder_scaler_fit()
         self.transformed_train_df, self.transformed_train_np, self.transformed_cols = self.transform_train()
         self.transformed_test_df, self.transformed_test_np = self.transform_test(self.test_df)
         self.carla_enc, self.carla_scaler, self.carla_enc_cols = self.carla_encoder_scaler_fit()
-        self.carla_transformed_train_df, self.carla_transformed_test_df, self.carla_transformed_cols = self.carla_transform_train_test()
+        self.carla_transformed_train_df, self.carla_transformed_train_np, self.carla_transformed_test_df, self.carla_transformed_test_np, self.carla_transformed_cols = self.carla_transform_train_test()
         self.undesired_class = self.undesired_class_data()
         self.define_all_dataset_parameters()
         self.train_sorted = None
@@ -114,7 +115,7 @@ class Dataset:
         number_of_subsamples_per_class = unique_values_and_count.min() // 10 * 10
         train_df = pd.concat([self.train_df[(self.train_df[self.label_str] == 0).to_numpy()].sample(number_of_subsamples_per_class, random_state = self.seed),
         self.train_df[(self.train_df[self.label_str] == 1).to_numpy()].sample(number_of_subsamples_per_class, random_state = self.seed),]).sample(frac = 1, random_state = self.seed)
-        train_target = self.train_df[self.label_str]
+        train_target = train_df[self.label_str]
         test_df = self.test_df.copy()
         del train_df[self.label_str[0]]
         del test_df[self.label_str[0]]
@@ -134,8 +135,8 @@ class Dataset:
         bin_enc_cols:   Binary encoded feature names
         cat_enc_cols:   Categorical encoded feature names
         """
-        bin_enc = OneHotEncoder(drop='if_binary',dtype=np.uint8,handle_unknown='ignore')
-        cat_enc = OneHotEncoder(drop='if_binary',dtype=np.uint8,handle_unknown='ignore')
+        bin_enc = OneHotEncoder(drop='if_binary', dtype=np.uint8, handle_unknown='error')
+        cat_enc = OneHotEncoder(drop='if_binary', dtype=np.uint8, handle_unknown='error')
         scaler = MinMaxScaler(clip=True)
         train_data_bin, train_data_cat, train_data_num = self.train_df[self.binary], self.train_df[self.categorical], self.train_df[self.numerical]
         bin_enc.fit(train_data_bin)
@@ -163,10 +164,10 @@ class Dataset:
         scaled_train_data_num = self.scaler.transform(train_data_num)
         scaled_train_data_num_df = pd.DataFrame(scaled_train_data_num, index=train_data_num.index, columns=self.numerical)
         enc_train_data_bin_df = pd.DataFrame(enc_train_data_bin, index=train_data_bin.index, columns=self.bin_enc_cols)
-        enc_train_data_cat_df = pd.DataFrame(enc_train_data_cat, index=train_data_cat.index, columns=self.oh_cat_enc_cols)
+        enc_train_data_cat_df = pd.DataFrame(enc_train_data_cat, index=train_data_cat.index, columns=self.cat_enc_cols)
         transformed_train_df = pd.concat((enc_train_data_bin_df, enc_train_data_cat_df, scaled_train_data_num_df),axis=1)
-        transformed_cols = self.transformed_train_df.columns.to_list()
-        transformed_train_np = self.transformed_train_df.to_numpy()
+        transformed_cols = transformed_train_df.columns.to_list()
+        transformed_train_np = transformed_train_df.to_numpy()
         return transformed_train_df, transformed_train_np, transformed_cols
 
     def carla_encoder_scaler_fit(self):
@@ -186,7 +187,7 @@ class Dataset:
         carla_train_data_cat, carla_train_data_cont = self.train_df[self.carla_categorical], self.train_df[self.carla_continuous]
         carla_enc.fit(carla_train_data_cat)
         carla_scaler.fit(carla_train_data_cont)
-        carla_enc_cols = self.carla_enc.get_feature_names_out(self.carla_categorical)
+        carla_enc_cols = carla_enc.get_feature_names_out(self.carla_categorical)
         return carla_enc, carla_scaler, carla_enc_cols
 
     def carla_transform_train_test(self):
@@ -207,6 +208,7 @@ class Dataset:
         enc_carla_train_data_cat_df = pd.DataFrame(enc_carla_train_data_cat, index=carla_train_data_cat.index, columns=self.carla_enc_cols)
         scaled_carla_train_data_cont_df = pd.DataFrame(scaled_carla_train_data_cont, index=carla_train_data_cont.index, columns=self.carla_continuous)
         carla_transformed_train_df = pd.concat((scaled_carla_train_data_cont_df,enc_carla_train_data_cat_df),axis=1)
+        carla_transformed_train_np = carla_transformed_train_df.to_numpy()
         carla_transformed_cols = carla_transformed_train_df.columns.to_list()
 
         carla_test_data_cat, carla_test_data_cont = self.test_df[self.carla_categorical], self.test_df[self.carla_continuous]
@@ -215,7 +217,8 @@ class Dataset:
         enc_carla_test_data_cat_df = pd.DataFrame(enc_carla_test_data_cat, index=carla_test_data_cat.index, columns=self.carla_enc_cols)
         scaled_carla_test_data_cont_df = pd.DataFrame(scaled_carla_test_data_cont, index=carla_test_data_cont.index, columns=self.carla_continuous)
         carla_transformed_test_df = pd.concat((scaled_carla_test_data_cont_df, enc_carla_test_data_cat_df), axis=1)
-        return carla_transformed_train_df, carla_transformed_test_df, carla_transformed_cols
+        carla_transformed_test_np = carla_transformed_test_df.to_numpy()
+        return carla_transformed_train_df, carla_transformed_train_np, carla_transformed_test_df, carla_transformed_test_np, carla_transformed_cols
         
     def transform_test(self, df):
         """
@@ -232,7 +235,7 @@ class Dataset:
         enc_data_bin, enc_data_cat = self.bin_enc.transform(data_bin).toarray(), self.cat_enc.transform(data_cat).toarray()
         scaled_data_num = self.scaler.transform(data_num)
         enc_data_bin_df = pd.DataFrame(enc_data_bin,index=data_bin.index,columns=self.bin_enc_cols)
-        enc_data_cat_df = pd.DataFrame(enc_data_cat,index=data_cat.index,columns=self.oh_cat_enc_cols)
+        enc_data_cat_df = pd.DataFrame(enc_data_cat,index=data_cat.index,columns=self.cat_enc_cols)
         scaled_data_num_df = pd.DataFrame(scaled_data_num,index=data_num.index,columns=self.numerical)
         df = pd.concat((enc_data_bin_df, enc_data_cat_df, scaled_data_num_df),axis=1)
         arr = df.to_numpy()
@@ -278,9 +281,9 @@ class Dataset:
         undesired_test_df = self.test_df.copy()
         undesired_transformed_test_df = self.transformed_test_df.copy()
         undesired_test_df['pred'] = model.sel.predict(self.transformed_test_df)
-        undesired_test_df = undesired_test_df.loc[undesired_test_df['pred'] == self.undesired_class]
         undesired_test_target = self.test_target.loc[undesired_test_df['pred'] == self.undesired_class]
         undesired_transformed_test_df = undesired_transformed_test_df.loc[undesired_test_df['pred'] == self.undesired_class]
+        undesired_test_df = undesired_test_df.loc[undesired_test_df['pred'] == self.undesired_class]
         del undesired_test_df['pred']
         undesired_test_np = undesired_test_df.to_numpy()
         undesired_transformed_test_np = undesired_transformed_test_df.to_numpy()
@@ -289,7 +292,7 @@ class Dataset:
         self.undesired_transformed_test_df = undesired_transformed_test_df
         self.undesired_transformed_test_np = undesired_transformed_test_np
         self.undesired_test_target = undesired_test_target
-        
+
     def change_targets_to_numpy(self):
         """
         DESCRIPTION:    Changes the targets to numpy if they are dataframes

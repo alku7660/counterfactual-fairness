@@ -8,9 +8,10 @@ import numpy as np
 path_here = os.path.abspath('')
 dataset_dir = str(path_here)+'/Datasets/'
 results_cf_obj_dir = str(path_here)+'/Results/cf_obj/'
+results_cf_obj_method_dir = str(path_here)+'/Results/cf_obj_method/'
 results_cf_plots_dir = str(path_here)+'/Results/cf_plots/'
 
-def euclidean(x1,x2):
+def euclidean(x1, x2):
     """
     Calculation of the euclidean distance between two different instances
     Input x1: Instance 1
@@ -19,7 +20,7 @@ def euclidean(x1,x2):
     """
     return np.sqrt(np.sum((x1-x2)**2))
 
-def sort_data_distance(x,data,data_label):
+def sort_data_distance(x, data, data_label):
     """
     Function to organize dataset with respect to distance to instance x
     Input x: Instance (can be the instane of interest or a synthetic instance)
@@ -30,11 +31,11 @@ def sort_data_distance(x,data,data_label):
     sort_data_distance = []
     for i in range(len(data)):
         dist = euclidean(data[i],x)
-        sort_data_distance.append((data[i],dist,data_label[i]))      
+        sort_data_distance.append((data[i], dist, data_label[i]))      
     sort_data_distance.sort(key=lambda x: x[1])
     return sort_data_distance
 
-def verify_feasibility(x,cf,mutable_feat,feat_type,feat_step,feat_dir,mutability_check):
+def verify_feasibility(x, cf, mutable_feat, feat_type, feat_step, feat_dir, mutability_check):
     """
     Method that indicates whether cf is a feasible counterfactual with respect to x and the feature mutability
     Input x: Instance of interest
@@ -51,11 +52,11 @@ def verify_feasibility(x,cf,mutable_feat,feat_type,feat_step,feat_dir,mutability
     vector = cf - x
     for i in range(len(feat_type)):
         if feat_type[i] == 'bin':
-            if not np.isclose(cf[i], [0,1],atol=toler).any():
+            if not np.isclose(cf[i], [0,1], atol=toler).any():
                 feasibility = False
                 break
         elif feat_type[i] == 'num-ord':
-            possible_val = np.linspace(0,1,int(1/feat_step[i]+1),endpoint=True)
+            possible_val = np.linspace(0,1,int(1/feat_step[i]+1), endpoint=True)
             if not np.isclose(cf[i],possible_val,atol=toler).any():
                 feasibility = False
                 break  
@@ -76,13 +77,13 @@ def save_obj(evaluator_obj, file_name):
     """
     Method to store an Evaluator object containing the evaluation results for all the instances of a given dataset
     """
-    with open(results_cf_obj_dir+file_name, 'wb') as output:
+    with open(results_cf_obj_method_dir+file_name, 'wb') as output:
         pickle.dump(evaluator_obj, output, pickle.HIGHEST_PROTOCOL)
 
 def load_obj(file_name):
     """
     Method to read an Evaluator object containing the evaluation results for all the instances of a given dataset
     """
-    with open(results_cf_obj_dir+file_name, 'rb') as input:
+    with open(results_cf_obj_method_dir+file_name, 'rb') as input:
         evaluator_obj = pickle.load(input)
     return evaluator_obj

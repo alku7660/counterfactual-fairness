@@ -3,13 +3,12 @@ Imports
 """
 import warnings
 warnings.filterwarnings("ignore")
-from eval import Evaluator
 from data_model_load import load_model_dataset
-import pickle
 import numpy as np
 import pandas as pd
+from eval import Evaluator
 from carla_adapter import MyOwnDataSet, MyOwnModel
-from support import path_here, save_obj, load_obj
+from support import path_here, save_obj
 
 datasets = ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law'] # Name of the dataset to be analyzed
 methods_to_run = ['nn','mo','rt','cchvae'] #['nn','mo','ft','rt','gs','face','dice','cchvae'] 
@@ -45,7 +44,7 @@ for data_str in datasets:
         print(f'        Train dataset shape: {data.train_df.shape}')
         print(f'         Test dataset shape: {data.undesired_transformed_test_np.shape}')
         print(f'       model train accuracy: {np.round_(model.sel.score(data.transformed_train_df, data.train_target), 2)}')
-        print(f'        model test accuracy: {np.round_(model.sel.score(data.undesired_test_df, data.undesired_test_target), 2)}')
+        print(f'        model test accuracy: {np.round_(model.sel.score(data.undesired_transformed_test_df, data.undesired_test_target), 2)}')
         print(f' CARLA model train accuracy: {np.round_(carla_model._mymodel.score(data.carla_transformed_train_df, data.train_target),2)}')
         print(f'  CARLA model test accuracy: {np.round_(carla_model._mymodel.score(data.carla_transformed_test_df, data.test_target), 2)}')
         print(f'---------------------------------------')
@@ -54,20 +53,20 @@ for data_str in datasets:
         cf_evaluator.add_fairness_measures(data, model)
         for i in range(int(len(false_undesired_test_df)*perc)):
             idx = false_undesired_test_df.index.tolist()[i]
-            x_instance = false_undesired_test_df.loc[idx]
-            x_target = false_undesired_target[i]
             print(f'---------------------------')
             print(f'     Dataset: {data_str}')
             print(f'      Method: {method_str}')
             print(f'  Test instance number: {i}')
             print(f'  Idx number: {idx}')
             print(f'---------------------------')
-            x_np = x_instance.to_numpy()
-            x_carla_df = data.test_df.loc[idx].to_frame().T
+            x_transformed_instance = false_undesired_test_df.loc[idx]
+            x_target = false_undesired_target[i]
+            x_np = x_transformed_instance.to_numpy()
+            x_original_df = data.test_df.loc[idx].to_frame().T
             x_label = model.sel.predict(x_np.reshape(1,-1))
-            data.add_sorted_train_data(x_instance)
-            cf_evaluator.add_specific_x_data(idx, x_np, x_carla_df, x_label, x_target, data)
-            cf_evaluator.evaluate_cf_models(x_np, x_label, data, model, epsilon_ft, carla_model, x_carla_df)
+            data.add_sorted_train_data(x_transformed_instance)
+            cf_evaluator.add_specific_x_data(idx, x_np, x_original_df, x_label, x_target)
+            cf_evaluator.evaluate_cf_models(x_np, x_label, data, model, epsilon_ft, carla_model, x_original_df)
                         
         print(f'---------------------------')
         print(f'  DONE: {data_str} CF Evaluation')

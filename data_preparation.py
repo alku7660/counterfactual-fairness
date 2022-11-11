@@ -628,5 +628,5 @@ def prepare_data(data_str):
     
     processed_df.to_csv(f'{dataset_dir}/{data_str}/preprocessed_{data_str}.csv')
 
-data_str = 'law'
-# prepare_data(data_str)
+data_str = 'adult'
+prepare_data(data_str)

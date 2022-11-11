@@ -51,31 +51,31 @@ def clf_model(model_str, best_params, rf_params, train_data, train_target):
         best_degree = best_params['degree']
         best_kernel = best_params['kernel']
         best_model = svm.SVC(C=best_C, coef0=best_coef0, degree=best_degree, kernel=best_kernel)
-        best_model.fit(train_data,train_target)
+        best_model.fit(train_data, train_target)
         rf_model = RandomForestClassifier(max_depth=rf_params['max_depth'], min_samples_leaf=rf_params['min_samples_leaf'], min_samples_split=rf_params['min_samples_split'], n_estimators=rf_params['n_estimators']) 
-        rf_model.fit(train_data,train_target)
+        rf_model.fit(train_data, train_target)
     elif model_str == 'dt':
         best_max_depth = best_params['max_depth']
         best_min_samples_leaf = best_params['min_samples_leaf']
         best_min_samples_split = best_params['min_samples_split']
         best_model = DecisionTreeClassifier(max_depth=best_max_depth, min_samples_leaf=best_min_samples_leaf, min_samples_split=best_min_samples_split)
-        best_model.fit(train_data,train_target)
+        best_model.fit(train_data, train_target)
         rf_model = RandomForestClassifier(max_depth=rf_params['max_depth'], min_samples_leaf=rf_params['min_samples_leaf'], min_samples_split=rf_params['min_samples_split'], n_estimators=rf_params['n_estimators']) 
-        rf_model.fit(train_data,train_target)
+        rf_model.fit(train_data, train_target)
     elif model_str == 'mlp':
         best_activation = best_params['activation']
         best_hidden_layer_sizes = best_params['hidden_layer_sizes']
         best_solver = best_params['solver']
         best_model = MLPClassifier(activation=best_activation, hidden_layer_sizes=best_hidden_layer_sizes, solver=best_solver, random_state=random_st)
-        best_model.fit(train_data,train_target)
+        best_model.fit(train_data, train_target)
         rf_model = RandomForestClassifier(max_depth=rf_params['max_depth'], min_samples_leaf=rf_params['min_samples_leaf'], min_samples_split=rf_params['min_samples_split'], n_estimators=rf_params['n_estimators']) 
-        rf_model.fit(train_data,train_target)
+        rf_model.fit(train_data, train_target)
     elif model_str == 'rf':
         best_max_depth = best_params['max_depth']
         best_min_samples_leaf = best_params['min_samples_leaf']
         best_min_samples_split = best_params['min_samples_split']
         best_n_estimators = best_params['n_estimators']
         best_model = RandomForestClassifier(max_depth=best_max_depth, min_samples_leaf=best_min_samples_leaf, min_samples_split=best_min_samples_split, n_estimators=best_n_estimators)
-        best_model.fit(train_data,train_target)
+        best_model.fit(train_data, train_target)
         rf_model = copy.deepcopy(best_model)  
     return best_model, rf_model

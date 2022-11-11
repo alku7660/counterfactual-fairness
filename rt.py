@@ -8,7 +8,7 @@ Imports
 import time
 import numpy as np
 from collections import Counter
-from nt import nn
+from nn_method import near_neigh
 from support import verify_feasibility
 
 # As observed in https://github.com/tony-lind/Example-based-tweaking
@@ -97,7 +97,7 @@ def rf_tweak(x,x_label,rf_model,data,feasibility_check=True,mutability_check=Tru
                 cf_idx += 1
     if len(rt_cf_array) == 0 or not found:
         print(f'No Random Forest Tweaking solution found: Calculating NT solution')
-        rt_cf = nn(x,x_label,data,mutability_check)[0]
+        rt_cf = near_neigh(x,x_label,data,mutability_check)[0]
     end_time = time.time()
     rt_time = end_time - start_time
     return rt_cf, rt_time

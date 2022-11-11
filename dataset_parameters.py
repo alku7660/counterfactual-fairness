@@ -140,21 +140,22 @@ def define_protected(data):
         feat_protected['Race'] = {1.00:'White', 2.00:'Non-white'}
     return feat_protected
 
-def define_mutability(data):
+def define_mutability(data, feat_protected):
     """
     DESCRIPTION:        Method that outputs mutable features per dataset
 
     INPUT:
     data:               Data object
+    feat_protected:     Dictionary contatining the protected features and the sensitive groups names
 
     OUTPUT:
     feat_mutable:       Series indicating the mutability of each feature
     """
-    feat_list = data.feat_type.index.tolist()
+    feat_list = data.transformed_cols
     feat_mutable  = dict()
     for i in feat_list:
         feat_mutable[i] = 1
-    for i in data.feat_protected.keys():
+    for i in feat_protected.keys():
         idx_feat_protected = [j for j in range(len(feat_list)) if i in feat_list[j]]
         feat = [feat_list[j] for j in idx_feat_protected]
         for j in feat:
@@ -172,7 +173,7 @@ def define_directionality(data):
     OUTPUT:
     feat_dir:           Series containing plausible direction of change of each feature
     """
-    feat_list = data.feat_type.index.tolist()
+    feat_list = data.transformed_cols
     feat_dir  = dict()
     if data.name == 'adult':
         for i in feat_list:
@@ -253,11 +254,16 @@ def define_directionality(data):
 
 def define_feat_cost(data):
     """
-    Method that allocates a unit cost of change to the features of the datasets
-    Output feat_cost: Series with the theoretical unit cost of changing each feature
+    DESCRIPTION:        Allocates a unit cost of change to the features of the datasets
+
+    INPUT:
+    data:               Dataset object
+
+    OUTPUT:
+    feat_cost:          Series with the theoretical unit cost of changing each feature
     """
     feat_cost  = dict()
-    feat_list = data.feat_type.index.tolist()
+    feat_list = data.transformed_cols
     if data.name == 'adult':
         for i in feat_list:
             if 'Age' in i or 'Sex' in i or 'Native' in i or 'Race' in i:
@@ -349,29 +355,39 @@ def define_feat_cost(data):
     feat_cost = pd.Series(feat_cost)
     return feat_cost
 
-def define_feat_step(data):
+def define_feat_step(data, feat_type):
     """
-    Method that estimates the step size of all features (used for ordinal features)
-    Output feat_step: Plausible step size for each feature 
+    DESCRIPTION:        Estimates the step size of all features (used for ordinal features)
+
+    INPUT:
+    data:               Dataset object
+
+    OUTPUT:
+    feat_step:          Plausible step size for each feature 
     """
-    feat_step = pd.Series(data=1/(data.jce_scaler.data_max_ - data.jce_scaler.data_min_),index=[i for i in data.feat_type.keys() if data.feat_type[i] in ['num-ord','num-con']])
-    for i in data.feat_type.keys().tolist():
-        if data.feat_type.loc[i] == 'num-con':
+    feat_step = pd.Series(data=1/(data.scaler.data_max_ - data.scaler.data_min_), index=[i for i in feat_type.keys() if feat_type[i] in ['num-ord','num-con']])
+    for i in feat_type.keys().tolist():
+        if feat_type.loc[i] == 'num-con':
             feat_step.loc[i] = data.step
-        elif data.feat_type.loc[i] == 'num-ord':
+        elif feat_type.loc[i] == 'num-ord':
             continue
         else:
             feat_step.loc[i] = 0
-    feat_step = feat_step.reindex(index = data.feat_type.keys().to_list())
+    feat_step = feat_step.reindex(index = feat_type.keys().to_list())
     return feat_step
 
-def define_category_groups(data):
+def define_category_groups(data, feat_type):
     """
-    Method that assigns categorical groups to different one-hot encoded categorical features
-    Output feat_cat: Category groups for each of the features
+    DESCRIPTION:        Method that assigns categorical groups to different one-hot encoded categorical features
+    
+    INPUT:
+    data:               Dataset object
+
+    OUTPUT:
+    feat_cat:           Category groups for each of the features
     """
-    feat_cat = copy.deepcopy(data.feat_type)
-    feat_list = data.feat_type.index.tolist()
+    feat_cat = copy.deepcopy(feat_type)
+    feat_list = feat_type.index.tolist()
     if data.name == 'adult':
         for i in feat_list:
             if 'Sex' in i or 'Native' in i or 'EducationLevel' or i in 'EducationNumber' in i or 'Capital' in i or 'Hours' in i or 'Race' in i:
@@ -518,9 +534,9 @@ def define_all_parameters(data):
     """
     feat_type = define_feat_type(data)
     feat_protected = define_protected(data)
-    feat_mutable = define_mutability(data)
+    feat_mutable = define_mutability(data, feat_protected)
     feat_dir = define_directionality(data)
     feat_cost = define_feat_cost(data)
-    feat_step = define_feat_step(data)
-    feat_cat = define_category_groups(data)
+    feat_step = define_feat_step(data, feat_type)
+    feat_cat = define_category_groups(data, feat_type)
     return feat_type, feat_protected, feat_mutable, feat_dir, feat_cost, feat_step, feat_cat
