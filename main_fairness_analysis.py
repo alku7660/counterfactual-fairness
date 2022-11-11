@@ -66,7 +66,7 @@ for data_str in datasets:
             x_label = model.sel.predict(x_np.reshape(1,-1))
             data.add_sorted_train_data(x_transformed_instance)
             cf_evaluator.add_specific_x_data(idx, x_np, x_original_df, x_label, x_target)
-            cf_evaluator.evaluate_cf_models(x_np, x_label, data, model, epsilon_ft, carla_model, x_original_df)
+            cf_evaluator.evaluate_cf_models(idx, x_np, x_label, data, model, epsilon_ft, carla_model, x_original_df)
                         
         print(f'---------------------------')
         print(f'  DONE: {data_str} CF Evaluation')
