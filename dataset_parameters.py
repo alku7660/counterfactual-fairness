@@ -390,7 +390,7 @@ def define_category_groups(data, feat_type):
     feat_list = feat_type.index.tolist()
     if data.name == 'adult':
         for i in feat_list:
-            if 'Sex' in i or 'Native' in i or 'EducationLevel' or i in 'EducationNumber' in i or 'Capital' in i or 'Hours' in i or 'Race' in i:
+            if 'Sex' in i or 'Native' in i or 'EducationLevel' in i or 'EducationNumber' in i or 'Capital' in i or 'Hours' in i or 'Race' in i:
                 feat_cat.loc[i] = 'non'
             elif 'Age' in i:
                 feat_cat.loc[i] = 'cat_0'

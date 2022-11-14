@@ -18,7 +18,7 @@ n_feat = 50                # Number of examples to generate synthetically per fe
 epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feature tweaking algorithm
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
-perc = 1                   # Percentage of false negative test samples to consider for the counterfactuals search
+perc = 0.05                   # Percentage of false negative test samples to consider for the counterfactuals search
 
 np.random.seed(seed_int)
 
@@ -34,7 +34,6 @@ for data_str in datasets:
     false_undesired_target = desired_ground_truth_target[predicted_label_desired_ground_truth_test_df == data.undesired_class]
     save_obj(model, data_str+'_fnr_model.pkl')
     save_obj(data, data_str+'_fnr_data.pkl')
-    print(f'  Total instances: {int(len(false_undesired_test_df)*perc)}')
     
     for method_str in methods_to_run:
     
@@ -58,6 +57,7 @@ for data_str in datasets:
             print(f'      Method: {method_str}')
             print(f'  Test instance number: {i}')
             print(f'  Idx number: {idx}')
+            print(f'  Total instances: {int(len(false_undesired_test_df)*perc)}')
             print(f'---------------------------')
             x_transformed_instance = false_undesired_test_df.loc[idx]
             x_target = false_undesired_target[i]

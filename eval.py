@@ -235,11 +235,11 @@ class Evaluator():
         # self.x_target = x_target
         # df_x_row = pd.DataFrame(data = [[self.x_df, self.normal_x, self.x_original_df,
         #                                  self.x_pred, self.x_target, self.x_accuracy]], columns = self.x_columns)
-        self.x[idx] = pd.DataFrame(data=[self.x], index=[self.idx], columns=self.data_cols)
+        self.x[idx] = pd.DataFrame(data=[x], index=[idx], columns=self.data_cols)
         self.original_x[idx] = original_x
-        self.x_pred[idx] = x_pred
+        self.x_pred[idx] = x_pred[0]
         self.x_target[idx] = x_target
-        self.x_accuracy[idx] = self.accuracy(idx)[0]
+        self.x_accuracy[idx] = self.accuracy(idx)
 
     def inverse_transform_original(self, instance):
         """
@@ -284,10 +284,10 @@ class Evaluator():
                 cf_np = cf.to_numpy()
                 self.cf[idx] = pd.DataFrame(data=[cf_np], index=[idx], columns=data_obj.transformed_cols) 
             else:
-                self.cf[idx] = pd.DataFrame(data = [self.cf], index = [self.idx], columns = data_obj.transformed_cols)
+                self.cf[idx] = pd.DataFrame(data = [cf], index = [idx], columns = data_obj.transformed_cols)
         else:
             penalize_instance = self.search_desired_class_penalize(data_obj)
-            self.cf[idx] = pd.DataFrame(data=[penalize_instance], index=[self.idx], columns=data_obj.transformed_cols)
+            self.cf[idx] = pd.DataFrame(data=[penalize_instance], index=[idx], columns=data_obj.transformed_cols)
         self.cf_validity[idx] = True
         self.original_cf[idx] = self.inverse_transform_original(self.cf[idx])
         self.proximity(idx)
@@ -338,21 +338,23 @@ class Evaluator():
         """
         toler = 0.000001
         feasibility = True
+        cf_idx = self.cf[idx].to_numpy()[0]
+        x_idx = self.x[idx].to_numpy()[0]
+        vector = cf_idx - x_idx
         for i in range(len(self.feat_type)):
             if self.feat_type[i] == 'bin':
-                if not np.isclose(self.cf[i],[0,1],atol=toler).any():
+                if not np.isclose(self.cf[idx].iloc[0,i], [0,1], atol=toler).any():
                     feasibility = False
                     break
             elif self.feat_type[i] == 'num-ord':
                 possible_val = np.linspace(0,1,int(1/self.feat_step[i]+1),endpoint=True)
-                if not np.isclose(self.cf[i],possible_val,atol=toler).any():
+                if not np.isclose(self.cf[idx].iloc[0,i], possible_val, atol=toler).any():
                     feasibility = False
                     break
             else:
-                if self.cf[i] < 0-toler or self.cf[i] > 1+toler:
+                if self.cf[idx].iloc[0,i] < 0-toler or self.cf[idx].iloc[0,i] > 1+toler:
                     feasibility = False
                     break
-            vector = self.cf - self.x
             if self.feat_dir[i] == 0 and vector[i] != 0:
                 feasibility = False
                 break
@@ -362,7 +364,7 @@ class Evaluator():
             elif self.feat_dir[i] == 'neg' and vector[i] > 0:
                 feasibility = False
                 break
-        if not np.array_equal(self.x[np.where(self.feat_mutable == 0)],self.cf[np.where(self.feat_mutable == 0)]):
+        if not np.array_equal(x_idx[np.where(self.feat_mutable == 0)], cf_idx[np.where(self.feat_mutable == 0)]):
             feasibility = False
         self.cf_feasibility[idx] = feasibility
 
@@ -376,15 +378,17 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        unchanged_features = np.sum(np.equal(self.x,self.cf))
-        categories_feat_changed = data_obj.feat_cat[np.where(np.equal(self.x,self.cf) == False)[0]]
+        cf_idx = self.cf[idx].to_numpy()[0]
+        x_idx = self.x[idx].to_numpy()[0]
+        unchanged_features = np.sum(np.equal(x_idx, cf_idx))
+        categories_feat_changed = data_obj.feat_cat[np.where(np.equal(x_idx, cf_idx) == False)[0]]
         len_categories_feat_changed_unique = len([i for i in np.unique(categories_feat_changed) if 'cat' in i])
         unchanged_features += len_categories_feat_changed_unique
-        n_changed = len(self.x) - unchanged_features
+        n_changed = len(x_idx) - unchanged_features
         if n_changed == 1:
             sparsity = 1.000
         else:
-            sparsity = np.round_(1 - n_changed/len(self.x),3)
+            sparsity = np.round_(1 - n_changed/len(x_idx), 3)
         self.cf_sparsity[idx] = sparsity
    
     def evaluate_cf_models(self, idx, x_np, x_pred, data_obj, model_obj, epsilon_ft, carla_model, x_original):
