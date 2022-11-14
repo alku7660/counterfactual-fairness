@@ -3,7 +3,7 @@ warnings.filterwarnings("ignore")
 import numpy as np
 import pandas as pd
 import pickle
-from support import path_here, results_cf_obj_dir, results_cf_plots_dir
+from support import path_here, results_cf_obj_method_dir, results_cf_plots_dir
 import matplotlib
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
@@ -223,7 +223,7 @@ def get_feature_name(feat, protected_feat_keys):
 
 def method_box_plot(datasets, methods, metric, colors):
     """
-    DESCRIPTION:        Method that plots the differences w.r.t. the metric of interest among sensitive groups, for all datasets and methods
+    DESCRIPTION:        Plots the differences w.r.t. the metric of interest among sensitive groups, for all datasets and methods
 
     INPUT:
     datasets:           Names of the datasets
@@ -242,22 +242,25 @@ def method_box_plot(datasets, methods, metric, colors):
         for method_idx in range(len(methods)):
             method_str = methods[method_idx]
             eval_obj = load_obj(f'{data_str}_{method_str}_mutability_eval.pkl')
-            eval_x_df = eval_obj.all_x_data
-            eval_cf_df = eval_obj.all_cf_data
             protected_feat = eval_obj.feat_protected
             protected_feat_keys = list(protected_feat.keys())
-            x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
+            original_x_df = pd.concat(eval_obj.original_x.values(), axis=0)
+            # original_cf_df = pd.concat(eval_obj.original_cf.values(), axis=0)
+            metrics_cf_df = pd.concat((eval_obj.cf_proximity, eval_obj.cf_sparsity, eval_obj.cf_feasibility, eval_obj.cf_time), axis=1, names=['proximity','sparsity','feasibility','time'])
+            # eval_x_df = eval_obj.all_x_data
+            # eval_cf_df = eval_obj.all_cf_data
+            # x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
             for feat in protected_feat_keys:
                 feat_unique_val = original_x_df[feat].unique()
                 len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
                 xaxis_pos_labels = np.arange((len(feat_unique_val)-1)/2, len(methods)*len(feat_unique_val), len(feat_unique_val))
                 xaxis_pos_box = np.arange(len(methods)*len(feat_unique_val))
                 method_feat_labels = []
-                for feat_idx in range(len(feat_unique_val)):
-                    box_feat_val_pos = xaxis_pos_box[method_idx*len(feat_unique_val)+feat_idx]
-                    feat_method_data = cf_df[cf_df.index.isin(idx_feat_values[feat_idx])]
-                    feat_method_data_values = feat_method_data[metric].values
-                    c = colors[feat_idx]
+                for feat_val_idx in range(len(feat_unique_val)):
+                    feat_val_instances_idx = idx_feat_values[feat_val_idx]
+                    box_feat_val_pos = xaxis_pos_box[method_idx*len(feat_unique_val)+feat_val_idx]
+                    feat_method_data_values = metrics_cf_df.loc[feat_val_instances_idx, metric].values
+                    c = colors[feat_val_idx]
                     ax[dataset_idx, method_idx].boxplot(x=feat_method_data_values, positions=[box_feat_val_pos], boxprops=dict(color=c),
                             capprops=dict(color=c), showfliers=False, whiskerprops=dict(color=c),
                             medianprops=dict(color=c), widths=0.9, showmeans=True,
@@ -317,7 +320,13 @@ def method_box_plot(datasets, methods, metric, colors):
 
 def attainable_cf_plot(datasets, methods_to_run):
     """
-    Method that plots the percentage of attainable CFs given feasibility constraints and whther or not to consider feature mutability
+    DESCRIPTION:        Plots the percentage of attainable CFs given feasibility constraints and whether or not to consider feature mutability
+
+    INPUT:              
+    datasets:           Datasets names
+    methods_to_run:     Methods names
+
+    OUTPUT: (None: plot stored)
     """
     methods_names = get_methods_names(methods_to_run)
     dataset_names = get_data_names(datasets)
@@ -800,11 +809,11 @@ colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'bla
 
 # attainable_cf_plot(datasets, methods_to_run)
 # feature_ratio_change_cf_plot(datasets, methods_to_run)
-# method_box_plot(datasets, methods_to_run, 'proximity', colors)
+method_box_plot(datasets, methods_to_run, 'proximity', colors_list)
 # accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
 # statistical_parity_burden_plot(datasets, 'mo', 'proximity', colors)
 # equalized_odds_burden_plot(datasets, 'mo', 'proximity', colors)
 # fnr_plot(datasets, 'proximity', colors_dict)
 # burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
-fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
+# fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
 # accuracy_weighted_burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
