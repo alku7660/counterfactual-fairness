@@ -47,12 +47,12 @@ class Evaluator():
         self.x, self.original_x, self.x_pred, self.x_target, self.x_accuracy = {}, {}, {}, {}, {}
         self.cf, self.original_cf = {}, {} 
         self.cf_proximity, self.cf_feasibility, self.cf_sparsity, self.cf_validity, self.cf_time =  {}, {}, {}, {}, {}
-        self.x_columns = ['x','normal_x','original_x',
-                          'x_pred','x_target','accuracy']
-        self.eval_columns = ['cf','normal_cf','original_cf',
-                             'proximity','feasibility','sparsity','valid','time']
-        self.all_x_data = pd.DataFrame(columns=self.x_columns)
-        self.all_cf_data = pd.DataFrame(columns=self.eval_columns)
+        # self.x_columns = ['x','normal_x','original_x',
+        #                   'x_pred','x_target','accuracy']
+        # self.eval_columns = ['cf','normal_cf','original_cf',
+        #                      'proximity','feasibility','sparsity','valid','time']
+        # self.all_x_data = pd.DataFrame(columns=self.x_columns)
+        # self.all_cf_data = pd.DataFrame(columns=self.eval_columns)
     
     def search_desired_class_penalize(self, data):
         """
@@ -213,7 +213,7 @@ class Evaluator():
         self.stat_parity = self.statistical_parity_eval(stat_proba, stat_length)
         self.eq_odds = self.equalized_odds_eval(odds_proba, odds_length)
 
-    def add_specific_x_data(self, idx, x, original_x, x_label, x_target):
+    def add_specific_x_data(self, idx, x, original_x, x_pred, x_target):
         """
         DESCRIPTION:        Calculates and stores x data found in the Evaluator
 
@@ -221,7 +221,7 @@ class Evaluator():
         idx:                Index of the instance x
         x:                  Instance of interest in Numpy array
         original_x:         Instance of interest in original format (before normalization and encoding) in DataFrame
-        x_label:            Predicted label of the instance of interest
+        x_pred:             Predicted label of the instance of interest
         x_target:           Ground truth label of the instance of interest
 
         OUTPUT: (None: stored as class attributes)
@@ -231,15 +231,15 @@ class Evaluator():
         # self.x_original_df = original_x
         # self.x_df = pd.DataFrame(data=[self.x], index=[self.idx], columns=self.data_cols)
         # self.normal_x = self.x_df
-        # self.x_label = x_label
+        # self.x_pred = x_pred
         # self.x_target = x_target
         # df_x_row = pd.DataFrame(data = [[self.x_df, self.normal_x, self.x_original_df,
-        #                                  self.x_label, self.x_target, self.x_accuracy]], columns = self.x_columns)
-        self.x_accuracy[idx] = self.accuracy()[0]
+        #                                  self.x_pred, self.x_target, self.x_accuracy]], columns = self.x_columns)
         self.x[idx] = pd.DataFrame(data=[self.x], index=[self.idx], columns=self.data_cols)
         self.original_x[idx] = original_x
-        self.x_pred[idx] = x_label
+        self.x_pred[idx] = x_pred
         self.x_target[idx] = x_target
+        self.x_accuracy[idx] = self.accuracy(idx)[0]
 
     def inverse_transform_original(self, instance):
         """
@@ -293,22 +293,22 @@ class Evaluator():
         self.proximity(idx)
         self.feasibility(idx)
         self.sparsity(data_obj, idx)
-        self.cf_time = cf_time
-        df_cf_row = pd.DataFrame(data = [[self.cf_df, self.normal_cf, self.original_cf_df, 
-                                          self.cf_proximity, self.cf_feasibility, self.cf_sparsity, self.cf_valid, self.cf_time]], columns = self.eval_columns)
-        self.all_cf_data = self.all_cf_data.append(df_cf_row)
+        self.cf_time[idx] = cf_time
+        # df_cf_row = pd.DataFrame(data = [[self.cf_df, self.normal_cf, self.original_cf_df, 
+        #                                   self.cf_proximity, self.cf_feasibility, self.cf_sparsity, self.cf_valid, self.cf_time]], columns = self.eval_columns)
+        # self.all_cf_data = self.all_cf_data.append(df_cf_row)
 
-    def accuracy(self):
+    def accuracy(self, idx):
         """
         DESCRIPTION:        Estimates accuracy between the target and the predicted label of x
 
         INPUT:
-        self
+        idx:                Index of the instance of interest
 
         OUTPUT:
         acc:                Accuracy (agreement) between the predicted and ground truth labels 
         """
-        acc = self.x_target == self.x_label
+        acc = self.x_target[idx] == self.x_pred[idx]
         return acc
 
     def proximity(self, idx):
@@ -325,7 +325,7 @@ class Evaluator():
         else:
             instance_x_copy = copy.deepcopy(self.x[idx])
             instance_x_copy = instance_x_copy[self.cf[idx].columns]
-            self.cf_proximity = np.round_(euclidean(instance_x_copy.to_numpy(), self.cf[idx].to_numpy()), 3)
+            self.cf_proximity[idx] = np.round_(euclidean(instance_x_copy.to_numpy(), self.cf[idx].to_numpy()), 3)
 
     def feasibility(self, idx):
         """
@@ -364,14 +364,15 @@ class Evaluator():
                 break
         if not np.array_equal(self.x[np.where(self.feat_mutable == 0)],self.cf[np.where(self.feat_mutable == 0)]):
             feasibility = False
-        self.cf_feasibility = feasibility
+        self.cf_feasibility[idx] = feasibility
 
-    def sparsity(self, data_obj):
+    def sparsity(self, data_obj, idx):
         """
         DESCRIPTION:        Calculates sparsity for a given counterfactual according to x. Sparsity is 1 - the fraction of features changed in the cf. Takes the value of 1 if the number of changed features is 1
 
         INPUT:
         data_obj:           Dataset object
+        idx:                Index of the instance of interest
 
         OUTPUT: (None: stored as class attributes)
         """
@@ -384,16 +385,16 @@ class Evaluator():
             sparsity = 1.000
         else:
             sparsity = np.round_(1 - n_changed/len(self.x),3)
-        self.cf_sparsity = sparsity
+        self.cf_sparsity[idx] = sparsity
    
-    def evaluate_cf_models(self, idx, x_np, x_label, data_obj, model_obj, epsilon_ft, carla_model, x_original):
+    def evaluate_cf_models(self, idx, x_np, x_pred, data_obj, model_obj, epsilon_ft, carla_model, x_original):
         """
         DESCRIPTION:        Evaluates the specific counterfactual method on the isntance of interest
 
         INPUT:
         idx:                Index of the instance of interest
         x_np:               Instance of interest in Numpy array format
-        x_label:            Predicted label of the instance of interest
+        x_pred:             Predicted label of the instance of interest
         data_obj:           Dataset object
         model_obj:          Model object
         epsilon_ft:         Parameter for the Feature Tweaking counterfactual method
@@ -407,11 +408,11 @@ class Evaluator():
         else:
             mutability_check = True
         if 'nn' in self.method_name:
-            cf, run_time = near_neigh(x_np ,x_label, data_obj, mutability_check)
+            cf, run_time = near_neigh(x_np ,x_pred, data_obj, mutability_check)
         elif 'mo' in self.method_name:
-            cf, run_time = min_obs(x_np, x_label, data_obj, mutability_check)
+            cf, run_time = min_obs(x_np, x_pred, data_obj, mutability_check)
         elif 'rt' in self.method_name:
-            cf, run_time = rf_tweak(x_np, x_label, model_obj.rf, data_obj, True, mutability_check)
+            cf, run_time = rf_tweak(x_np, x_pred, model_obj.rf, data_obj, True, mutability_check)
         elif 'cchvae' in self.method_name:
             cf, run_time = cchvae_function(data_obj, carla_model, x_original)
             
@@ -425,7 +426,7 @@ class Evaluator():
         # elif 'dice' in self.method_name:
         #     cf, run_time = dice_function(data_obj, carla_model, x_original)
         # elif 'juice' in self.method_name:
-        #     results = JUICE(x_np, x_label, data_obj, model_obj.sel, 'proximity', mutability_check)
+        #     results = JUICE(x_np, x_pred, data_obj, model_obj.sel, 'proximity', mutability_check)
         #     cf, run_time = results[0], results[4]
 
         print(f'  {self.method_name} (time (s): {np.round_(run_time, 2)})')
