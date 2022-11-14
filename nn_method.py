@@ -27,7 +27,7 @@ def near_neigh(x, x_label, data, mutability_check=True):
     start_time = time.time()
     nt_cf = None
     for i in data.train_sorted:
-        if i[2] != x_label and verify_feasibility(x, i[0], data.feat_mutable, data.feat_type, data.feat_step, data.feat_dir, mutability_check) and not np.array_equal(x,i[0]):
+        if i[2] != x_label and verify_feasibility(x, i[0], data.feat_mutable, data.feat_type, data.feat_step, data.feat_dir, mutability_check) and not np.array_equal(x, i[0]):
             nt_cf = i[0]
             break
     if nt_cf is None:

@@ -15,6 +15,7 @@ from matplotlib.ticker import FormatStrFormatter
 from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
+from main_fairness_analysis import datasets, methods_to_run
 
 def extract_x_cd_df(eval_cf_df, eval_x_df, cf_metrics=None, data_obj=None):
     """
@@ -241,12 +242,15 @@ def method_box_plot(datasets, methods, metric, colors):
         data_str = datasets[dataset_idx]
         for method_idx in range(len(methods)):
             method_str = methods[method_idx]
-            eval_obj = load_obj(f'{data_str}_{method_str}_mutability_eval.pkl')
+            eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
             protected_feat = eval_obj.feat_protected
             protected_feat_keys = list(protected_feat.keys())
             original_x_df = pd.concat(eval_obj.original_x.values(), axis=0)
             # original_cf_df = pd.concat(eval_obj.original_cf.values(), axis=0)
-            metrics_cf_df = pd.concat((eval_obj.cf_proximity, eval_obj.cf_sparsity, eval_obj.cf_feasibility, eval_obj.cf_time), axis=1, names=['proximity','sparsity','feasibility','time'])
+            metrics_cf_df = pd.concat((pd.DataFrame.from_dict(eval_obj.cf_proximity, orient='index', columns=['proximity']), 
+                                      pd.DataFrame.from_dict(eval_obj.cf_sparsity, orient='index', columns=['sparsity']), 
+                                      pd.DataFrame.from_dict(eval_obj.cf_feasibility, orient='index', columns=['feasibility']), 
+                                      pd.DataFrame.from_dict(eval_obj.cf_time, orient='index', columns=['time'])), axis=1)
             # eval_x_df = eval_obj.all_x_data
             # eval_cf_df = eval_obj.all_cf_data
             # x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
@@ -797,10 +801,7 @@ def accuracy_weighted_burden_plot(datasets, methods, metric, colors_dict):
                     hspace=0.1)
     plt.savefig(results_cf_plots_dir+'normal_awb.pdf',format='pdf',dpi=400)
 
-datasets = ['compass','law','diabetes']  # Name of the datasets to be analyzed
-methods_to_run = ['nn','mo','rt','cchvae'] #['nn','mo','rt','cchvae']
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
-
 colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'black',
                '<25':'thistle','25-60':'violet','>60':'purple','<18':'green','>=18':'yellow','Single':'peachpuff',
                'Married':'peru','Divorced':'saddlebrown','isMarried: True':'cyan','isMarried: False':'darkcyan',

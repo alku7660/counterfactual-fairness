@@ -25,11 +25,11 @@ def min_obs(x, x_label, data, mutability_check=True):
     """
     start_time = time.time()
     mo_cf = None
-    all_data = np.vstack((data.jce_train_np,data.jce_test_undesired_np))
-    all_labels = np.hstack((data.train_target,data.test_undesired_target))
-    data_distance_mo = sort_data_distance(x,all_data,all_labels)
+    all_data = np.vstack((data.transformed_train_np, data.undesired_transformed_test_np))
+    all_labels = np.hstack((data.train_target, data.undesired_test_target))
+    data_distance_mo = sort_data_distance(x, all_data, all_labels)
     for i in data_distance_mo:
-        if i[2] != x_label and verify_feasibility(x,i[0],data.feat_mutable,data.feat_type,data.feat_step,data.feat_dir,mutability_check) and not np.array_equal(x,i[0]):
+        if i[2] != x_label and verify_feasibility(x, i[0], data.feat_mutable, data.feat_type, data.feat_step, data.feat_dir, mutability_check) and not np.array_equal(x, i[0]):
             mo_cf = i[0]
             break
     if mo_cf is None:
