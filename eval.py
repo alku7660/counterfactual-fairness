@@ -213,6 +213,19 @@ class Evaluator():
         self.stat_parity = self.statistical_parity_eval(stat_proba, stat_length)
         self.eq_odds = self.equalized_odds_eval(odds_proba, odds_length)
 
+    def add_fnr_data(self, desired_ground_truth_test_df, false_undesired_test_df):
+        """
+        DESCRIPTION:                    Adds the desired ground truth test DataFrame and the false negative test DataFrame
+        
+        INPUT:
+        desired_ground_truth_test_df:   Desired ground truth DataFrame
+        false_undesired_test_df:        False negative test DataFrame
+
+        OUTPUT: (None: stored as class attributes)
+        """
+        self.desired_ground_truth_test_df = desired_ground_truth_test_df
+        self.false_undesired_test_df = false_undesired_test_df
+
     def add_specific_x_data(self, idx, x, original_x, x_pred, x_target):
         """
         DESCRIPTION:        Calculates and stores x data found in the Evaluator

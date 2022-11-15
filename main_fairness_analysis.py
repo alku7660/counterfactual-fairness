@@ -18,7 +18,7 @@ n_feat = 50                # Number of examples to generate synthetically per fe
 epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feature tweaking algorithm
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
-perc = 0.01                   # Percentage of false negative test samples to consider for the counterfactuals search
+perc = 0.03                   # Percentage of false negative test samples to consider for the counterfactuals search
 np.random.seed(seed_int)
 
 if __name__=='__main__':
@@ -28,10 +28,12 @@ if __name__=='__main__':
         data, model = load_model_dataset(data_str, train_fraction, seed_int, step, path_here)
         carla_data = MyOwnDataSet(data)
         carla_model = MyOwnModel(carla_data, data, model)
-        desired_ground_truth_test_df = data.transformed_test_df.loc[data.test_target != data.undesired_class]
+        desired_ground_truth_transformed_test_df = data.transformed_test_df.loc[data.test_target != data.undesired_class]
+        desired_ground_truth_test_df = data.test_df.loc[data.test_target != data.undesired_class]
         desired_ground_truth_target = data.test_target[data.test_target != data.undesired_class]
-        predicted_label_desired_ground_truth_test_df = model.sel.predict(desired_ground_truth_test_df)
+        predicted_label_desired_ground_truth_test_df = model.sel.predict(desired_ground_truth_transformed_test_df)
         false_undesired_test_df = desired_ground_truth_test_df.loc[predicted_label_desired_ground_truth_test_df == data.undesired_class]
+        false_transformed_undesired_test_df = desired_ground_truth_transformed_test_df.loc[predicted_label_desired_ground_truth_test_df == data.undesired_class]
         false_undesired_target = desired_ground_truth_target[predicted_label_desired_ground_truth_test_df == data.undesired_class]
         # save_obj(model, data_str+'_model.pkl')
         # save_obj(data, data_str+'_data.pkl')
@@ -51,6 +53,7 @@ if __name__=='__main__':
             
             cf_evaluator = Evaluator(data, n_feat, method_str)        
             cf_evaluator.add_fairness_measures(data, model)
+            cf_evaluator.add_fnr_data(desired_ground_truth_test_df, false_undesired_test_df)
             for i in range(int(len(false_undesired_test_df)*perc)):
                 idx = false_undesired_test_df.index.tolist()[i]
                 print(f'---------------------------')
@@ -60,7 +63,7 @@ if __name__=='__main__':
                 print(f'  Test instance number: {i+1}')
                 print(f'  Total instances: {int(len(false_undesired_test_df)*perc)}')
                 print(f'---------------------------')
-                x_transformed_instance = false_undesired_test_df.loc[idx]
+                x_transformed_instance = false_transformed_undesired_test_df.loc[idx]
                 x_target = false_undesired_target[i]
                 x_np = x_transformed_instance.to_numpy()
                 x_original_df = data.test_df.loc[idx].to_frame().T

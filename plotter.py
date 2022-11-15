@@ -532,61 +532,47 @@ def fnr_burden_plot(datasets, methods, metric, colors):
     """
     methods_names = get_methods_names(methods)
     dataset_names = get_data_names(datasets)
-    fig, ax = plt.subplots(nrows=len(datasets),ncols=len(methods),sharex=False,sharey=False,figsize=(8,4.5))
+    fig, ax = plt.subplots(nrows=len(datasets), ncols=len(methods), sharex=False, sharey=False, figsize=(8,4.5))
     fig.supxlabel('$FNR_s$')
     fig.supylabel('$Burden_s$ (Lower is Better)')
-    for i in range(len(datasets)):
-        data_str = datasets[i]
-        eval_obj = load_obj(f'{data_str}_fnr_eval.pkl')
-        data_obj = load_obj(f'{data_str}_fnr_data.pkl')
-        model_obj = load_obj(f'{data_str}_fnr_model.pkl')
-        eval_x_df = eval_obj.all_x_data
-        eval_cf_df = eval_obj.all_cf_data
-        protected_feat = eval_obj.feat_protected
-        protected_feat_keys = list(protected_feat.keys())
-        x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric], data_obj)
-        desired_ground_truth_jce_test_pd = data_obj.jce_test_pd.loc[data_obj.test_target != data_obj.undesired_class]
-        desired_ground_truth_test_pd = data_obj.test_pd.loc[data_obj.test_target != data_obj.undesired_class]
-        predicted_label_desired_ground_truth_jce_test_pd = model_obj.jce_sel.predict(desired_ground_truth_jce_test_pd)
-        false_undesired_test_pd = desired_ground_truth_test_pd.loc[predicted_label_desired_ground_truth_jce_test_pd == data_obj.undesired_class]
-        legend_handles = create_feat_handles(protected_feat_keys, colors)
-        for j in range(len(methods)):
-            method = methods[j]
-            for prot_feat_idx in range(len(protected_feat_keys)):
-                feat = protected_feat_keys[prot_feat_idx]
-                feat_unique_val = desired_ground_truth_test_pd[feat].unique()
+    for dataset_idx in range(len(datasets)):
+        data_str = datasets[dataset_idx]
+        for method_idx in range(len(methods)):
+            method_str = methods[method_idx]
+            eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
+            protected_feat = eval_obj.feat_protected
+            protected_feat_keys = list(protected_feat.keys())
+            original_x_df = pd.concat(eval_obj.original_x.values(), axis=0)
+            proximity_df = pd.DataFrame.from_dict(eval_obj.cf_proximity, orient='index', columns=['proximity'])
+            for feat_idx in range(len(protected_feat_keys)):
+                feat = protected_feat_keys[feat_idx]
+                feat_unique_val = eval_obj.desired_ground_truth_test_df[feat].unique()
                 len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
                 x_pos_list = []
                 mean_data_val_list = []
-                for feat_idx in range(len(feat_unique_val)):
-                    feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
-                    total_ground_truth_feat_val = np.sum(desired_ground_truth_test_pd[feat] == feat_unique_val[feat_idx])
-                    total_false_undesired_feat_val = np.sum(false_undesired_test_pd[feat] == feat_unique_val[feat_idx])
+                for feat_val_idx in range(len(feat_unique_val)):
+                    feat_val_instances_idx = idx_feat_values[feat_val_idx]
+                    feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_val_idx],2)]
+                    total_ground_truth_feat_val = np.sum(eval_obj.desired_ground_truth_test_df[feat] == feat_unique_val[feat_val_idx])
+                    total_false_undesired_feat_val = np.sum(eval_obj.false_undesired_test_df[feat] == feat_unique_val[feat_val_idx])
                     fnr_feat_val = total_false_undesired_feat_val/total_ground_truth_feat_val
                     x_pos_list.append(fnr_feat_val)
-                    feat_method_data = cf_df[(cf_df['cf_method'] == method) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
-                    feat_method_data_values = feat_method_data[metric].values
+                    feat_method_data_values = proximity_df.loc[feat_val_instances_idx, metric].values
                     mean_data_val_list.append(np.mean(feat_method_data_values))
-                    c = colors[prot_feat_idx]
                     if feat_val_name == 'African-American':
-                        feat_val_name = 'African'
+                        feat_val_name = 'Afric.'
                     if feat_val_name == 'Non-white':
-                        ax[i,j].text(x=fnr_feat_val, y=np.mean(feat_method_data_values), #bbox=dict(ec=c,fc='none'),
-                                s=feat_val_name, fontstyle='italic', color=c, size=9, ha='right', va='top')
-                    else:
-                        ax[i,j].text(x=fnr_feat_val, y=np.mean(feat_method_data_values), #bbox=dict(ec=c,fc='none'),
-                                s=feat_val_name, fontstyle='italic', color=c, size=9)
-                ax[i,j].scatter(x=x_pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=10)
-                # ax[i,j].axes.xaxis.set_visible(False)
-                ax[i,j].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-                ax[i,j].xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+                        feat_val_name = 'Non-w.'
+                    ax[dataset_idx, method_idx].text(x=fnr_feat_val, y=np.mean(feat_method_data_values), #bbox=dict(ec=c,fc='none'),
+                                s=feat_val_name, fontstyle='italic', color=colors[feat_idx], size=9)
+                    ax[dataset_idx, method_idx].scatter(x=x_pos_list, y=mean_data_val_list, color=colors[feat_idx], s=10)
+                ax[dataset_idx, method_idx].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+                ax[dataset_idx, method_idx].xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
     for i in range(len(datasets)):
         ax[i,0].set_ylabel(dataset_names[datasets[i]])
-        # ax[i,0].legend(handles=legend_handles)
     for j in range(len(methods)):
         ax[0,j].set_title(methods_names[methods[j]])
         ax[-1,j].axes.xaxis.set_visible(True)
-    # plt.tight_layout()
     fig.suptitle('$Burden_s$ vs. $FNR_s$')
     plt.subplots_adjust(left=0.11,
                     bottom=0.1, 
@@ -794,11 +780,11 @@ colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'bla
 
 # attainable_cf_plot(datasets, methods_to_run)
 # feature_ratio_change_cf_plot(datasets, methods_to_run)
-method_box_plot(datasets, methods_to_run, 'proximity', colors_list)
+# method_box_plot(datasets, methods_to_run, 'proximity', colors_list)
 # accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
 # statistical_parity_burden_plot(datasets, 'mo', 'proximity', colors)
 # equalized_odds_burden_plot(datasets, 'mo', 'proximity', colors)
 # fnr_plot(datasets, 'proximity', colors_dict)
 # burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
-# fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
+fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
 # accuracy_weighted_burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
