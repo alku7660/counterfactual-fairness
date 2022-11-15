@@ -35,8 +35,6 @@ if __name__=='__main__':
         false_undesired_test_df = desired_ground_truth_test_df.loc[predicted_label_desired_ground_truth_test_df == data.undesired_class]
         false_transformed_undesired_test_df = desired_ground_truth_transformed_test_df.loc[predicted_label_desired_ground_truth_test_df == data.undesired_class]
         false_undesired_target = desired_ground_truth_target[predicted_label_desired_ground_truth_test_df == data.undesired_class]
-        # save_obj(model, data_str+'_model.pkl')
-        # save_obj(data, data_str+'_data.pkl')
         
         for method_str in methods_to_run:
         
@@ -71,6 +69,8 @@ if __name__=='__main__':
                 data.add_sorted_train_data(x_transformed_instance)
                 cf_evaluator.add_specific_x_data(idx, x_np, x_original_df, x_label, x_target)
                 cf_evaluator.evaluate_cf_models(idx, x_np, x_label, data, model, epsilon_ft, carla_model, x_original_df)
+                cf_evaluator.add_group_cf()
+                cf_evaluator.evaluate_group_cf(data, model)
                             
             print(f'---------------------------')
             print(f'  DONE: {data_str} CF Evaluation')
