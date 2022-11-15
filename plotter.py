@@ -113,7 +113,32 @@ def create_box_bar_plot_handles(feat, feat_unique_val, colors, protected_feat, l
         list_handles.extend([handle])
     return list_handles
 
-def create_metric_burden_handles(protected_feat_keys, colors):
+def create_boxplot_handles(protected_feat, original_x_df, color_list):
+    """
+    DESCRIPTION:                Creates the legend handles for the boxplot subplots for datasets and method calculating the number of examples per sensitive group
+
+    INPUT:
+    protected_feat:        Protected features names
+    original_x_df:              DataFrame containing the instances of interest
+    color_list:                 List of colors to use
+
+    OUTPUT:
+    list_handles:               Handles for use on the boxplot subplots
+    """
+    list_handles = []
+    checked_colors = 0
+    for feat in protected_feat:
+        unique_feat_val = original_x_df[feat].unique()
+        for i in range(len(unique_feat_val)):
+            feat_val_i = unique_feat_val[i]
+            len_feat_val_i = len(original_x_df[original_x_df[feat] == feat_val_i])
+            total_instances = len(original_x_df)
+            handle = Line2D([0], [0], color=color_list[checked_colors + i], lw=2, label=f'{protected_feat[feat][np.round(feat_val_i, 2)]}: {len_feat_val_i} ({np.round(len_feat_val_i*100/total_instances, 1)}%)')
+            list_handles.extend([handle])
+        checked_colors += len(unique_feat_val)
+    return list_handles
+
+def create_feat_handles(protected_feat_keys, colors):
     """
     Method that creates legend handles to print in the image
     """
@@ -246,81 +271,40 @@ def method_box_plot(datasets, methods, metric, colors):
             protected_feat = eval_obj.feat_protected
             protected_feat_keys = list(protected_feat.keys())
             original_x_df = pd.concat(eval_obj.original_x.values(), axis=0)
-            # original_cf_df = pd.concat(eval_obj.original_cf.values(), axis=0)
             metrics_cf_df = pd.concat((pd.DataFrame.from_dict(eval_obj.cf_proximity, orient='index', columns=['proximity']), 
                                       pd.DataFrame.from_dict(eval_obj.cf_sparsity, orient='index', columns=['sparsity']), 
                                       pd.DataFrame.from_dict(eval_obj.cf_feasibility, orient='index', columns=['feasibility']), 
                                       pd.DataFrame.from_dict(eval_obj.cf_time, orient='index', columns=['time'])), axis=1)
-            # eval_x_df = eval_obj.all_x_data
-            # eval_cf_df = eval_obj.all_cf_data
-            # x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
+            sum_feat_unique_val = 0
+            feat_val_labels = []
             for feat in protected_feat_keys:
                 feat_unique_val = original_x_df[feat].unique()
                 len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
-                xaxis_pos_labels = np.arange((len(feat_unique_val)-1)/2, len(methods)*len(feat_unique_val), len(feat_unique_val))
-                xaxis_pos_box = np.arange(len(methods)*len(feat_unique_val))
-                method_feat_labels = []
+                xaxis_pos_box = np.arange(sum_feat_unique_val+len(feat_unique_val))
                 for feat_val_idx in range(len(feat_unique_val)):
                     feat_val_instances_idx = idx_feat_values[feat_val_idx]
-                    box_feat_val_pos = xaxis_pos_box[method_idx*len(feat_unique_val)+feat_val_idx]
+                    box_feat_val_pos = xaxis_pos_box[sum_feat_unique_val+feat_val_idx]
                     feat_method_data_values = metrics_cf_df.loc[feat_val_instances_idx, metric].values
-                    c = colors[feat_val_idx]
+                    c = colors[sum_feat_unique_val+feat_val_idx]
                     ax[dataset_idx, method_idx].boxplot(x=feat_method_data_values, positions=[box_feat_val_pos], boxprops=dict(color=c),
                             capprops=dict(color=c), showfliers=False, whiskerprops=dict(color=c),
                             medianprops=dict(color=c), widths=0.9, showmeans=True,
                             meanprops=dict(markerfacecolor=c, markeredgecolor=c, marker='D'), flierprops=dict(markeredgecolor=c), notch=False)
-                method_feat_labels.append(methods_names[methods[method_idx]])
-            legend_elements = create_box_bar_plot_handles(feat, feat_unique_val, colors, protected_feat, len_feat_values)
-            ax[dataset_idx, method_idx].set_xticks(xaxis_pos_labels, labels=method_feat_labels)
-            ax[dataset_idx, method_idx].set_xticklabels(method_feat_labels, rotation = 10, ha='center')
-            ax[dataset_idx, method_idx].set_title(f'{dataset_names[data_str]} Dataset: {metric_names[metric]} by {feat}')
-            ax[dataset_idx, method_idx].set_xlabel('Counterfactual Method')
+                sum_feat_unique_val += len(feat_unique_val)
+                feat_val_labels.append(feat_unique_val)
+            if method_idx == 0:
+                legend_elements = create_boxplot_handles(protected_feat, original_x_df, colors_list)
+                ax[dataset_idx, method_idx].legend(handles=legend_elements)
+            ax[dataset_idx, method_idx].axes.xaxis.set_visible(False)
+    fig.subplots_adjust(wspace=0.1, hspace=0.1)
+    for i in range(len(datasets)):
+        ax[i,0].set_ylabel(dataset_names[datasets[i]])
+    for j in range(len(methods)):
+        ax[0,j].set_title(methods_names[methods[j]])
+    fig.suptitle(metric_names[metric])
     fig.legend(handles=legend_elements) #loc=(-0.1,-0.1*len(legend_elements))
     plt.tight_layout()
-    plt.savefig(results_cf_plots_dir+f'{data_str}_{method_str}_{metric}_comparison_across_feat.png',dpi=400)
-
-# def method_box_plot(datasets, methods_to_run, metric, colors):
-#     """
-#     Method that plots the metric differences among features, datasets and methods
-#     """
-#     methods_names = get_methods_names(methods_to_run)
-#     dataset_names = get_data_names(datasets)
-#     metric_names = get_metric_names([metric])
-#     for data_str in datasets:
-#         for method_str in methods_to_run:
-#             eval_obj = load_obj(f'{data_str}_{method_str}_mutability_eval.pkl')
-#             eval_x_df = eval_obj.all_x_data
-#             eval_cf_df = eval_obj.all_cf_data
-#             protected_feat = eval_obj.feat_protected
-#             protected_feat_keys = list(protected_feat.keys())
-#             x_df, cf_df, original_x_df, original_cf_df = extract_x_cd_df(eval_cf_df, eval_x_df, [metric])
-#         for feat in protected_feat_keys:
-#             feat_unique_val = original_x_df[feat].unique()
-#             len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
-#             fig, ax = plt.subplots(figsize=(8,6))
-#             xaxis_pos_labels = np.arange((len(feat_unique_val)-1)/2,len(methods_to_run)*len(feat_unique_val),len(feat_unique_val))
-#             xaxis_pos_box = np.arange(len(methods_to_run)*len(feat_unique_val))
-#             method_feat_labels = []
-#             for method_idx in range(len(methods_to_run)):
-#                 for feat_idx in range(len(feat_unique_val)):
-#                     box_feat_val_pos = xaxis_pos_box[method_idx*len(feat_unique_val)+feat_idx]
-#                     feat_method_data = cf_df[(cf_df['cf_method'] == methods_to_run[method_idx]) & (cf_df.index.isin(idx_feat_values[feat_idx]))]
-#                     feat_method_data_values = feat_method_data[metric].values
-#                     c = colors[feat_idx]
-#                     ax.boxplot(x=feat_method_data_values, positions=[box_feat_val_pos], boxprops=dict(color=c),
-#                                capprops=dict(color=c), showfliers=False, whiskerprops=dict(color=c),
-#                                medianprops=dict(color=c), widths=0.9, showmeans=True,
-#                                meanprops=dict(markerfacecolor=c, markeredgecolor=c, marker='D'), flierprops=dict(markeredgecolor=c), notch=False)
-#                 method_feat_labels.append(methods_names[methods_to_run[method_idx]])
-#             legend_elements = create_box_bar_plot_handles(feat, feat_unique_val, colors, protected_feat, len_feat_values)
-#             ax.set_xticks(xaxis_pos_labels, labels=method_feat_labels)
-#             ax.set_xticklabels(method_feat_labels, rotation = 10, ha='center')
-#             ax.set_title(f'{dataset_names[data_str]} Dataset: {metric_names[metric]} by {feat}')
-#             ax.set_ylabel('Burden (Lower is Better)')
-#             ax.set_xlabel('Counterfactual Method')
-#             ax.legend(handles=legend_elements) #loc=(-0.1,-0.1*len(legend_elements))
-#             plt.tight_layout()
-#             plt.savefig(results_cf_plots_dir+f'{data_str}_{feat}_{metric}_method_feat_burden.png',dpi=400)
+    plt.savefig(results_cf_plots_dir+f'{metric}_comparison_across_dataset_method.pdf')
 
 def attainable_cf_plot(datasets, methods_to_run):
     """
@@ -441,7 +425,7 @@ def accuracy_burden_plot(datasets, method, metric, colors):
                 ax.text(x=accuracy_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c,fc='none'),
                         s=f'{feat_val_name}', fontstyle='italic', color=c, size=9)
             ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
-        legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
+        legend_handles = create_feat_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
         # ax.set_ylim(y_max*(1.01),y_min*(0.99))
         ax.set_ylim(y_min*(0.99),y_max*(1.01))
@@ -486,7 +470,7 @@ def statistical_parity_burden_plot(datasets, method, metric, colors):
                 ax.text(x=stat_parity_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c,fc='none'),
                         s=feat_val_name, fontstyle='italic', color=c, size=9)
             ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
-        legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
+        legend_handles = create_feat_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
         # ax.set_ylim(y_max*(1.01),y_min*(0.99))
         ax.set_ylim(y_min*(0.99),y_max*(1.01))
@@ -531,7 +515,7 @@ def equalized_odds_burden_plot(datasets, method, metric, colors):
                 ax.text(x=stat_parity_feat_val, y=np.mean(feat_method_data_values), bbox=dict(ec=c,fc='none'),
                         s=feat_val_name, fontstyle='italic', color=c, size=9)
             ax.scatter(x=pos_list, y=mean_data_val_list, color=colors[prot_feat_idx], s=25)
-        legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
+        legend_handles = create_feat_handles(protected_feat_keys, colors)
         y_min, y_max = ax.get_ylim()
         # ax.set_ylim(y_max*(1.01),y_min*(0.99))
         ax.set_ylim(y_min*(0.99),y_max*(1.01))
@@ -565,7 +549,7 @@ def fnr_burden_plot(datasets, methods, metric, colors):
         desired_ground_truth_test_pd = data_obj.test_pd.loc[data_obj.test_target != data_obj.undesired_class]
         predicted_label_desired_ground_truth_jce_test_pd = model_obj.jce_sel.predict(desired_ground_truth_jce_test_pd)
         false_undesired_test_pd = desired_ground_truth_test_pd.loc[predicted_label_desired_ground_truth_jce_test_pd == data_obj.undesired_class]
-        legend_handles = create_metric_burden_handles(protected_feat_keys, colors)
+        legend_handles = create_feat_handles(protected_feat_keys, colors)
         for j in range(len(methods)):
             method = methods[j]
             for prot_feat_idx in range(len(protected_feat_keys)):

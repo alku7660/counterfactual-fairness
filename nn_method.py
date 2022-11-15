@@ -35,7 +35,7 @@ def near_neigh(x, x_label, data, mutability_check=True):
         end_time = time.time()
         return nt_cf, end_time - start_time
     end_time = time.time()
-    nt_time = end_time - start_time
+    nt_time = end_time - start_time + data.training_sort_time
     return nt_cf, nt_time
 
 def nn_model(prev_nn, x, x_label, data, model, mutability_check=True):

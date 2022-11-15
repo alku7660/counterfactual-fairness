@@ -14,6 +14,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 import numpy as np
 import pandas as pd
+import time
 from support import dataset_dir
 
 def euclidean(x1,x2):
@@ -335,7 +336,11 @@ class Dataset:
         OUTPUT: (None: stored as class attributes)
         train_sorted:   Sorted training dataset w.r.t. distance to the instance of interest
         """
+        start_time = time.time()
         self.train_sorted = sort_data_distance(instance, self.transformed_train_np, self.train_target) 
+        end_time = time.time()
+        total_time = end_time - start_time
+        self.training_sort_time = total_time
 
     def undesired_class_data(self):
         """
