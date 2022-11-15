@@ -594,49 +594,39 @@ def create_handles_awb(colors_dict):
         list_handles.extend([handle])
     return list_handles
 
-def fnr_plot(datasets, metric, colors_dict):
+def fnr_plot(datasets, colors_dict):
     """
     Method that obtains the accuracy weighted burden for each method and each dataset
     """
     dataset_names = get_data_names(datasets)
     fig, ax = plt.subplots(nrows=3,ncols=4,sharex=False,sharey=False,figsize=(8,5.5))
     flat_ax = ax.flatten()
-    for i in range(len(datasets)):
-        data_str = datasets[i]
-        eval_obj = load_obj(f'{data_str}_fnr_eval.pkl')
-        data_obj = load_obj(f'{data_str}_fnr_data.pkl')
-        model_obj = load_obj(f'{data_str}_fnr_model.pkl')
-        eval_x_df = eval_obj.all_x_data
-        eval_cf_df = eval_obj.all_cf_data
+    for dataset_idx in range(len(datasets)):
+        data_str = datasets[dataset_idx]
+        eval_obj = load_obj(f'{data_str}_nn_eval.pkl')
         protected_feat = eval_obj.feat_protected
         protected_feat_keys = list(protected_feat.keys())
-        desired_ground_truth_jce_test_pd = data_obj.jce_test_pd.loc[data_obj.test_target != data_obj.undesired_class]
-        desired_ground_truth_test_pd = data_obj.test_pd.loc[data_obj.test_target != data_obj.undesired_class]
-        predicted_label_desired_ground_truth_jce_test_pd = model_obj.jce_sel.predict(desired_ground_truth_jce_test_pd)
-        false_undesired_test_pd = desired_ground_truth_test_pd.loc[predicted_label_desired_ground_truth_jce_test_pd == data_obj.undesired_class]
         fnr_list = []
         feat_list = []
         colors_list = []
-        for prot_feat_idx in range(len(protected_feat_keys)):
-            feat = protected_feat_keys[prot_feat_idx]
-            feat_unique_val = desired_ground_truth_test_pd[feat].unique()
-            for feat_idx in range(len(feat_unique_val)):
-                feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_idx],2)]
-                total_ground_truth_feat_val = np.sum(desired_ground_truth_test_pd[feat] == feat_unique_val[feat_idx])
-                # print(f' ground truth {data_str}, {feat}:{feat_val_name}: {total_ground_truth_feat_val} ({total_ground_truth_feat_val/desired_ground_truth_test_pd.shape[0]})')
-                # print(f' {data_str}, {feat}:{feat_val_name}: {np.sum(data_obj.test_pd[feat] == feat_unique_val[feat_idx])}')
-                total_false_undesired_feat_val = np.sum(false_undesired_test_pd[feat] == feat_unique_val[feat_idx])
+        for feat_idx in range(len(protected_feat_keys)):
+            feat = protected_feat_keys[feat_idx]
+            feat_unique_val = eval_obj.desired_ground_truth_test_df[feat].unique()
+            for feat_val_idx in range(len(feat_unique_val)):
+                feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_val_idx],2)]
+                total_ground_truth_feat_val = np.sum(eval_obj.desired_ground_truth_test_df[feat] == feat_unique_val[feat_val_idx])
+                total_false_undesired_feat_val = np.sum(eval_obj.false_undesired_test_df[feat] == feat_unique_val[feat_val_idx])
                 fnr = total_false_undesired_feat_val/total_ground_truth_feat_val
                 if feat in ['isMale','isMarried']:
                     feat_val_name = feat+': '+feat_val_name
                 fnr_list.append(fnr)
                 feat_list.append(feat_val_name)
                 colors_list.append(colors_dict[feat_val_name])
-        flat_ax[i].bar(x=feat_list,height=fnr_list,color=colors_list)
-        flat_ax[i].set_xticklabels(feat_list, rotation = 30, ha='right')
-        flat_ax[i].axes.xaxis.set_visible(False)
-        flat_ax[i].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-        flat_ax[i].set_title(dataset_names[datasets[i]])
+        flat_ax[dataset_idx].bar(x=feat_list, height=fnr_list, color=colors_list)
+        flat_ax[dataset_idx].set_xticklabels(feat_list, rotation = 30, ha='right')
+        flat_ax[dataset_idx].axes.xaxis.set_visible(False)
+        flat_ax[dataset_idx].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        flat_ax[dataset_idx].set_title(dataset_names[datasets[dataset_idx]])
     legend_handles = create_handles_awb(colors_dict)
     fig.subplots_adjust(wspace=0.1, hspace=0.1)
     fig.suptitle('False Negative Rate per Sensitive Group ($FNR_s$)')
@@ -784,7 +774,7 @@ colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'bla
 # accuracy_burden_plot(datasets, 'mo', 'proximity', colors)
 # statistical_parity_burden_plot(datasets, 'mo', 'proximity', colors)
 # equalized_odds_burden_plot(datasets, 'mo', 'proximity', colors)
-# fnr_plot(datasets, 'proximity', colors_dict)
+# fnr_plot(datasets, colors_dict)
 # burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
-fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
+# fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
 # accuracy_weighted_burden_plot(datasets, methods_to_run, 'proximity', colors_dict)
