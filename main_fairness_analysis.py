@@ -52,6 +52,7 @@ if __name__=='__main__':
             cf_evaluator = Evaluator(data, n_feat, method_str)        
             cf_evaluator.add_fairness_measures(data, model)
             cf_evaluator.add_fnr_data(desired_ground_truth_test_df, false_undesired_test_df)
+            
             for i in range(int(len(false_undesired_test_df)*perc)):
                 idx = false_undesired_test_df.index.tolist()[i]
                 print(f'---------------------------')
@@ -68,9 +69,24 @@ if __name__=='__main__':
                 x_label = model.sel.predict(x_np.reshape(1,-1))
                 data.add_sorted_train_data(x_transformed_instance)
                 cf_evaluator.add_specific_x_data(idx, x_np, x_original_df, x_label, x_target)
+                
+                """
+                Main function: Find CF for all FN
+                """
                 cf_evaluator.evaluate_cf_models(idx, x_np, x_label, data, model, epsilon_ft, carla_model, x_original_df)
-                cf_evaluator.add_group_cf()
-                cf_evaluator.evaluate_group_cf(data, model)
+                
+            """
+            Additional function: Find group counterfactual
+            """
+            cf_evaluator.add_group_cf()
+            cf_evaluator.evaluate_group_cf(data, model)
+
+            """
+            Additional function: Find instance clusters and cluster counterfactual
+            """
+            cf_evaluator.add_clusters()
+            cf_evaluator.find_clusters_cf()
+            cf_evaluator.evaluate_cluster_cf(data, model)
                             
             print(f'---------------------------')
             print(f'  DONE: {data_str} CF Evaluation')

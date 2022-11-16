@@ -43,7 +43,7 @@ def create_boxplot_handles(protected_feat, original_x_df, color_list):
     DESCRIPTION:                Creates the legend handles for the boxplot subplots for datasets and method calculating the number of examples per sensitive group
 
     INPUT:
-    protected_feat:        Protected features names
+    protected_feat:             Protected features names
     original_x_df:              DataFrame containing the instances of interest
     color_list:                 List of colors to use
 
@@ -438,7 +438,7 @@ def fnr_burden_plot(datasets, methods, metric, colors):
                     hspace=0.27)
     plt.savefig(results_cf_plots_dir+'fnr_burden.pdf',format='pdf',dpi=400)
 
-def accuracy_weighted_burden_plot(datasets, methods, colors_dict):
+def nawb_plot(datasets, methods, colors_dict):
     """
     Method that obtains the accuracy weighted burden for each method and each dataset
     """
@@ -506,4 +506,4 @@ colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'bla
 # fnr_plot(datasets, colors_dict)
 # burden_plot(datasets, methods_to_run, colors_dict)
 # fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
-accuracy_weighted_burden_plot(datasets, methods_to_run, colors_dict)
+nawb_plot(datasets, methods_to_run, colors_dict)
