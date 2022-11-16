@@ -78,15 +78,13 @@ if __name__=='__main__':
             """
             Additional function: Find group counterfactual
             """
-            cf_evaluator.add_group_cf()
-            cf_evaluator.evaluate_group_cf(data, model)
+            cf_evaluator.add_groups_cf(data, model)
 
             """
             Additional function: Find instance clusters and cluster counterfactual
             """
             cf_evaluator.add_clusters()
-            cf_evaluator.find_clusters_cf()
-            cf_evaluator.evaluate_cluster_cf(data, model)
+            cf_evaluator.add_clusters_cf(data, model, carla_model)
                             
             print(f'---------------------------')
             print(f'  DONE: {data_str} CF Evaluation')

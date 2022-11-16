@@ -46,9 +46,12 @@ class Evaluator():
         self.n_feat = n_feat
         self.x, self.original_x, self.x_pred, self.x_target, self.x_accuracy = {}, {}, {}, {}, {}
         self.cf, self.original_cf = {}, {} 
-        self.group_cf, self.original_group_cf = None, None
+        self.groups_cf, self.original_groups_cf = {}, {}
         self.cf_proximity, self.cf_feasibility, self.cf_sparsity, self.cf_validity, self.cf_time = {}, {}, {}, {}, {}
-        self.group_cf_proximity, self.group_cf_feasibility, self.group_cf_sparsity, self.group_cf_validity = {}, {}, {}, {}, None
+        self.group_cf_proximity = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
+        self.group_cf_feasibility = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
+        self.group_cf_sparsity = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
+        self.group_cf_validity = {}
         self.x_clusters, self.original_x_clusters = {}, {}
         self.x_clusters_cf, self.original_x_clusters_cf = {}, {}
         self.cluster_cf_proximity = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
@@ -316,7 +319,7 @@ class Evaluator():
         acc = self.x_target[idx] == self.x_pred[idx]
         return acc
 
-    def proximity(self, idx, group=False, cluster_str=None):
+    def proximity(self, idx, group=None, cluster_str=None):
         """
         DESCRIPTION:        Calculates the distance between the instance of interest and the counterfactual given
 
@@ -327,10 +330,10 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        if group and cluster_str is None:
-            cf = self.group_cf
-        elif not group and cluster_str is not None:
-            cf = self.add_clusters_cf[cluster_str] 
+        if group is not None and cluster_str is None:
+            cf = self.groups_cf[group]
+        elif group is None and cluster_str is not None:
+            cf = self.x_clusters_cf[cluster_str] 
         else:
             cf = self.cf[idx]
         if (self.x[idx].columns == cf.columns).all():
@@ -339,14 +342,14 @@ class Evaluator():
             instance_x_copy = copy.deepcopy(self.x[idx])
             instance_x_copy = instance_x_copy[cf.columns]
             distance = np.round_(euclidean(instance_x_copy.to_numpy(), cf.to_numpy()), 3)
-        if group and cluster_str is None:
-            self.group_cf_proximity[idx] = distance
-        elif not group and cluster_str is not None:
+        if group is not None and cluster_str is None:
+            self.group_cf_proximity.loc[idx, group] = distance
+        elif group is None and cluster_str is not None:
             self.cluster_cf_proximity.loc[idx, cluster_str] = distance
         else:
             self.cf_proximity[idx] = distance
 
-    def feasibility(self, idx, group=False, cluster_str=None):
+    def feasibility(self, idx, group=None, cluster_str=None):
         """
         DESCRIPTION:        Indicates whether cf is a feasible counterfactual with respect to x and the feature mutability
 
@@ -359,26 +362,26 @@ class Evaluator():
         """
         toler = 0.000001
         feasibility = True
-        if group and cluster_str is None:
-            cf_idx = self.group_cf
-        elif not group and cluster_str is not None:
-            cf_idx = self.add_clusters_cf[cluster_str] 
+        if group is not None and cluster_str is None:
+            cf = self.groups_cf[group]
+        elif group is None and cluster_str is not None:
+            cf = self.x_clusters_cf[cluster_str] 
         else:
-            cf_idx = self.cf[idx]
+            cf = self.cf[idx]
         x_idx = self.x[idx].to_numpy()[0]
-        vector = cf_idx.to_numpy()[0] - x_idx
+        vector = cf.to_numpy()[0] - x_idx
         for i in range(len(self.feat_type)):
             if self.feat_type[i] == 'bin':
-                if not np.isclose(cf_idx.iloc[0,i], [0,1], atol=toler).any():
+                if not np.isclose(cf.iloc[0,i], [0,1], atol=toler).any():
                     feasibility = False
                     break
             elif self.feat_type[i] == 'num-ord':
                 possible_val = np.linspace(0,1,int(1/self.feat_step[i]+1),endpoint=True)
-                if not np.isclose(cf_idx.iloc[0,i], possible_val, atol=toler).any():
+                if not np.isclose(cf.iloc[0,i], possible_val, atol=toler).any():
                     feasibility = False
                     break
             else:
-                if cf_idx.iloc[0,i] < 0-toler or cf_idx.iloc[0,i] > 1+toler:
+                if cf.iloc[0,i] < 0-toler or cf.iloc[0,i] > 1+toler:
                     feasibility = False
                     break
             if self.feat_dir[i] == 0 and vector[i] != 0:
@@ -390,16 +393,16 @@ class Evaluator():
             elif self.feat_dir[i] == 'neg' and vector[i] > 0:
                 feasibility = False
                 break
-        if not np.array_equal(x_idx[np.where(self.feat_mutable == 0)], cf_idx[np.where(self.feat_mutable == 0)]):
+        if not np.array_equal(x_idx[np.where(self.feat_mutable == 0)], cf[np.where(self.feat_mutable == 0)]):
             feasibility = False
-        if group and cluster_str is None:
-            self.group_cf_feasibility[idx] = feasibility
-        elif not group and cluster_str is not None:
+        if group is not None and cluster_str is None:
+            self.group_cf_feasibility.loc[idx, group] = feasibility
+        elif group is None and cluster_str is not None:
             self.cluster_cf_feasibility.loc[idx, cluster_str] = feasibility
         else:
             self.cf_feasibility[idx] = feasibility
 
-    def sparsity(self, data_obj, idx, group=False, cluster_str=None):
+    def sparsity(self, data_obj, idx, group=None, cluster_str=None):
         """
         DESCRIPTION:        Calculates sparsity for a given counterfactual according to x. Sparsity is 1 - the fraction of features changed in the cf. Takes the value of 1 if the number of changed features is 1
 
@@ -411,10 +414,10 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        if group and cluster_str is None:
-            cf = self.group_cf
-        elif not group and cluster_str is not None:
-            cf = self.add_clusters_cf[cluster_str] 
+        if group is not None and cluster_str is None:
+            cf = self.groups_cf[group]
+        elif group is None and cluster_str is not None:
+            cf = self.x_clusters_cf[cluster_str] 
         else:
             cf = self.cf[idx]
         cf_idx = cf.to_numpy()[0]
@@ -428,14 +431,14 @@ class Evaluator():
             sparsity = 1.000
         else:
             sparsity = np.round_(1 - n_changed/len(x_idx), 3)
-        if group and cluster_str is None:
-            self.group_cf_sparsity[idx] = sparsity
-        elif not group and cluster_str is not None:
+        if group is not None and cluster_str is None:
+            self.group_cf_sparsity.loc[idx, group] = sparsity
+        elif group is None and cluster_str is not None:
             self.cluster_cf_sparsity.loc[idx, cluster_str] = sparsity
         else:
             self.cf_sparsity[idx] = sparsity
 
-    def validity(self, model_obj):
+    def validity(self, model_obj, group):
         """
         DESCRIPTION:            Calculates the validity of the group counterfactual
 
@@ -444,7 +447,7 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        self.group_cf_validity = model_obj.sel.predict(self.group_cf) != self.undesired_class
+        self.group_cf_validity[group] = model_obj.sel.predict(self.groups_cf) != self.undesired_class
 
     def evaluate_cf_models(self, idx, x_np, x_pred, data_obj, model_obj, epsilon_ft, carla_model, x_original):
         """
@@ -492,21 +495,9 @@ class Evaluator():
         print(f'---------------------------')
         self.add_specific_cf_data(idx, data_obj, cf, run_time)
     
-    def add_group_cf(self):
+    def add_groups_cf(self, data_obj, model_obj):
         """
-        DESCRIPTION:            Adds the group counterfactual by finding the mean point of all counterfactuals for the false negative group of test instances
-
-        INPUT: (None)
-
-        OUTPUT: (None: stored as class attributes)
-        """
-        cf_df = pd.concat(self.cf.values(), axis=0)
-        self.group_cf = cf_df.mean(axis=0).to_frame.T
-        self.original_group_cf = self.inverse_transform_original(self.group_cf)
-
-    def evaluate_group_cf(self, data_obj, model_obj):
-        """
-        DESCRIPTION:            Obtains all the performance measures for the group counterfactual
+        DESCRIPTION:            Adds the group counterfactual by finding the mean point of all counterfactuals for the false negative group of test instances and obtains the performance measures of each
 
         INPUT:
         data_obj:               Dataset object
@@ -514,11 +505,22 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        for idx in self.original_x.keys():
-            self.proximity(idx, group=True)
-            self.feasibility(idx, group=True)
-            self.sparsity(data_obj, idx, group=True)
-            self.validity(model_obj)
+        x_df = pd.concat(self.x.values(), axis=0)
+        cf_df = pd.concat(self.cf.values(), axis=0)
+        self.groups_cf['all'] = cf_df.mean(axis=0).to_frame.T
+        self.original_groups_cf['all'] = self.inverse_transform_original(self.groups_cf)
+        for feat in self.feat_protected:
+            feat_unique_val = x_df[feat].unique()
+            for feat_val in feat_unique_val:
+                cf_df_feat_val = cf_df[cf_df[feat] == feat_val]
+                feat_val_name = self.feat_protected[feat][np.round(feat_val, 2)]
+                self.groups_cf[feat_val_name] = cf_df_feat_val.mean(axis=0).to_frame.T
+                self.original_groups_cf[feat_val_name] = self.inverse_transform_original(self.groups_cf[feat_val_name])
+                for idx in self.original_x.keys():
+                    self.proximity(idx, group=feat_val_name)
+                    self.feasibility(idx, group=feat_val_name)
+                    self.sparsity(data_obj, idx, group=feat_val_name)
+                    self.validity(model_obj, group=feat_val_name)
     
     def add_clusters(self):
         """
