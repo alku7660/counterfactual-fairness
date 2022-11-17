@@ -15,6 +15,7 @@ from matplotlib.ticker import FormatStrFormatter
 from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
+import seaborn as sns
 from main_fairness_analysis import datasets, methods_to_run
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
@@ -532,29 +533,67 @@ def validity_groups_cf(datasets, methods):
 
     OUTPUT: (None: plot stored)
     """
+    dataset_names = get_data_names(datasets)
     methods_names = get_methods_names(methods)
-    fig, ax = plt.subplots(nrows=len(datasets), ncols=1, sharex=False, sharey=False, figsize=(3.5,11))
+    fig, ax = plt.subplots(nrows=len(datasets), ncols=1, sharex=False, sharey=False, figsize=(4,11))
     for dataset_idx in range(len(datasets)):
         data_str = datasets[dataset_idx]
         for method_idx in range(len(methods)):
             method_str = methods[method_idx]
+            method_name = methods_names[methods[method_idx]]
             eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
-            group_cf_validity_df = pd.DataFrame.from_dict(eval_obj.group_cf_validity, orient='index', columns=[method_str])
+            group_cf_validity_df = pd.DataFrame.from_dict(eval_obj.group_cf_validity, orient='index', columns=[method_name])
             if method_idx == 0:
                 validity_df = group_cf_validity_df
             else:
                 validity_df = pd.concat((validity_df, group_cf_validity_df), axis=1)
-        ax[dataset_idx].matshow(validity_df)
-        ax[dataset_idx].set_xticklabels(validity_df.columns, rotation = 30, ha='right')
-        ax[dataset_idx].set_yticklabels(methods_names.values())
+        ax[dataset_idx] = sns.heatmap(validity_df, cbar=False)
+    for i in range(len(datasets)):
+        ax[i].set_ylabel(dataset_names[datasets[i]])
     fig.suptitle('Group Counterfactual Validity')
-    plt.subplots_adjust(left=0.09,
+    plt.subplots_adjust(left=0.15,
                     bottom=0.08, 
-                    right=0.975, 
+                    right=0.8, 
                     top=0.94, 
-                    wspace=0.25, 
+                    wspace=0.1, 
                     hspace=0.1)
     plt.savefig(results_cf_plots_dir+'group_cf_validity.pdf',format='pdf')
+
+def validity_clusters(datasets, methods):
+    """
+    DESCRIPTION:        Obtains the validity percentage of all clusters
+
+    INPUT:
+    datasets:           Names of the datasets
+    methods:            Names of the methods
+
+    OUTPUT: (None: plot stored)
+    """
+    dataset_names = get_data_names(datasets)
+    methods_names = get_methods_names(methods)
+    fig, ax = plt.subplots(nrows=len(datasets), ncols=1, sharex=False, sharey=False, figsize=(4,11))
+    for dataset_idx in range(len(datasets)):
+        data_str = datasets[dataset_idx]
+        for method_idx in range(len(methods)):
+            method_str = methods[method_idx]
+            method_name = methods_names[methods[method_idx]]
+            eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
+            cluster_validity_df = pd.DataFrame.from_dict(eval_obj.cluster_validity, orient='index', columns=[method_name])
+            if method_idx == 0:
+                validity_df = cluster_validity_df
+            else:
+                validity_df = pd.concat((validity_df, cluster_validity_df), axis=1)
+        ax[dataset_idx] = sns.heatmap(validity_df, cbar=False)
+    for i in range(len(datasets)):
+        ax[i].set_ylabel(dataset_names[datasets[i]])
+    fig.suptitle('Cluster Validity')
+    plt.subplots_adjust(left=0.15,
+                    bottom=0.08, 
+                    right=0.8, 
+                    top=0.94, 
+                    wspace=0.1, 
+                    hspace=0.1)
+    plt.savefig(results_cf_plots_dir+'cluster_validity.pdf',format='pdf')
 
 def burden_groups_cf(datasets, methods):
         """
@@ -805,8 +844,9 @@ colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'bla
 # burden_plot(datasets, methods_to_run, colors_dict)
 # fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
 # nawb_plot(datasets, methods_to_run, colors_dict)
-validity_groups_cf()
-burden_groups_cf(datasets, methods_to_run)
-burden_cluster_cf(datasets, methods_to_run)
-nawb_groups_cf(datasets, methods_to_run)
-nawb_cluster_cf(datasets, methods_to_run)
+validity_groups_cf(datasets, methods_to_run)
+# burden_groups_cf(datasets, methods_to_run)
+# burden_cluster_cf(datasets, methods_to_run)
+# nawb_groups_cf(datasets, methods_to_run)
+# nawb_cluster_cf(datasets, methods_to_run)
+# validity_clusters(datasets, methods_to_run)

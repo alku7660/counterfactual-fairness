@@ -31,7 +31,10 @@ def near_neigh(x, x_label, data, mutability_check=True):
             nt_cf = i[0]
             break
     if nt_cf is None:
-        print(f'NT could not find a feasible CF!: There is no feasible NN CF available (None output)')
+        print(f'NT could not find a feasible CF!: There is no feasible NN CF available (Looking for closest counterfactual labeled training observation)')
+        for i in data.train_sorted:
+            if i[2] != x_label and not np.array_equal(x, i[0]):
+                nt_cf = i[0]
         end_time = time.time()
         return nt_cf, end_time - start_time
     end_time = time.time()

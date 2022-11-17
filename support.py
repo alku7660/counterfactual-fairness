@@ -57,7 +57,7 @@ def verify_feasibility(x, cf, mutable_feat, feat_type, feat_step, feat_dir, muta
                 break
         elif feat_type[i] == 'num-ord':
             possible_val = np.linspace(0,1,int(1/feat_step[i]+1), endpoint=True)
-            if not np.isclose(cf[i],possible_val,atol=toler).any():
+            if not np.isclose(cf[i],possible_val, atol=toler).any():
                 feasibility = False
                 break  
         elif cf[i] < 0-toler or cf[i] > 1+toler:
@@ -69,7 +69,7 @@ def verify_feasibility(x, cf, mutable_feat, feat_type, feat_step, feat_dir, muta
             feasibility = False
         elif feat_dir[i] == 'neg' and vector[i] > 0:
             feasibility = False
-        if not np.array_equal(x[np.where(mutable_feat == 0)],cf[np.where(mutable_feat == 0)]):
+        if not np.array_equal(x[np.where(mutable_feat == 0)], cf[np.where(mutable_feat == 0)]):
             feasibility = False
     return feasibility
 

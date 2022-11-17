@@ -18,7 +18,7 @@ n_feat = 50                # Number of examples to generate synthetically per fe
 epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feature tweaking algorithm
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
-perc = 0.03                   # Percentage of false negative test samples to consider for the counterfactuals search
+perc = 0.2                   # Percentage of false negative test samples to consider for the counterfactuals search
 np.random.seed(seed_int)
 
 if __name__=='__main__':
@@ -33,7 +33,7 @@ if __name__=='__main__':
         desired_ground_truth_target = data.test_target[data.test_target != data.undesired_class]
         predicted_label_desired_ground_truth_test_df = model.sel.predict(desired_ground_truth_transformed_test_df)
         false_undesired_test_df = desired_ground_truth_test_df.loc[predicted_label_desired_ground_truth_test_df == data.undesired_class]
-        false_transformed_undesired_test_df = desired_ground_truth_transformed_test_df.loc[predicted_label_desired_ground_truth_test_df == data.undesired_class]
+        transformed_false_undesired_test_df = desired_ground_truth_transformed_test_df.loc[predicted_label_desired_ground_truth_test_df == data.undesired_class]
         false_undesired_target = desired_ground_truth_target[predicted_label_desired_ground_truth_test_df == data.undesired_class]
         
         for method_str in methods_to_run:
@@ -51,7 +51,7 @@ if __name__=='__main__':
             
             cf_evaluator = Evaluator(data, n_feat, method_str)        
             cf_evaluator.add_fairness_measures(data, model)
-            cf_evaluator.add_fnr_data(desired_ground_truth_test_df, false_undesired_test_df)
+            cf_evaluator.add_fnr_data(desired_ground_truth_test_df, false_undesired_test_df, transformed_false_undesired_test_df)
             
             for i in range(int(len(false_undesired_test_df)*perc)):
                 idx = false_undesired_test_df.index.tolist()[i]
@@ -62,7 +62,7 @@ if __name__=='__main__':
                 print(f'  Test instance number: {i+1}')
                 print(f'  Total instances: {int(len(false_undesired_test_df)*perc)}')
                 print(f'---------------------------')
-                x_transformed_instance = false_transformed_undesired_test_df.loc[idx]
+                x_transformed_instance = transformed_false_undesired_test_df.loc[idx]
                 x_target = false_undesired_target[i]
                 x_np = x_transformed_instance.to_numpy()
                 x_original_df = data.test_df.loc[idx].to_frame().T
@@ -76,15 +76,12 @@ if __name__=='__main__':
                 cf_evaluator.evaluate_cf_models(idx, x_np, x_label, data, model, epsilon_ft, carla_model, x_original_df)
                 
             """
-            Additional function: Find group counterfactual
-            """
-            cf_evaluator.add_groups_cf(data, model)
-
-            """
-            Additional function: Find instance clusters and cluster counterfactual
+            Additional functions: Find group counterfactuals and clusters counterfactuals
             """
             cf_evaluator.add_clusters()
+            cf_evaluator.prepare_groups_clusters_analysis()
             cf_evaluator.add_clusters_cf(data, model, carla_model)
+            cf_evaluator.add_groups_cf(data, model)
                             
             print(f'---------------------------')
             print(f'  DONE: {data_str} CF Evaluation')

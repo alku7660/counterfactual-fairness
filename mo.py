@@ -34,6 +34,9 @@ def min_obs(x, x_label, data, mutability_check=True):
             break
     if mo_cf is None:
         print(f'MO could not find a feasible CF!')
+        for i in data_distance_mo:
+            if i[2] != x_label and not np.array_equal(x, i[0]):
+                mo_cf = i[0]
         end_time = time.time()
         return mo_cf, end_time - start_time
     end_time = time.time()

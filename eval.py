@@ -46,18 +46,7 @@ class Evaluator():
         self.n_feat = n_feat
         self.x, self.original_x, self.x_pred, self.x_target, self.x_accuracy = {}, {}, {}, {}, {}
         self.cf, self.original_cf = {}, {} 
-        self.groups_cf, self.original_groups_cf = {}, {}
         self.cf_proximity, self.cf_feasibility, self.cf_sparsity, self.cf_validity, self.cf_time = {}, {}, {}, {}, {}
-        self.group_cf_proximity = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
-        self.group_cf_feasibility = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
-        self.group_cf_sparsity = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
-        self.group_cf_validity = {}
-        self.x_clusters, self.original_x_clusters = {}, {}
-        self.x_clusters_cf, self.original_x_clusters_cf = {}, {}
-        self.cluster_cf_proximity = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
-        self.cluster_cf_feasibility = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
-        self.cluster_cf_sparsity = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
-        self.cluster_cf_time = {}
 
     def search_desired_class_penalize(self, data):
         """
@@ -252,6 +241,26 @@ class Evaluator():
         self.x_target[idx] = x_target
         self.x_accuracy[idx] = self.accuracy(idx)
 
+    def transform_instance(self, instance):
+        """
+        DESCRIPTION:            Transforms an instance to the preprocessed features
+
+        INPUT:
+        instance:               Instance of interest
+
+        OUTPUT:
+        transformed_instance:   Transformed instance of interest
+        """
+        instance_bin, instance_cat, instance_num = instance[self.binary], instance[self.categorical], instance[self.numerical]
+        enc_instance_bin = self.bin_enc.transform(instance_bin).toarray()
+        enc_instance_cat = self.cat_enc.transform(instance_cat).toarray()
+        scaled_instance_num = self.scaler.transform(instance_num)
+        scaled_instance_num_df = pd.DataFrame(scaled_instance_num, index=instance_num.index, columns=self.numerical)
+        enc_instance_bin_df = pd.DataFrame(enc_instance_bin, index=instance_bin.index, columns=self.bin_enc_cols)
+        enc_instance_cat_df = pd.DataFrame(enc_instance_cat, index=instance_cat.index, columns=self.cat_enc_cols)
+        transformed_instance_df = pd.concat((enc_instance_bin_df, enc_instance_cat_df, scaled_instance_num_df), axis=1)
+        return transformed_instance_df
+
     def inverse_transform_original(self, instance):
         """
         DESCRIPTION:            Transforms an instance to the original features
@@ -266,16 +275,16 @@ class Evaluator():
         original_instance_df = pd.DataFrame(index=instance_index)
         if len(self.bin_enc_cols) > 0:
             instance_bin = self.bin_enc.inverse_transform(instance[self.bin_enc_cols])
-            instance_bin_pd = pd.DataFrame(data=instance_bin,index=instance_index,columns=self.binary)
-            original_instance_df = pd.concat((original_instance_df,instance_bin_pd),axis=1)
+            instance_bin_pd = pd.DataFrame(data=instance_bin, index=instance_index, columns=self.binary)
+            original_instance_df = pd.concat((original_instance_df, instance_bin_pd), axis=1)
         if len(self.cat_enc_cols) > 0:
             instance_cat = self.cat_enc.inverse_transform(instance[self.cat_enc_cols])
-            instance_cat_pd = pd.DataFrame(data=instance_cat,index=instance_index,columns=self.categorical)
-            original_instance_df = pd.concat((original_instance_df,instance_cat_pd),axis=1)
+            instance_cat_pd = pd.DataFrame(data=instance_cat, index=instance_index, columns=self.categorical)
+            original_instance_df = pd.concat((original_instance_df, instance_cat_pd), axis=1)
         if len(self.numerical) > 0:
             instance_num = self.scaler.inverse_transform(instance[self.numerical])
-            instance_num_pd = pd.DataFrame(data=instance_num,index=instance_index,columns=self.numerical)
-            original_instance_df = pd.concat((original_instance_df,instance_num_pd),axis=1)
+            instance_num_pd = pd.DataFrame(data=instance_num, index=instance_index, columns=self.numerical)
+            original_instance_df = pd.concat((original_instance_df, instance_num_pd), axis=1)
         return original_instance_df
 
     def add_specific_cf_data(self, idx, data_obj, cf, cf_time):
@@ -369,7 +378,8 @@ class Evaluator():
         else:
             cf = self.cf[idx]
         x_idx = self.x[idx].to_numpy()[0]
-        vector = cf.to_numpy()[0] - x_idx
+        cf_np = cf.to_numpy()[0]
+        vector = cf_np - x_idx
         for i in range(len(self.feat_type)):
             if self.feat_type[i] == 'bin':
                 if not np.isclose(cf.iloc[0,i], [0,1], atol=toler).any():
@@ -393,7 +403,7 @@ class Evaluator():
             elif self.feat_dir[i] == 'neg' and vector[i] > 0:
                 feasibility = False
                 break
-        if not np.array_equal(x_idx[np.where(self.feat_mutable == 0)], cf[np.where(self.feat_mutable == 0)]):
+        if not np.array_equal(x_idx[np.where(self.feat_mutable == 0)], cf_np[np.where(self.feat_mutable == 0)]):
             feasibility = False
         if group is not None and cluster_str is None:
             self.group_cf_feasibility.loc[idx, group] = feasibility
@@ -444,10 +454,11 @@ class Evaluator():
 
         INPUT:
         model_obj:              Model object
+        group:                  Sensitive groups name
 
         OUTPUT: (None: stored as class attributes)
         """
-        self.group_cf_validity[group] = model_obj.sel.predict(self.groups_cf) != self.undesired_class
+        self.group_cf_validity[group] = model_obj.sel.predict(self.groups_cf[group]) != self.undesired_class
 
     def evaluate_cf_models(self, idx, x_np, x_pred, data_obj, model_obj, epsilon_ft, carla_model, x_original):
         """
@@ -495,6 +506,25 @@ class Evaluator():
         print(f'---------------------------')
         self.add_specific_cf_data(idx, data_obj, cf, run_time)
     
+    def prepare_groups_clusters_analysis(self):
+        """
+        DESCRIPTION:            Preallocates the required dictionaries and DataFrames for the analysis of groups and clusters
+
+        INPUT: (None)
+
+        OUTPUT: (None: stored as class attributes)
+        """
+        self.groups_cf, self.original_groups_cf = {}, {}
+        self.group_cf_proximity = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
+        self.group_cf_feasibility = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
+        self.group_cf_sparsity = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
+        self.group_cf_validity = {}
+        self.cluster_cf_proximity = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
+        self.cluster_cf_feasibility = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
+        self.cluster_cf_sparsity = pd.DataFrame(index=self.x.keys(), columns=self.x_clusters.keys())
+        self.cluster_validity = {}
+        self.cluster_cf_time = {}
+
     def add_groups_cf(self, data_obj, model_obj):
         """
         DESCRIPTION:            Adds the group counterfactual by finding the mean point of all counterfactuals for the false negative group of test instances and obtains the performance measures of each
@@ -506,15 +536,19 @@ class Evaluator():
         OUTPUT: (None: stored as class attributes)
         """
         x_df = pd.concat(self.x.values(), axis=0)
+        original_x_df = pd.concat(self.original_x.values(), axis=0)
         cf_df = pd.concat(self.cf.values(), axis=0)
-        self.groups_cf['all'] = cf_df.mean(axis=0).to_frame.T
-        self.original_groups_cf['all'] = self.inverse_transform_original(self.groups_cf)
+        original_cf_df = pd.concat(self.original_cf.values(), axis=0)
+        self.groups_cf['all'] = cf_df.mean(axis=0).to_frame().T
+        self.original_groups_cf['all'] = self.inverse_transform_original(self.groups_cf['all'])
         for feat in self.feat_protected:
-            feat_unique_val = x_df[feat].unique()
+            feat_unique_val = original_x_df[feat].unique()
             for feat_val in feat_unique_val:
-                cf_df_feat_val = cf_df[cf_df[feat] == feat_val]
+                original_cf_df_feat_val = original_cf_df[original_cf_df[feat] == feat_val]
                 feat_val_name = self.feat_protected[feat][np.round(feat_val, 2)]
-                self.groups_cf[feat_val_name] = cf_df_feat_val.mean(axis=0).to_frame.T
+                feat_values_idx = original_cf_df_feat_val.index.tolist()
+                cf_df_feat_val = cf_df.loc[feat_values_idx,:]
+                self.groups_cf[feat_val_name] = cf_df_feat_val.mean(axis=0).to_frame().T
                 self.original_groups_cf[feat_val_name] = self.inverse_transform_original(self.groups_cf[feat_val_name])
                 for idx in self.original_x.keys():
                     self.proximity(idx, group=feat_val_name)
@@ -530,17 +564,25 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)      
         """
+        self.x_clusters, self.original_x_clusters = {}, {}
+        self.x_clusters_cf, self.original_x_clusters_cf = {}, {}
         x_df = pd.concat(self.x.values(), axis=0)
-        self.x_clusters['all'] = x_df.mean(axis=0).to_frame.T
-        self.original_x_clusters['all'] = self.inverse_transform_original(self.x_cluster_all)
+        original_x_df = pd.concat(self.original_x.values(), axis=0)
+        x_cluster_all = x_df.mean(axis=0).to_frame().T
+        self.original_x_clusters['all'] = self.inverse_transform_original(x_cluster_all)
+        self.x_clusters['all'] = self.transform_instance(self.original_x_clusters['all'])
         for feat in self.feat_protected:
-            feat_unique_val = x_df[feat].unique()
+            feat_unique_val = original_x_df[feat].unique()
             for feat_val in feat_unique_val:
-                x_df_feat_val = x_df[x_df[feat] == feat_val]
+                original_x_df_feat_val = original_x_df[original_x_df[feat] == feat_val]
                 feat_val_name = self.feat_protected[feat][np.round(feat_val, 2)]
-                self.x_clusters[feat_val_name] = x_df_feat_val.mean(axis=0).to_frame.T
-                self.original_x_clusters[feat_val_name] = self.inverse_transform_original(self.x_cluster_per_feat[feat_val_name])
-    
+                feat_values_idx = original_x_df_feat_val.index.tolist()
+                x_df_feat_val = x_df.loc[feat_values_idx,:]
+                x_cluster_feat_val = x_df_feat_val.mean(axis=0).to_frame().T
+                self.original_x_clusters[feat_val_name] = self.inverse_transform_original(x_cluster_feat_val)
+                self.x_clusters[feat_val_name] = self.transform_instance(self.original_x_clusters[feat_val_name])
+                 
+
     def add_cluster_cf_data(self, cluster_str, data_obj, cluster_cf, run_time):
         """
         DESCRIPTION:            Stores the cluster CF and obtains all the performance measures for the cluster counterfactual 
@@ -553,8 +595,9 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        self.x_clusters_cf[cluster_str] = cluster_cf
-        self.original_x_clusters_cf[cluster_str] = self.inverse_transform_original(cluster_cf)
+        cluster_cf_df = pd.DataFrame([cluster_cf], index=[0], columns=self.data_cols)
+        self.x_clusters_cf[cluster_str] = cluster_cf_df
+        self.original_x_clusters_cf[cluster_str] = self.inverse_transform_original(cluster_cf_df)
         self.cluster_cf_time[cluster_str] = run_time
         for idx in self.x.keys():
             self.proximity(idx, cluster_str=cluster_str)
@@ -574,22 +617,23 @@ class Evaluator():
         """
         clusters_list = self.x_clusters.keys()
         for cluster_str in clusters_list:
-            x_cluster = self.x_clusters[cluster_str].to_numpy()
+            x_cluster = self.x_clusters[cluster_str].to_numpy()[0]
             x_cluster_pred = model_obj.sel.predict(x_cluster.reshape(1, -1))
             x_original = self.original_x_clusters[cluster_str]
-            if 'mutable' in self.method_name:
-                mutability_check = False
+            self.cluster_validity[cluster_str] = x_cluster_pred == self.undesired_class
+            if x_cluster_pred != self.undesired_class:
+                cluster_cf, run_time = x_cluster, 0
             else:
-                mutability_check = True
-            if 'nn' in self.method_name:
-                cluster_cf, run_time = near_neigh(x_cluster, x_cluster_pred, data_obj, mutability_check)
-            elif 'mo' in self.method_name:
-                cluster_cf, run_time = min_obs(x_cluster, x_cluster_pred, data_obj, mutability_check)
-            elif 'rt' in self.method_name:
-                cluster_cf, run_time = rf_tweak(x_cluster, x_cluster_pred, model_obj.rf, data_obj, True, mutability_check)
-            elif 'cchvae' in self.method_name:
-                cluster_cf, run_time = cchvae_function(data_obj, carla_model, x_original)
-
-            print(f'  {self.method_name} (all cluster cf time (s): {np.round_(run_time, 2)})')
-            print(f'---------------------------')
+                if 'mutable' in self.method_name:
+                    mutability_check = False
+                else:
+                    mutability_check = True
+                if 'nn' in self.method_name:
+                    cluster_cf, run_time = near_neigh(x_cluster, x_cluster_pred, data_obj, mutability_check)
+                elif 'mo' in self.method_name:
+                    cluster_cf, run_time = min_obs(x_cluster, x_cluster_pred, data_obj, mutability_check)
+                elif 'rt' in self.method_name:
+                    cluster_cf, run_time = rf_tweak(x_cluster, x_cluster_pred, model_obj.rf, data_obj, True, mutability_check)
+                elif 'cchvae' in self.method_name:
+                    cluster_cf, run_time = cchvae_function(data_obj, carla_model, x_original)
             self.add_cluster_cf_data(cluster_str, data_obj, cluster_cf, run_time)
