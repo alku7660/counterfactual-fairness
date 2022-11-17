@@ -496,7 +496,7 @@ def nawb_plot(datasets, methods, colors_dict):
                     fnr = total_false_undesired_feat_val/total_ground_truth_feat_val
                     feat_method_data_values = proximity_df.loc[feat_val_instances_idx, 'proximity'].values
                     mean_burden = np.mean(feat_method_data_values)
-                    nawb = fnr*mean_burden*100/eval_obj.desired_ground_truth_test_df.shape[1]
+                    nawb = fnr*mean_burden*100/len(eval_obj.data_cols)
                     if feat in ['isMale','isMarried']:
                         feat_val_name = feat+': '+feat_val_name
                     nawb_list.append(nawb)
@@ -558,12 +558,11 @@ def validity_groups_cf(datasets, methods):
 
 def burden_groups_cf(datasets, methods):
         """
-        DESCRIPTION:        Obtains the burden for each method and each dataset
+        DESCRIPTION:        Obtains the burden for each sensitive group w.r.t. each of the group counterfactuals
 
         INPUT:
         datasets:           Names of the datasets
         methods:            Names of the methods
-        colors_dict:        Dictionary of colors to be used per feature
 
         OUTPUT: (None: plot stored)
         """
@@ -581,6 +580,7 @@ def burden_groups_cf(datasets, methods):
                 group_cf_proximity = eval_obj.group_cf_proximity
                 groups_names = group_cf_proximity.columns
                 burden = pd.DataFrame(index=groups_names, columns=groups_names)
+                feat_list = []
                 burden.loc['all', 'all'] = np.mean(group_cf_proximity.loc[:,'all'].values)
                 for feat_idx in range(len(protected_feat_keys)):   
                     feat = protected_feat_keys[feat_idx]
@@ -590,33 +590,208 @@ def burden_groups_cf(datasets, methods):
                         feat_val_instances_idx = idx_feat_values[feat_val_idx]
                         feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_val_idx],2)]
                         for group in groups_names:
-                            feat_method_data = group_cf_proximity.loc[feat_val_instances_idx, group].values
-                            burden = np.mean(feat_method_data)
+                            if group != 'all':
+                                feat_method_data = group_cf_proximity.loc[feat_val_instances_idx, group].values
+                                burden.loc[feat_val_name, group] = np.mean(feat_method_data)
                         if feat in ['isMale','isMarried']:
                             feat_val_name = feat+': '+feat_val_name
-                        awb_list.append(burden)
                         feat_list.append(feat_val_name)
-                        colors_list.append(colors_dict[feat_val_name])
-                ax[dataset_idx, method_idx].bar(x=feat_list,height=awb_list,color=colors_list)
+                ax[dataset_idx, method_idx].matshow(burden, cmap='viridis')
                 ax[dataset_idx, method_idx].set_xticklabels(feat_list, rotation = 30, ha='right')
-                ax[dataset_idx, method_idx].axes.xaxis.set_visible(False)
-                ax[dataset_idx, method_idx].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-        legend_handles = create_handles_awb(colors_dict)
+                ax[dataset_idx, method_idx].set_yticklabels(groups_names)
         fig.subplots_adjust(wspace=0.1, hspace=0.1)
         for i in range(len(datasets)):
             ax[i,0].set_ylabel(dataset_names[datasets[i]])
         for j in range(len(methods)):
             ax[0,j].set_title(methods_names[methods[j]])
-        fig.suptitle('$Burden_s$')
-        fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.00), ncol=6, fancybox=True, shadow=True, handles=legend_handles, prop={'size': 10})
+        fig.suptitle('$Burden_s for Group Counterfactuals$')
         plt.subplots_adjust(left=0.075,
                         bottom=0.08, 
                         right=0.975, 
                         top=0.94, 
                         wspace=0.25, 
                         hspace=0.05)
-        plt.savefig(results_cf_plots_dir+'burden.pdf',format='pdf')
+        plt.savefig(results_cf_plots_dir+'group_cf_burden_instances.pdf',format='pdf')
 
+def burden_cluster_cf(datasets, methods):
+        """
+        DESCRIPTION:        Obtains the burden for each sensitive groups cluster w.r.t. each of the cluster counterfactuals
+
+        INPUT:
+        datasets:           Names of the datasets
+        methods:            Names of the methods
+
+        OUTPUT: (None: plot stored)
+        """
+        methods_names = get_methods_names(methods)
+        dataset_names = get_data_names(datasets)
+        fig, ax = plt.subplots(nrows=len(datasets), ncols=len(methods), sharex=False, sharey=False, figsize=(8,13))
+        for dataset_idx in range(len(datasets)):
+            data_str = datasets[dataset_idx]
+            for method_idx in range(len(methods)):
+                method_str = methods[method_idx]
+                eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
+                protected_feat = eval_obj.feat_protected
+                protected_feat_keys = list(protected_feat.keys())
+                original_x_df = pd.concat(eval_obj.original_x.values(), axis=0)
+                cluster_cf_proximity = eval_obj.cluster_cf_proximity
+                groups_names = cluster_cf_proximity.columns
+                burden = pd.DataFrame(index=groups_names, columns=groups_names)
+                feat_list = []
+                burden.loc['all', 'all'] = np.mean(cluster_cf_proximity.loc[:,'all'].values)
+                feat_list.append(['all'])
+                for feat_idx in range(len(protected_feat_keys)):   
+                    feat = protected_feat_keys[feat_idx]
+                    feat_unique_val = eval_obj.desired_ground_truth_test_df[feat].unique()
+                    len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+                    for feat_val_idx in range(len(feat_unique_val)):
+                        feat_val_instances_idx = idx_feat_values[feat_val_idx]
+                        feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_val_idx],2)]
+                        for group in groups_names:
+                            if group != 'all':
+                                feat_method_data = cluster_cf_proximity.loc[feat_val_instances_idx, group].values
+                                burden.loc[feat_val_name, group] = np.mean(feat_method_data)
+                        if feat in ['isMale','isMarried']:
+                            feat_val_name = feat+': '+feat_val_name
+                        feat_list.append(feat_val_name)
+                ax[dataset_idx, method_idx].matshow(burden, cmap='viridis')
+                ax[dataset_idx, method_idx].set_xticklabels(feat_list, rotation = 30, ha='right')
+                ax[dataset_idx, method_idx].set_yticklabels(groups_names)
+        fig.subplots_adjust(wspace=0.1, hspace=0.1)
+        for i in range(len(datasets)):
+            ax[i,0].set_ylabel(dataset_names[datasets[i]])
+        for j in range(len(methods)):
+            ax[0,j].set_title(methods_names[methods[j]])
+        fig.suptitle('$Burden_s for Cluster Counterfactuals$')
+        plt.subplots_adjust(left=0.075,
+                        bottom=0.08, 
+                        right=0.975, 
+                        top=0.94, 
+                        wspace=0.25, 
+                        hspace=0.05)
+        plt.savefig(results_cf_plots_dir+'cluster_cf_burden_instances.pdf',format='pdf')
+
+def nawb_groups_cf(datasets, methods):
+        """
+        DESCRIPTION:        Obtains the NAWB measure for each sensitive group w.r.t. each of the group counterfactuals
+
+        INPUT:
+        datasets:           Names of the datasets
+        methods:            Names of the methods
+
+        OUTPUT: (None: plot stored)
+        """
+        methods_names = get_methods_names(methods)
+        dataset_names = get_data_names(datasets)
+        fig, ax = plt.subplots(nrows=len(datasets), ncols=len(methods), sharex=False, sharey=False, figsize=(8,13))
+        for dataset_idx in range(len(datasets)):
+            data_str = datasets[dataset_idx]
+            for method_idx in range(len(methods)):
+                method_str = methods[method_idx]
+                eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
+                protected_feat = eval_obj.feat_protected
+                protected_feat_keys = list(protected_feat.keys())
+                original_x_df = pd.concat(eval_obj.original_x.values(), axis=0)
+                group_cf_proximity = eval_obj.group_cf_proximity
+                groups_names = group_cf_proximity.columns
+                nawb = pd.DataFrame(index=groups_names, columns=groups_names)
+                feat_list = []
+                nawb.loc['all', 'all'] = np.mean(group_cf_proximity.loc[:,'all'].values)
+                for feat_idx in range(len(protected_feat_keys)):   
+                    feat = protected_feat_keys[feat_idx]
+                    feat_unique_val = eval_obj.desired_ground_truth_test_df[feat].unique()
+                    len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+                    for feat_val_idx in range(len(feat_unique_val)):
+                        feat_val_instances_idx = idx_feat_values[feat_val_idx]
+                        feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_val_idx],2)]
+                        total_ground_truth_feat_val = np.sum(eval_obj.desired_ground_truth_test_df[feat] == feat_unique_val[feat_val_idx])
+                        total_false_undesired_feat_val = np.sum(eval_obj.false_undesired_test_df[feat] == feat_unique_val[feat_val_idx])
+                        fnr_group = total_false_undesired_feat_val/total_ground_truth_feat_val
+                        for group in groups_names:
+                            if group != 'all':
+                                feat_method_data = group_cf_proximity.loc[feat_val_instances_idx, group].values
+                                mean_burden = np.mean(feat_method_data)
+                                nawb.loc[feat_val_name, group] = fnr_group*mean_burden*100/len(eval_obj.data_cols)
+                        if feat in ['isMale','isMarried']:
+                            feat_val_name = feat+': '+feat_val_name
+                        feat_list.append(feat_val_name)
+                ax[dataset_idx, method_idx].matshow(nawb, cmap='viridis')
+                ax[dataset_idx, method_idx].set_xticklabels(feat_list, rotation = 30, ha='right')
+                ax[dataset_idx, method_idx].set_yticklabels(groups_names)
+        fig.subplots_adjust(wspace=0.1, hspace=0.1)
+        for i in range(len(datasets)):
+            ax[i,0].set_ylabel(dataset_names[datasets[i]])
+        for j in range(len(methods)):
+            ax[0,j].set_title(methods_names[methods[j]])
+        fig.suptitle('$NAWB_s for Group Counterfactuals$')
+        plt.subplots_adjust(left=0.075,
+                        bottom=0.08, 
+                        right=0.975, 
+                        top=0.94, 
+                        wspace=0.25, 
+                        hspace=0.05)
+        plt.savefig(results_cf_plots_dir+'group_cf_nawb_instances.pdf',format='pdf')
+
+def nawb_cluster_cf(datasets, methods):
+        """
+        DESCRIPTION:        Obtains the NAWB measure for each sensitive group cluster w.r.t. each of the cluster counterfactuals
+
+        INPUT:
+        datasets:           Names of the datasets
+        methods:            Names of the methods
+
+        OUTPUT: (None: plot stored)
+        """
+        methods_names = get_methods_names(methods)
+        dataset_names = get_data_names(datasets)
+        fig, ax = plt.subplots(nrows=len(datasets), ncols=len(methods), sharex=False, sharey=False, figsize=(8,13))
+        for dataset_idx in range(len(datasets)):
+            data_str = datasets[dataset_idx]
+            for method_idx in range(len(methods)):
+                method_str = methods[method_idx]
+                eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
+                protected_feat = eval_obj.feat_protected
+                protected_feat_keys = list(protected_feat.keys())
+                original_x_df = pd.concat(eval_obj.original_x.values(), axis=0)
+                cluster_cf_proximity = eval_obj.cluster_cf_proximity
+                groups_names = cluster_cf_proximity.columns
+                nawb = pd.DataFrame(index=groups_names, columns=groups_names)
+                feat_list = []
+                nawb.loc['all', 'all'] = np.mean(cluster_cf_proximity.loc[:,'all'].values)
+                for feat_idx in range(len(protected_feat_keys)):   
+                    feat = protected_feat_keys[feat_idx]
+                    feat_unique_val = eval_obj.desired_ground_truth_test_df[feat].unique()
+                    len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+                    for feat_val_idx in range(len(feat_unique_val)):
+                        feat_val_instances_idx = idx_feat_values[feat_val_idx]
+                        feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_val_idx],2)]
+                        total_ground_truth_feat_val = np.sum(eval_obj.desired_ground_truth_test_df[feat] == feat_unique_val[feat_val_idx])
+                        total_false_undesired_feat_val = np.sum(eval_obj.false_undesired_test_df[feat] == feat_unique_val[feat_val_idx])
+                        fnr_group = total_false_undesired_feat_val/total_ground_truth_feat_val
+                        for group in groups_names:
+                            if group != 'all':
+                                feat_method_data = cluster_cf_proximity.loc[feat_val_instances_idx, group].values
+                                mean_burden = np.mean(feat_method_data)
+                                nawb.loc[feat_val_name, group] = fnr_group*mean_burden*100/len(eval_obj.data_cols)
+                        if feat in ['isMale','isMarried']:
+                            feat_val_name = feat+': '+feat_val_name
+                        feat_list.append(feat_val_name)
+                ax[dataset_idx, method_idx].matshow(nawb, cmap='viridis')
+                ax[dataset_idx, method_idx].set_xticklabels(feat_list, rotation = 30, ha='right')
+                ax[dataset_idx, method_idx].set_yticklabels(groups_names)
+        fig.subplots_adjust(wspace=0.1, hspace=0.1)
+        for i in range(len(datasets)):
+            ax[i,0].set_ylabel(dataset_names[datasets[i]])
+        for j in range(len(methods)):
+            ax[0,j].set_title(methods_names[methods[j]])
+        fig.suptitle('$NAWB_s for Cluster Counterfactuals$')
+        plt.subplots_adjust(left=0.075,
+                        bottom=0.08, 
+                        right=0.975, 
+                        top=0.94, 
+                        wspace=0.25, 
+                        hspace=0.05)
+        plt.savefig(results_cf_plots_dir+'cluster_cf_nawb_instances.pdf',format='pdf')
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
 colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'black',
@@ -629,5 +804,9 @@ colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'bla
 # fnr_plot(datasets, colors_dict)
 # burden_plot(datasets, methods_to_run, colors_dict)
 # fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
-nawb_plot(datasets, methods_to_run, colors_dict)
+# nawb_plot(datasets, methods_to_run, colors_dict)
 validity_groups_cf()
+burden_groups_cf(datasets, methods_to_run)
+burden_cluster_cf(datasets, methods_to_run)
+nawb_groups_cf(datasets, methods_to_run)
+nawb_cluster_cf(datasets, methods_to_run)
