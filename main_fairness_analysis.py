@@ -10,7 +10,7 @@ from eval import Evaluator
 from carla_adapter import MyOwnDataSet, MyOwnModel
 from support import path_here, save_obj
 
-datasets = ['adult','dutch'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
+datasets = ['dutch'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
 methods_to_run = ['nn','mo'] # ['nn','mo','ft','rt','gs','face','dice','cchvae'] 
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -18,7 +18,7 @@ n_feat = 50                # Number of examples to generate synthetically per fe
 epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feature tweaking algorithm
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
-perc = 0.2                   # Percentage of false negative test samples to consider for the counterfactuals search
+perc = 0.1                   # Percentage of false negative test samples to consider for the counterfactuals search
 np.random.seed(seed_int)
 
 if __name__=='__main__':
