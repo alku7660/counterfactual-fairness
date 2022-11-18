@@ -66,7 +66,7 @@ def random_forest_tweaking(clf, ex, wish_class, X_train, y_train, classified_as_
 
 # Random Forest Tweaking method (based on Lindgren et al. 2019, found in: https://github.com/tony-lind/Example-based-tweaking)
 # Added by Anonymous Author
-def rf_tweak(x,x_label,rf_model,data,feasibility_check=True,mutability_check=True):
+def rf_tweak(x, x_label, rf_model, data, feasibility_check=False, mutability_check=True):
     """
     Function that returns the Random Forest tweaking counterfactual with respect to instance of interest x
     Input x: Instance of interest
@@ -76,13 +76,14 @@ def rf_tweak(x,x_label,rf_model,data,feasibility_check=True,mutability_check=Tru
     Output rt_cf: Random Forest Tweaking counterfactual to the instance of interest x
     Output rt_cf_dist_x: Distance from the rt_cf to the instance of interest x
     """
+    x = x.reshape(1, -1)
     start_time = time.time()
-    x_pred = rf_model.predict(x.reshape(1,-1))
+    x_pred = rf_model.predict(x)
     if x_pred == 0:
         aim = 1
     else:
         aim = 0
-    rt_cf_freq, rt_cf_array, rt_cf_label_array = random_forest_tweaking(rf_model,x.reshape(1,-1),aim,data.jce_train_np,data.train_target) 
+    rt_cf_freq, rt_cf_array, rt_cf_label_array = random_forest_tweaking(rf_model, x, aim, data.transformed_train_np, data.train_target) 
     found = False
     if len(rt_cf_array) > 0:
         if not feasibility_check:
@@ -90,14 +91,14 @@ def rf_tweak(x,x_label,rf_model,data,feasibility_check=True,mutability_check=Tru
         else:
             cf_idx = 0
             while not found and cf_idx < len(rt_cf_array):
-                feasible = verify_feasibility(x,rt_cf_array[cf_idx],data.feat_mutable,data.feat_type,data.feat_step,data.feat_dir,mutability_check)
+                feasible = verify_feasibility(x[0], rt_cf_array[cf_idx], data.feat_mutable, data.feat_type, data.feat_step, data.feat_dir, mutability_check)
                 if feasible:
                     rt_cf = rt_cf_array[cf_idx]
                     found = True
                 cf_idx += 1
     if len(rt_cf_array) == 0 or not found:
         print(f'No Random Forest Tweaking solution found: Calculating NT solution')
-        rt_cf = near_neigh(x,x_label,data,mutability_check)[0]
+        rt_cf = near_neigh(x[0], x_label, data, mutability_check)[0]
     end_time = time.time()
     rt_time = end_time - start_time
     return rt_cf, rt_time

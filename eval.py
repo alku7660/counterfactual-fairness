@@ -541,12 +541,17 @@ class Evaluator():
         original_cf_df = pd.concat(self.original_cf.values(), axis=0)
         self.groups_cf['all'] = cf_df.mean(axis=0).to_frame().T
         self.original_groups_cf['all'] = self.inverse_transform_original(self.groups_cf['all'])
+        for idx in self.original_x.keys():
+            self.proximity(idx, group='all')
+            self.feasibility(idx, group='all')
+            self.sparsity(data_obj, idx, group='all')
+            self.validity(model_obj, group='all')
         for feat in self.feat_protected:
             feat_unique_val = original_x_df[feat].unique()
             for feat_val in feat_unique_val:
-                original_cf_df_feat_val = original_cf_df[original_cf_df[feat] == feat_val]
+                original_x_df_feat_val = original_x_df[original_x_df[feat] == feat_val]
                 feat_val_name = self.feat_protected[feat][np.round(feat_val, 2)]
-                feat_values_idx = original_cf_df_feat_val.index.tolist()
+                feat_values_idx = original_x_df_feat_val.index.tolist()
                 cf_df_feat_val = cf_df.loc[feat_values_idx,:]
                 self.groups_cf[feat_val_name] = cf_df_feat_val.mean(axis=0).to_frame().T
                 self.original_groups_cf[feat_val_name] = self.inverse_transform_original(self.groups_cf[feat_val_name])
@@ -633,7 +638,7 @@ class Evaluator():
                 elif 'mo' in self.method_name:
                     cluster_cf, run_time = min_obs(x_cluster, x_cluster_pred, data_obj, mutability_check)
                 elif 'rt' in self.method_name:
-                    cluster_cf, run_time = rf_tweak(x_cluster, x_cluster_pred, model_obj.rf, data_obj, True, mutability_check)
+                    cluster_cf, run_time = rf_tweak(x_cluster, x_cluster_pred, model_obj.rf, data_obj, feasibility_check=True, mutability_check=mutability_check)
                 elif 'cchvae' in self.method_name:
                     cluster_cf, run_time = cchvae_function(data_obj, carla_model, x_original)
             self.add_cluster_cf_data(cluster_str, data_obj, cluster_cf, run_time)

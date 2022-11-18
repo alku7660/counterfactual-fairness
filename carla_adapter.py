@@ -16,6 +16,7 @@ class MyOwnDataSet(Data):
         self._name = data_obj.name
         self._categorical = data_obj.carla_categorical
         self._continuous = data_obj.carla_continuous
+        self.encoder = data_obj.carla_enc
 
     # List of all categorical features
     @property
@@ -102,7 +103,7 @@ class MyOwnModel(MLModel):
 
         # Define a fitted sklearn encoder for binary input data
         self.encoder = data.carla_enc
-        self.features = data.carla_transformed_cols
+        self.features = carla_data.continuous + carla_data.categorical
 
     # List of the feature order the ml model was trained on
     @property

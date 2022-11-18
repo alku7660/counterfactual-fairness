@@ -208,7 +208,7 @@ class Dataset:
         scaled_carla_train_data_cont = self.carla_scaler.transform(carla_train_data_cont)
         enc_carla_train_data_cat_df = pd.DataFrame(enc_carla_train_data_cat, index=carla_train_data_cat.index, columns=self.carla_enc_cols)
         scaled_carla_train_data_cont_df = pd.DataFrame(scaled_carla_train_data_cont, index=carla_train_data_cont.index, columns=self.carla_continuous)
-        carla_transformed_train_df = pd.concat((scaled_carla_train_data_cont_df,enc_carla_train_data_cat_df),axis=1)
+        carla_transformed_train_df = pd.concat((scaled_carla_train_data_cont_df, enc_carla_train_data_cat_df),axis=1)
         carla_transformed_train_np = carla_transformed_train_df.to_numpy()
         carla_transformed_cols = carla_transformed_train_df.columns.to_list()
 
