@@ -4,13 +4,13 @@ import time
 import copy
 from carla.recourse_methods import CCHVAE
 
-def cchvae_function(data, carla_model, x_carla_df):
+def cchvae_function(data, cchvae_model, x_carla_df):
     """
     DESCRIPTION:    Method that runs the CCHVAE model
     
     INPUT
     data:           Dataset object containing the dataset and related relevant information
-    carla_model:    CARLA framework model
+    cchvae_model:   CARLA CCHVAE model
     x_carla_df:     Instance of interest loaded with the preprocessing for the CARLA framework
 
     OUTPUT
@@ -20,8 +20,6 @@ def cchvae_function(data, carla_model, x_carla_df):
     data_with_target = copy.deepcopy(data.train_df)
     # data_with_target[data.label_str[0]] = data.train_target
     start_time = time.time()
-    dict_cchvae = {'data_name': data.name,'p_norm':2, 'vae_params':{'layers':[len(carla_model.feature_input_order), int(len(carla_model.feature_input_order)/2)]}}
-    cchvae_model = CCHVAE(carla_model, dict_cchvae)
     cf_df = cchvae_model.get_counterfactuals(x_carla_df)
     if isinstance(cf_df, pd.Series) or isinstance(cf_df, pd.DataFrame):
         if cf_df.isnull().values.any():

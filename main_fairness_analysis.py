@@ -8,9 +8,11 @@ import numpy as np
 import pandas as pd
 from eval import Evaluator
 from carla_adapter import MyOwnDataSet, MyOwnModel
+from carla.recourse_methods import CCHVAE
 from support import path_here, save_obj
+import time
 
-datasets = ['adult','kdd_census','german','dutch'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
+datasets = ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
 methods_to_run = ['cchvae'] # ['nn','mo','ft','rt','gs','face','dice','cchvae'] 
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -18,7 +20,7 @@ n_feat = 50                # Number of examples to generate synthetically per fe
 epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feature tweaking algorithm
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
-perc = 0.05                   # Percentage of false negative test samples to consider for the counterfactuals search
+perc = 0.02                   # Percentage of false negative test samples to consider for the counterfactuals search
 np.random.seed(seed_int)
 
 if __name__=='__main__':
@@ -49,6 +51,14 @@ if __name__=='__main__':
             print(f'  CARLA model test accuracy: {np.round_(carla_model._mymodel.score(data.carla_transformed_test_df, data.test_target), 2)}')
             print(f'---------------------------------------')
             
+            cchvae_model_start_time = time.time()
+            if method_str == 'cchvae':
+                dict_cchvae = {'data_name':data.name, 'p_norm':2, 'vae_params':{'layers':[len(carla_model.feature_input_order), int(len(carla_model.feature_input_order)/2)]}}
+                cchvae_model = CCHVAE(carla_model, dict_cchvae)
+            else:
+                cchvae_model = None
+            cchvae_model_end_time = time.time()
+            cchvae_model_time = cchvae_model_end_time - cchvae_model_start_time
             cf_evaluator = Evaluator(data, n_feat, method_str)        
             cf_evaluator.add_fairness_measures(data, model)
             cf_evaluator.add_fnr_data(desired_ground_truth_test_df, false_undesired_test_df, transformed_false_undesired_test_df)
@@ -74,14 +84,14 @@ if __name__=='__main__':
                 """
                 Main function: Find CF for all FN
                 """
-                cf_evaluator.evaluate_cf_models(idx, x_np, x_label, data, model, epsilon_ft, carla_model, x_transformed_carla_df)
+                cf_evaluator.evaluate_cf_models(idx, x_np, x_label, data, model, epsilon_ft, carla_model, x_transformed_carla_df, cchvae_model=cchvae_model, cchvae_model_time=cchvae_model_time)
                 
             """
             Additional functions: Find group counterfactuals and clusters counterfactuals
             """
             cf_evaluator.add_clusters()
             cf_evaluator.prepare_groups_clusters_analysis()
-            cf_evaluator.add_clusters_cf(data, model, carla_model)
+            cf_evaluator.add_clusters_cf(data, model, carla_model, cchvae_model=cchvae_model, cchvae_model_time=cchvae_model_time)
             cf_evaluator.add_groups_cf(data, model)
                             
             print(f'---------------------------')

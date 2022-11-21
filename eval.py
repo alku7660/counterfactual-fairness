@@ -38,6 +38,7 @@ class Evaluator():
         self.numerical = data_obj.numerical
         self.bin_enc, self.bin_enc_cols  = data_obj.bin_enc, data_obj.bin_enc_cols
         self.cat_enc, self.cat_enc_cols  = data_obj.cat_enc, data_obj.cat_enc_cols
+        self.carla_scaler, self.carla_cat_enc, self.carla_enc_cols = data_obj.carla_scaler, data_obj.carla_cat_enc, data_obj.carla_enc_cols
         self.scaler = data_obj.scaler
         self.data_cols = data_obj.transformed_cols
         self.raw_data_cols = data_obj.train_df.columns
@@ -260,6 +261,22 @@ class Evaluator():
         enc_instance_cat_df = pd.DataFrame(enc_instance_cat, index=instance_cat.index, columns=self.cat_enc_cols)
         transformed_instance_df = pd.concat((enc_instance_bin_df, enc_instance_cat_df, scaled_instance_num_df), axis=1)
         return transformed_instance_df
+    
+    def transform_instance_to_carla(self, instance):
+        """
+        DESCRIPTION:            Transforms an instance to the preprocessed features in the CARLA framework
+
+        INPUT:
+        instance:               Instance of interest
+
+        OUTPUT:
+        transformed_instance:   Transformed instance of interest in the CARLA framework
+        """
+        num_data, cat_data = instance[self.numerical], instance[self.categorical]
+        scaled_num_data, enc_cat_data = self.carla_scaler.transform(num_data), self.carla_cat_enc.transform(cat_data).toarray()
+        scaled_num_df, enc_cat_df = pd.DataFrame(scaled_num_data, index=instance.index, columns=self.numerical), pd.DataFrame(enc_cat_data, index=instance.index, columns=self.carla_enc_cols)
+        carla_instance_df = pd.concat((scaled_num_df, enc_cat_df), axis=1)
+        return carla_instance_df
 
     def inverse_transform_original(self, instance):
         """
@@ -460,7 +477,7 @@ class Evaluator():
         """
         self.group_cf_validity[group] = model_obj.sel.predict(self.groups_cf[group]) != self.undesired_class
 
-    def evaluate_cf_models(self, idx, x_np, x_pred, data_obj, model_obj, epsilon_ft, carla_model, x_transformed_carla_df):
+    def evaluate_cf_models(self, idx, x_np, x_pred, data_obj, model_obj, epsilon_ft, carla_model, x_transformed_carla_df, cchvae_model = None, cchvae_model_time = 0):
         """
         DESCRIPTION:        Evaluates the specific counterfactual method on the isntance of interest
 
@@ -487,8 +504,8 @@ class Evaluator():
         elif 'rt' in self.method_name:
             cf, run_time = rf_tweak(x_np, x_pred, model_obj.rf, data_obj, True, mutability_check)
         elif 'cchvae' in self.method_name:
-            cf, run_time = cchvae_function(data_obj, carla_model, x_transformed_carla_df)
-            
+            cf, run_time = cchvae_function(data_obj, cchvae_model, x_transformed_carla_df)
+            run_time += cchvae_model_time
         # WORK IN PROGRESS:
         # elif 'ft' in self.method_name:
         #     cf, run_time = feat_tweak(x_np, model_obj.rf, epsilon_ft)
@@ -569,13 +586,14 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)      
         """
-        self.x_clusters, self.original_x_clusters = {}, {}
+        self.x_clusters, self.x_clusters_carla, self.original_x_clusters = {}, {}, {}
         self.x_clusters_cf, self.original_x_clusters_cf = {}, {}
         x_df = pd.concat(self.x.values(), axis=0)
         original_x_df = pd.concat(self.original_x.values(), axis=0)
         x_cluster_all = x_df.mean(axis=0).to_frame().T
         self.original_x_clusters['all'] = self.inverse_transform_original(x_cluster_all)
         self.x_clusters['all'] = self.transform_instance(self.original_x_clusters['all'])
+        self.x_clusters_carla['all'] = self.transform_instance_to_carla(self.original_x_clusters['all'])
         for feat in self.feat_protected:
             feat_unique_val = original_x_df[feat].unique()
             for feat_val in feat_unique_val:
@@ -586,8 +604,8 @@ class Evaluator():
                 x_cluster_feat_val = x_df_feat_val.mean(axis=0).to_frame().T
                 self.original_x_clusters[feat_val_name] = self.inverse_transform_original(x_cluster_feat_val)
                 self.x_clusters[feat_val_name] = self.transform_instance(self.original_x_clusters[feat_val_name])
+                self.x_clusters_carla[feat_val_name] = self.transform_instance_to_carla(self.original_x_clusters[feat_val_name]) 
                  
-
     def add_cluster_cf_data(self, cluster_str, data_obj, cluster_cf, run_time):
         """
         DESCRIPTION:            Stores the cluster CF and obtains all the performance measures for the cluster counterfactual 
@@ -609,7 +627,7 @@ class Evaluator():
             self.feasibility(idx, cluster_str=cluster_str)
             self.sparsity(data_obj, idx, cluster_str=cluster_str)
 
-    def add_clusters_cf(self, data_obj, model_obj, carla_model):
+    def add_clusters_cf(self, data_obj, model_obj, carla_model, cchvae_model=None, cchvae_model_time=0):
         """
         DESCRIPTION:            Find counterfactuals to the clusters found
 
@@ -622,7 +640,8 @@ class Evaluator():
         """
         clusters_list = self.x_clusters.keys()
         for cluster_str in clusters_list:
-            x_cluster = self.x_clusters[cluster_str].to_numpy()[0]
+            x_cluster_df = self.x_clusters[cluster_str]
+            x_cluster = x_cluster_df.to_numpy()[0]
             x_cluster_pred = model_obj.sel.predict(x_cluster.reshape(1, -1))
             x_original = self.original_x_clusters[cluster_str]
             self.cluster_validity[cluster_str] = x_cluster_pred == self.undesired_class
@@ -640,5 +659,6 @@ class Evaluator():
                 elif 'rt' in self.method_name:
                     cluster_cf, run_time = rf_tweak(x_cluster, x_cluster_pred, model_obj.rf, data_obj, feasibility_check=True, mutability_check=mutability_check)
                 elif 'cchvae' in self.method_name:
-                    cluster_cf, run_time = cchvae_function(data_obj, carla_model, x_original)
+                    cluster_cf, run_time = cchvae_function(data_obj, cchvae_model, x_cluster_df)
+                    run_time += cchvae_model_time
             self.add_cluster_cf_data(cluster_str, data_obj, cluster_cf, run_time)

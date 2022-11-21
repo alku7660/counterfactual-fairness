@@ -136,8 +136,8 @@ class Dataset:
         bin_enc_cols:   Binary encoded feature names
         cat_enc_cols:   Categorical encoded feature names
         """
-        bin_enc = OneHotEncoder(drop='if_binary', dtype=np.uint8, handle_unknown='error')
-        cat_enc = OneHotEncoder(drop='if_binary', dtype=np.uint8, handle_unknown='error')
+        bin_enc = OneHotEncoder(drop='if_binary', dtype=np.uint8, handle_unknown='ignore')
+        cat_enc = OneHotEncoder(drop='if_binary', dtype=np.uint8, handle_unknown='ignore')
         scaler = MinMaxScaler(clip=True)
         train_data_bin, train_data_cat, train_data_num = self.train_df[self.binary], self.train_df[self.categorical], self.train_df[self.numerical]
         bin_enc.fit(train_data_bin)
@@ -183,7 +183,7 @@ class Dataset:
         carla_scaler:       Fitted scaler for the CARLA framework
         carla_enc_cols:     CARLA framework encoder columns 
         """
-        carla_enc = OneHotEncoder(drop='if_binary',dtype=np.uint8,handle_unknown='ignore',sparse=False)
+        carla_enc = OneHotEncoder(drop='if_binary', dtype=np.uint8, handle_unknown='ignore', sparse=False)
         carla_scaler = MinMaxScaler(clip=True)
         carla_train_data_cat, carla_train_data_cont = self.train_df[self.carla_categorical], self.train_df[self.carla_continuous]
         carla_enc.fit(carla_train_data_cat)
@@ -368,16 +368,33 @@ class Dataset:
         OUTPUT:
         normal_instance:    Dataframe containing the instance in the normal format
         """
+        def verify_none(bin_data, cat_data):
+            """
+            DESCRIPTION:    Checks the values of the transformed datasets for None values
+
+            INPUT:
+            bin_data:       Binary features dataset
+            cat_data:       Categorical features dataset
+
+            OUTPUT:
+            bin_data:       Fixed binary features dataset
+            cat_data:       Fixed categorical features dataset
+            """
+            bin_data[np.where(bin_data is None)] = 0
+            cat_data[np.where(cat_data is None)] = 0
+            return bin_data, cat_data
+        
         if len(self.carla_categorical) > 0:
-            df_categorical = pd.DataFrame(self.carla_enc.inverse_transform(df_instance[self.carla_enc_cols]),columns=self.carla_categorical)
+            df_categorical = pd.DataFrame(self.carla_enc.inverse_transform(df_instance[self.carla_enc_cols]), columns=self.carla_categorical)
         else:
             df_categorical = pd.DataFrame()
-        df_continuous = pd.DataFrame(self.carla_scaler.inverse_transform(df_instance[self.carla_continuous]),columns=self.carla_continuous)
-        df = pd.concat((df_continuous, df_categorical),axis=1)
+        df_continuous = pd.DataFrame(self.carla_scaler.inverse_transform(df_instance[self.carla_continuous]), columns=self.carla_continuous)
+        df = pd.concat((df_continuous, df_categorical), axis=1)
         bin_data, cat_data, num_data = df[self.binary], df[self.categorical], df[self.numerical]
         enc_bin_data, enc_cat_data = self.bin_enc.transform(bin_data).toarray(), self.cat_enc.transform(cat_data).toarray()
-        enc_bin_data = pd.DataFrame(enc_bin_data,index=bin_data.index, columns=self.bin_enc_cols)
-        enc_cat_data = pd.DataFrame(enc_cat_data,index=cat_data.index, columns=self.cat_enc_cols)
+        enc_bin_data, enc_cat_data = verify_none(enc_bin_data, enc_cat_data)
+        enc_bin_data = pd.DataFrame(enc_bin_data, index=bin_data.index, columns=self.bin_enc_cols)
+        enc_cat_data = pd.DataFrame(enc_cat_data, index=cat_data.index, columns=self.cat_enc_cols)
         scaled_num_data = pd.DataFrame(self.scaler.transform(num_data), index=num_data.index, columns=self.numerical)
         normal_instance = pd.concat((enc_bin_data, enc_cat_data, scaled_num_data),axis=1)
         return normal_instance
