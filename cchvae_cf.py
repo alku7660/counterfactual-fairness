@@ -28,7 +28,7 @@ def cchvae_function(data, carla_model, x_carla_df):
             cf = None
             print(f'CCHVAE: Could not find feasible CF!')
         else:
-            cf_df = data.from_carla_to_jce(cf_df)
+            cf_df = data.from_carla(cf_df)
             cf = np.array(cf_df)[0]
     elif cf_df is None:
         cf = None

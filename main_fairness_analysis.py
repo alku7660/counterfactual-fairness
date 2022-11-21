@@ -66,6 +66,7 @@ if __name__=='__main__':
                 x_target = false_undesired_target[i]
                 x_np = x_transformed_instance.to_numpy()
                 x_original_df = data.test_df.loc[idx].to_frame().T
+                x_transformed_carla_df = data.carla_transformed_test_df.loc[idx].to_frame().T
                 x_label = model.sel.predict(x_np.reshape(1,-1))
                 data.add_sorted_train_data(x_transformed_instance)
                 cf_evaluator.add_specific_x_data(idx, x_np, x_original_df, x_label, x_target)
@@ -73,7 +74,7 @@ if __name__=='__main__':
                 """
                 Main function: Find CF for all FN
                 """
-                cf_evaluator.evaluate_cf_models(idx, x_np, x_label, data, model, epsilon_ft, carla_model, x_original_df)
+                cf_evaluator.evaluate_cf_models(idx, x_np, x_label, data, model, epsilon_ft, carla_model, x_transformed_carla_df)
                 
             """
             Additional functions: Find group counterfactuals and clusters counterfactuals

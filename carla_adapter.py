@@ -1,4 +1,6 @@
 from carla import Data, MLModel
+import pandas as pd
+import numpy as np
 
  # This file is adapted from the CARLA framework. The CARLA framework is meant 
  # for Counterfactual Explanation method applications. Please, see the follwing links for further information:
@@ -10,13 +12,27 @@ from carla import Data, MLModel
 class MyOwnDataSet(Data):
     def __init__(self, data_obj):
         # The data set can e.g. be loaded in the constructor
-        self._dataset = data_obj.raw_df
-        self._dataset_train = data_obj.train_df
-        self._dataset_test = data_obj.test_df
+        # self._dataset = data_obj.raw_df
+        # self._dataset_train = data_obj.train_df
+        # self._dataset_test = data_obj.test_df
+        # self._name = data_obj.name
+        # self._categorical = data_obj.carla_categorical
+        # self._continuous = data_obj.carla_continuous
+        # self.encoder = data_obj.carla_enc
+        # self.scaler = data_obj.carla_scaler
+        # self.processed_features = self._continuous + list(self.encoder.get_feature_names(self._categorical))
+
+        self._dataset_train = data_obj.carla_transformed_train_df
+        self._dataset_test = data_obj.carla_transformed_test_df
+        self._dataset = pd.concat((self._dataset_train, self._dataset_test), axis=0)
+        self._dataset[data_obj.label_str] = pd.DataFrame(np.concatenate((data_obj.train_target, data_obj.test_target)), index=list(self._dataset.index))
         self._name = data_obj.name
         self._categorical = data_obj.carla_categorical
         self._continuous = data_obj.carla_continuous
         self.encoder = data_obj.carla_enc
+        self.scaler = data_obj.carla_scaler
+        self._enc_categorical = list(self.encoder.get_feature_names(self._categorical))
+        self.processed_features = self._continuous + self._enc_categorical
 
     # List of all categorical features
     @property
@@ -83,10 +99,16 @@ class MyOwnDataSet(Data):
         return self._dataset_test
 
     def transform(self, df):
-        return super().transform(df)
+        df_cat = pd.DataFrame(self._mlmodel.data.encoder.transform(df[self._mlmodel.data.categorical]), index=df.index, columns=list(self.encoder.get_feature_names(self._categorical)))
+        df_con = pd.DataFrame(self._mlmodel.data.scaler.transform(df[self._mlmodel.data.continuous]), index=df.index, columns=self._mlmodel.data.continuous)
+        transformed_df = pd.concat((df_con, df_cat), axis=1)
+        return transformed_df
     
     def inverse_transform(self, df):
-        return super().inverse_transform(df)
+        df_cat = pd.DataFrame(self.encoder.inverse_transform(df[list(self.encoder.get_feature_names(self._categorical))]), index=df.index, columns=self._categorical)
+        df_con = pd.DataFrame(self.scaler.inverse_transform(df[self._continuous]), index=df.index, columns=self._continuous)
+        original_df = pd.concat((df_con, df_cat), axis=1)
+        return original_df
 
  # Custom black-box models need to inherit from
  # the MLModel interface
@@ -103,7 +125,8 @@ class MyOwnModel(MLModel):
 
         # Define a fitted sklearn encoder for binary input data
         self.encoder = data.carla_enc
-        self.features = carla_data.continuous + carla_data.categorical
+        self.features = carla_data.processed_features
+        # self.features = carla_data.processed_features
 
     # List of the feature order the ml model was trained on
     @property

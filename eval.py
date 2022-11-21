@@ -460,7 +460,7 @@ class Evaluator():
         """
         self.group_cf_validity[group] = model_obj.sel.predict(self.groups_cf[group]) != self.undesired_class
 
-    def evaluate_cf_models(self, idx, x_np, x_pred, data_obj, model_obj, epsilon_ft, carla_model, x_original):
+    def evaluate_cf_models(self, idx, x_np, x_pred, data_obj, model_obj, epsilon_ft, carla_model, x_transformed_carla_df):
         """
         DESCRIPTION:        Evaluates the specific counterfactual method on the isntance of interest
 
@@ -487,7 +487,7 @@ class Evaluator():
         elif 'rt' in self.method_name:
             cf, run_time = rf_tweak(x_np, x_pred, model_obj.rf, data_obj, True, mutability_check)
         elif 'cchvae' in self.method_name:
-            cf, run_time = cchvae_function(data_obj, carla_model, x_original)
+            cf, run_time = cchvae_function(data_obj, carla_model, x_transformed_carla_df)
             
         # WORK IN PROGRESS:
         # elif 'ft' in self.method_name:
