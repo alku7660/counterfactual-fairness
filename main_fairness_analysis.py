@@ -12,7 +12,7 @@ from carla.recourse_methods import CCHVAE
 from support import path_here, save_obj
 import time
 
-datasets = ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
+datasets = ['dutch','bank','credit','compass','diabetes','student','oulad','law'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
 methods_to_run = ['cchvae'] # ['nn','mo','ft','rt','gs','face','dice','cchvae'] 
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -20,7 +20,7 @@ n_feat = 50                # Number of examples to generate synthetically per fe
 epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feature tweaking algorithm
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
-perc = 0.02                   # Percentage of false negative test samples to consider for the counterfactuals search
+perc = 0.01                   # Percentage of false negative test samples to consider for the counterfactuals search
 np.random.seed(seed_int)
 
 if __name__=='__main__':
@@ -72,19 +72,21 @@ if __name__=='__main__':
                 print(f'  Test instance number: {i+1}')
                 print(f'  Total instances: {int(len(false_undesired_test_df)*perc)}')
                 print(f'---------------------------')
-                x_transformed_instance = transformed_false_undesired_test_df.loc[idx]
-                x_target = false_undesired_target[i]
-                x_np = x_transformed_instance.to_numpy()
+                x_transformed_df = transformed_false_undesired_test_df.loc[idx]
+                carla_x_transformed_df = data.carla_transformed_test_df.loc[idx].to_frame().T
                 x_original_df = data.test_df.loc[idx].to_frame().T
-                x_transformed_carla_df = data.carla_transformed_test_df.loc[idx].to_frame().T
-                x_label = model.sel.predict(x_np.reshape(1,-1))
-                data.add_sorted_train_data(x_transformed_instance)
-                cf_evaluator.add_specific_x_data(idx, x_np, x_original_df, x_label, x_target)
+                x_np = x_transformed_df.to_numpy()
+                carla_x_np = carla_x_transformed_df.to_numpy()
+                x_target = false_undesired_target[i]
+                x_label = model.sel.predict(x_np.reshape(1, -1))
+                carla_x_label = model.carla_sel.predict(carla_x_np.reshape(1, -1))
+                data.add_sorted_train_data(x_transformed_df)
+                cf_evaluator.add_specific_x_data(idx, x_np, carla_x_np, x_original_df, x_label, carla_x_label, x_target)
                 
                 """
                 Main function: Find CF for all FN
                 """
-                cf_evaluator.evaluate_cf_models(idx, x_np, x_label, data, model, epsilon_ft, carla_model, x_transformed_carla_df, cchvae_model=cchvae_model, cchvae_model_time=cchvae_model_time)
+                cf_evaluator.evaluate_cf_models(idx, data, model, epsilon_ft, carla_model, cchvae_model=cchvae_model, cchvae_model_time=cchvae_model_time)
                 
             """
             Additional functions: Find group counterfactuals and clusters counterfactuals

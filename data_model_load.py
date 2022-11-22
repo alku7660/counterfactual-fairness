@@ -7,7 +7,7 @@ Imports
 """
 import pickle
 from model_params import clf_model, best_model_params
-from dataset_parameters import define_all_parameters
+from dataset_parameters import define_all_parameters, carla_define_all_parameters
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import LabelEncoder
@@ -420,6 +420,8 @@ class Dataset:
         OUTPUT: (None: stored as class attributes)
         """
         self.feat_type, self.feat_protected, self.feat_mutable, self.feat_dir, self.feat_cost, self.feat_step, self.feat_cat = define_all_parameters(self)
+        self.carla_feat_type, self.carla_feat_mutable, self.carla_feat_dir, self.carla_feat_cost, self.carla_feat_step, self.carla_feat_cat = carla_define_all_parameters(self)
+
 
 class Model:
     """

@@ -27,40 +27,48 @@ class Evaluator():
     def __init__(self, data_obj, n_feat, method_str):
         self.data_name = data_obj.name
         self.method_name = method_str
-        self.feat_type = data_obj.feat_type
-        self.feat_mutable = data_obj.feat_mutable
-        self.feat_cost = data_obj.feat_cost
-        self.feat_step = data_obj.feat_step
-        self.feat_dir = data_obj.feat_dir
+        self.framework = 'carla' if self.method_name in ['gs','face','dice','cchvae'] else 'normal'
+        self.feat_type, self.carla_feat_type = data_obj.feat_type, data_obj.carla_feat_type
+        self.feat_mutable, self.carla_feat_mutable = data_obj.feat_mutable, data_obj.carla_feat_mutable
+        self.feat_cost, self.carla_feat_cost = data_obj.feat_cost, data_obj.carla_feat_cost
+        self.feat_step, self.carla_feat_step = data_obj.feat_step, data_obj.carla_feat_step
+        self.feat_dir, self.carla_feat_dir = data_obj.feat_dir, data_obj.carla_feat_dir
         self.feat_protected = data_obj.feat_protected
         self.binary = data_obj.binary
         self.categorical = data_obj.categorical
         self.numerical = data_obj.numerical
+        self.carla_continuous, self.carla_categorical = data_obj.carla_continuous, data_obj.carla_categorical
         self.bin_enc, self.bin_enc_cols  = data_obj.bin_enc, data_obj.bin_enc_cols
         self.cat_enc, self.cat_enc_cols  = data_obj.cat_enc, data_obj.cat_enc_cols
-        self.carla_scaler, self.carla_cat_enc, self.carla_enc_cols = data_obj.carla_scaler, data_obj.carla_cat_enc, data_obj.carla_enc_cols
+        self.carla_scaler, self.carla_enc, self.carla_enc_cols = data_obj.carla_scaler, data_obj.carla_enc, data_obj.carla_enc_cols
         self.scaler = data_obj.scaler
         self.data_cols = data_obj.transformed_cols
         self.raw_data_cols = data_obj.train_df.columns
+        self.carla_data_cols = data_obj.carla_transformed_cols
         self.undesired_class = data_obj.undesired_class
         self.desired_class = 1 - self.undesired_class
         self.n_feat = n_feat
-        self.x, self.original_x, self.x_pred, self.x_target, self.x_accuracy = {}, {}, {}, {}, {}
+        self.x, self.carla_x, self.original_x, self.x_pred, self.carla_x_pred, self.x_target, self.x_accuracy = {}, {}, {}, {}, {}, {}, {}
         self.cf, self.original_cf = {}, {} 
         self.cf_proximity, self.cf_feasibility, self.cf_sparsity, self.cf_validity, self.cf_time = {}, {}, {}, {}, {}
 
-    def search_desired_class_penalize(self, data):
+    def search_desired_class_penalize(self, x, data):
         """
         DESCRIPTION:        Obtains the penalization for the method if no instance of the desired class is obtained as CF
 
         INPUT:
+        x:                  Instance of interest in the correct (CARLA or normal) framework format
         data:               Dataset object
 
         OUTPUT:
         penalize_instance:  The furthest training instance available
         """
-        train_desired_class = data.transformed_train_np[data.train_target != self.undesired_class]
-        sorted_train_x = sort_data_distance(self.x,train_desired_class,data.train_target[data.train_target != self.undesired_class])
+        if self.framework == 'carla':
+            data_np = data.carla_transformed_train_np  
+        else:
+            data_np = data.transformed_train_np
+        train_desired_class = data_np[data.train_target != self.undesired_class]
+        sorted_train_x = sort_data_distance(x, train_desired_class, data.train_target[data.train_target != self.undesired_class])
         penalize_instance = sorted_train_x[-1][0]
         return penalize_instance
 
@@ -223,22 +231,26 @@ class Evaluator():
         self.false_undesired_test_df = false_undesired_test_df
         self.transformed_false_undesired_test_df = transformed_false_undesired_test_df
 
-    def add_specific_x_data(self, idx, x, original_x, x_pred, x_target):
+    def add_specific_x_data(self, idx, x, carla_x, original_x, x_pred, carla_x_pred, x_target):
         """
         DESCRIPTION:        Calculates and stores x data found in the Evaluator
 
         INPUT:
         idx:                Index of the instance x
         x:                  Instance of interest in Numpy array
+        carla_x:            Instance of interest in CARLA framework format in Numpy array
         original_x:         Instance of interest in original format (before normalization and encoding) in DataFrame
         x_pred:             Predicted label of the instance of interest
+        carla_x_pred:       Predicted label of the instance of interest by CARLA model
         x_target:           Ground truth label of the instance of interest
 
         OUTPUT: (None: stored as class attributes)
         """
-        self.x[idx] = pd.DataFrame(data=[x], index=[idx], columns=self.data_cols)
+        self.x[idx] = pd.DataFrame(data=x.reshape(1, -1), index=[idx], columns=self.data_cols)
+        self.carla_x[idx] = pd.DataFrame(data=carla_x.reshape(1, -1), index=[idx], columns=self.carla_data_cols)
         self.original_x[idx] = original_x
         self.x_pred[idx] = x_pred[0]
+        self.carla_x_pred[idx] = carla_x_pred[0]
         self.x_target[idx] = x_target
         self.x_accuracy[idx] = self.accuracy(idx)
 
@@ -272,10 +284,10 @@ class Evaluator():
         OUTPUT:
         transformed_instance:   Transformed instance of interest in the CARLA framework
         """
-        num_data, cat_data = instance[self.numerical], instance[self.categorical]
-        scaled_num_data, enc_cat_data = self.carla_scaler.transform(num_data), self.carla_cat_enc.transform(cat_data).toarray()
-        scaled_num_df, enc_cat_df = pd.DataFrame(scaled_num_data, index=instance.index, columns=self.numerical), pd.DataFrame(enc_cat_data, index=instance.index, columns=self.carla_enc_cols)
-        carla_instance_df = pd.concat((scaled_num_df, enc_cat_df), axis=1)
+        con_data, cat_data = instance[self.carla_continuous], instance[self.carla_categorical]
+        scaled_con_data, enc_cat_data = self.carla_scaler.transform(con_data), self.carla_enc.transform(cat_data)
+        scaled_con_df, enc_cat_df = pd.DataFrame(scaled_con_data, index=instance.index, columns=self.carla_continuous), pd.DataFrame(enc_cat_data, index=instance.index, columns=self.carla_enc_cols)
+        carla_instance_df = pd.concat((scaled_con_df, enc_cat_df), axis=1)
         return carla_instance_df
 
     def inverse_transform_original(self, instance):
@@ -304,6 +316,28 @@ class Evaluator():
             original_instance_df = pd.concat((original_instance_df, instance_num_pd), axis=1)
         return original_instance_df
 
+    def inverse_transform_original_carla(self, instance):
+        """
+        DESCRIPTION:            Transforms an instance from CARLA framework format to the original features
+        
+        INPUT:
+        instance:               Instance of interest
+
+        OUTPUT:
+        original_instance_df:   Instance of interest in the original feature format
+        """
+        instance_index = instance.index
+        original_instance_df = pd.DataFrame(index=instance_index)
+        if len(self.carla_continuous) > 0:
+            instance_con = self.carla_scaler.inverse_transform(instance[self.carla_continuous])
+            instance_con_df = pd.DataFrame(data=instance_con, index=instance_index, columns=self.carla_continuous)
+            original_instance_df = pd.concat((original_instance_df, instance_con_df), axis=1)
+        if len(self.carla_enc_cols) > 0:
+            instance_cat = self.carla_enc.inverse_transform(instance[self.carla_enc_cols])
+            instance_cat_df = pd.DataFrame(data=instance_cat, index=instance_index, columns=self.carla_categorical)
+            original_instance_df = pd.concat((original_instance_df, instance_cat_df), axis=1)
+        return original_instance_df
+
     def add_specific_cf_data(self, idx, data_obj, cf, cf_time):
         """
         DESCRIPTION:        Calculates and stores a cf method result and performance metrics into the Pandas DataFrame found in the Evaluator
@@ -314,19 +348,25 @@ class Evaluator():
         cf:                 Counterfactual instance obtained
         cf_time:            Run time for the counterfactual method used
         """
+        if self.framework == 'carla':
+            cols = data_obj.carla_transformed_cols
+            x = self.carla_x[idx].to_numpy()[0]
+        else:
+            cols = data_obj.transformed_cols
+            x = self.x[idx].to_numpy()[0]
         if cf is not None and not np.isnan(np.sum(cf)):
             if isinstance(cf, pd.DataFrame):
                 self.cf[idx] = cf
             elif isinstance(cf, pd.Series):
                 cf_np = cf.to_numpy()
-                self.cf[idx] = pd.DataFrame(data=[cf_np], index=[idx], columns=data_obj.transformed_cols) 
+                self.cf[idx] = pd.DataFrame(data=cf_np, index=[idx], columns=cols) 
             else:
-                self.cf[idx] = pd.DataFrame(data = [cf], index = [idx], columns = data_obj.transformed_cols)
+                self.cf[idx] = pd.DataFrame(data=cf.reshape(1, -1), index=[idx], columns=cols)
         else:
-            penalize_instance = self.search_desired_class_penalize(data_obj)
-            self.cf[idx] = pd.DataFrame(data=[penalize_instance], index=[idx], columns=data_obj.transformed_cols)
+            penalize_instance = self.search_desired_class_penalize(x, data_obj)
+            self.cf[idx] = pd.DataFrame(data=[penalize_instance], index=[idx], columns=cols)
         self.cf_validity[idx] = True
-        self.original_cf[idx] = self.inverse_transform_original(self.cf[idx])
+        self.original_cf[idx] = self.inverse_transform_original_carla(self.cf[idx]) if self.framework == 'carla' else self.inverse_transform_original(self.cf[idx])
         self.proximity(idx)
         self.feasibility(idx)
         self.sparsity(data_obj, idx)
@@ -356,18 +396,19 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
+        x = self.carla_x[idx] if self.framework == 'carla' else self.x[idx]
         if group is not None and cluster_str is None:
             cf = self.groups_cf[group]
         elif group is None and cluster_str is not None:
             cf = self.x_clusters_cf[cluster_str] 
         else:
             cf = self.cf[idx]
-        if (self.x[idx].columns == cf.columns).all():
-            distance = np.round_(euclidean(self.x[idx].to_numpy(), cf.to_numpy()), 3)
+        if (x.columns == cf.columns).all():
+            distance = np.round_(euclidean(x.to_numpy(), cf.to_numpy()), 3)
         else:
-            instance_x_copy = copy.deepcopy(self.x[idx])
-            instance_x_copy = instance_x_copy[cf.columns]
-            distance = np.round_(euclidean(instance_x_copy.to_numpy(), cf.to_numpy()), 3)
+            x_copy = copy.deepcopy(x)
+            x_copy = x_copy[cf.columns]
+            distance = np.round_(euclidean(x_copy.to_numpy(), cf.to_numpy()), 3)
         if group is not None and cluster_str is None:
             self.group_cf_proximity.loc[idx, group] = distance
         elif group is None and cluster_str is not None:
@@ -386,6 +427,16 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
+        if self.framework == 'carla':
+            x_idx = self.carla_x[idx]
+            step = self.carla_feat_step
+            types = self.carla_feat_type
+            direc = self.carla_feat_dir
+        else:
+            x_idx = self.x[idx]
+            step = self.feat_step
+            types = self.feat_type
+            direc = self.feat_dir
         toler = 0.000001
         feasibility = True
         if group is not None and cluster_str is None:
@@ -394,16 +445,16 @@ class Evaluator():
             cf = self.x_clusters_cf[cluster_str] 
         else:
             cf = self.cf[idx]
-        x_idx = self.x[idx].to_numpy()[0]
         cf_np = cf.to_numpy()[0]
-        vector = cf_np - x_idx
-        for i in range(len(self.feat_type)):
-            if self.feat_type[i] == 'bin':
+        x_np = x_idx.to_numpy()[0]
+        vector = cf_np - x_np
+        for i in range(len(types)):
+            if types[i] == 'bin':
                 if not np.isclose(cf.iloc[0,i], [0,1], atol=toler).any():
                     feasibility = False
                     break
-            elif self.feat_type[i] == 'num-ord':
-                possible_val = np.linspace(0,1,int(1/self.feat_step[i]+1),endpoint=True)
+            elif types[i] == 'num-ord':
+                possible_val = np.linspace(0, 1, int(1/step[i]+1), endpoint=True)
                 if not np.isclose(cf.iloc[0,i], possible_val, atol=toler).any():
                     feasibility = False
                     break
@@ -411,16 +462,17 @@ class Evaluator():
                 if cf.iloc[0,i] < 0-toler or cf.iloc[0,i] > 1+toler:
                     feasibility = False
                     break
-            if self.feat_dir[i] == 0 and vector[i] != 0:
+            if direc[i] == 0 and vector[i] != 0:
                 feasibility = False
                 break
-            elif self.feat_dir[i] == 'pos' and vector[i] < 0:
+            elif direc[i] == 'pos' and vector[i] < 0:
                 feasibility = False
                 break
-            elif self.feat_dir[i] == 'neg' and vector[i] > 0:
+            elif direc[i] == 'neg' and vector[i] > 0:
                 feasibility = False
                 break
-        if not np.array_equal(x_idx[np.where(self.feat_mutable == 0)], cf_np[np.where(self.feat_mutable == 0)]):
+        transformed_protected_cols = [col for col in x_idx.columns if any(feat in col for feat in self.feat_protected.keys())]
+        if not np.array_equal(x_idx[transformed_protected_cols], cf[transformed_protected_cols]):
             feasibility = False
         if group is not None and cluster_str is None:
             self.group_cf_feasibility.loc[idx, group] = feasibility
@@ -441,6 +493,12 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
+        if self.framework == 'carla':
+            x = self.carla_x[idx]
+            cat = data_obj.carla_feat_cat
+        else:
+            x = self.x[idx]
+            cat = data_obj.feat_cat
         if group is not None and cluster_str is None:
             cf = self.groups_cf[group]
         elif group is None and cluster_str is not None:
@@ -448,10 +506,10 @@ class Evaluator():
         else:
             cf = self.cf[idx]
         cf_idx = cf.to_numpy()[0]
-        x_idx = self.x[idx].to_numpy()[0]
+        x_idx = x.to_numpy()[0]
         unchanged_features = np.sum(np.equal(x_idx, cf_idx))
-        categories_feat_changed = data_obj.feat_cat[np.where(np.equal(x_idx, cf_idx) == False)[0]]
-        len_categories_feat_changed_unique = len([i for i in np.unique(categories_feat_changed) if 'cat' in i])
+        categories_feat_changed = np.unique([cat[col] for col in x.columns if not x[col].equals(cf[col])])
+        len_categories_feat_changed_unique = len([i for i in categories_feat_changed if 'cat' in i])
         unchanged_features += len_categories_feat_changed_unique
         n_changed = len(x_idx) - unchanged_features
         if n_changed == 1:
@@ -475,16 +533,15 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        self.group_cf_validity[group] = model_obj.sel.predict(self.groups_cf[group]) != self.undesired_class
+        pred = model_obj.carla_sel.predict(self.groups_cf[group]) if self.framework == 'carla' else model_obj.sel.predict(self.groups_cf[group])
+        self.group_cf_validity[group] = pred != self.undesired_class
 
-    def evaluate_cf_models(self, idx, x_np, x_pred, data_obj, model_obj, epsilon_ft, carla_model, x_transformed_carla_df, cchvae_model = None, cchvae_model_time = 0):
+    def evaluate_cf_models(self, idx, data_obj, model_obj, epsilon_ft, carla_model, cchvae_model = None, cchvae_model_time = 0):
         """
         DESCRIPTION:        Evaluates the specific counterfactual method on the isntance of interest
 
         INPUT:
         idx:                Index of the instance of interest
-        x_np:               Instance of interest in Numpy array format
-        x_pred:             Predicted label of the instance of interest
         data_obj:           Dataset object
         model_obj:          Model object
         epsilon_ft:         Parameter for the Feature Tweaking counterfactual method
@@ -493,6 +550,10 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
+        x_df = self.x[idx]
+        x_np = x_df.to_numpy()[0]
+        carla_x_df = self.carla_x[idx]
+        x_pred = self.x_pred[idx]
         if 'mutable' in self.method_name:
             mutability_check = False
         else:
@@ -504,7 +565,7 @@ class Evaluator():
         elif 'rt' in self.method_name:
             cf, run_time = rf_tweak(x_np, x_pred, model_obj.rf, data_obj, True, mutability_check)
         elif 'cchvae' in self.method_name:
-            cf, run_time = cchvae_function(data_obj, cchvae_model, x_transformed_carla_df)
+            cf, run_time = cchvae_function(carla_x_df, cchvae_model)
             run_time += cchvae_model_time
         # WORK IN PROGRESS:
         # elif 'ft' in self.method_name:
@@ -552,12 +613,11 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        x_df = pd.concat(self.x.values(), axis=0)
         original_x_df = pd.concat(self.original_x.values(), axis=0)
         cf_df = pd.concat(self.cf.values(), axis=0)
-        original_cf_df = pd.concat(self.original_cf.values(), axis=0)
         self.groups_cf['all'] = cf_df.mean(axis=0).to_frame().T
-        self.original_groups_cf['all'] = self.inverse_transform_original(self.groups_cf['all'])
+        original_all_cf = self.inverse_transform_original_carla(self.groups_cf['all']) if self.framework == 'carla' else self.inverse_transform_original(self.groups_cf['all'])
+        self.original_groups_cf['all'] = original_all_cf
         for idx in self.original_x.keys():
             self.proximity(idx, group='all')
             self.feasibility(idx, group='all')
@@ -571,7 +631,8 @@ class Evaluator():
                 feat_values_idx = original_x_df_feat_val.index.tolist()
                 cf_df_feat_val = cf_df.loc[feat_values_idx,:]
                 self.groups_cf[feat_val_name] = cf_df_feat_val.mean(axis=0).to_frame().T
-                self.original_groups_cf[feat_val_name] = self.inverse_transform_original(self.groups_cf[feat_val_name])
+                original_feat_val_cf = self.inverse_transform_original_carla(self.groups_cf[feat_val_name]) if self.framework == 'carla' else self.inverse_transform_original(self.groups_cf[feat_val_name])
+                self.original_groups_cf[feat_val_name] = original_feat_val_cf
                 for idx in self.original_x.keys():
                     self.proximity(idx, group=feat_val_name)
                     self.feasibility(idx, group=feat_val_name)
@@ -605,8 +666,28 @@ class Evaluator():
                 self.original_x_clusters[feat_val_name] = self.inverse_transform_original(x_cluster_feat_val)
                 self.x_clusters[feat_val_name] = self.transform_instance(self.original_x_clusters[feat_val_name])
                 self.x_clusters_carla[feat_val_name] = self.transform_instance_to_carla(self.original_x_clusters[feat_val_name]) 
-                 
-    def add_cluster_cf_data(self, cluster_str, data_obj, cluster_cf, run_time):
+    
+    def cluster_search_desired_class_penalize(self, x_cluster, data):
+        """
+        DESCRIPTION:        Obtains the penalization for the method if no instance of the desired class is obtained as CF
+
+        INPUT:
+        x_cluster:          Cluster of the group of interest in the correct (CARLA or normal) framework format
+        data:               Dataset object
+
+        OUTPUT:
+        penalize_instance:  The furthest training instance available
+        """
+        if self.framework == 'carla':
+            data_np = data.carla_transformed_train_np  
+        else:
+            data_np = data.transformed_train_np
+        train_desired_class = data_np[data.train_target != self.undesired_class]
+        sorted_train_x = sort_data_distance(x_cluster, train_desired_class, data.train_target[data.train_target != self.undesired_class])
+        penalize_instance = sorted_train_x[-1][0]
+        return penalize_instance
+
+    def add_cluster_cf_data(self, cluster_str, x_cluster, data_obj, cluster_cf, run_time):
         """
         DESCRIPTION:            Stores the cluster CF and obtains all the performance measures for the cluster counterfactual 
         
@@ -618,9 +699,20 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        cluster_cf_df = pd.DataFrame([cluster_cf], index=[0], columns=self.data_cols)
+        if self.framework == 'carla':
+            cols = self.carla_data_cols
+        else:
+            cols = self.data_cols
+        if cluster_cf is None:
+            cluster_cf = self.cluster_search_desired_class_penalize(x_cluster, data_obj)
+        else:
+            cluster_cf = cluster_cf
+        cluster_cf_df = pd.DataFrame(cluster_cf.reshape(1, -1), index=[0], columns=cols)
         self.x_clusters_cf[cluster_str] = cluster_cf_df
-        self.original_x_clusters_cf[cluster_str] = self.inverse_transform_original(cluster_cf_df)
+        if self.framework == 'carla':
+            self.original_x_clusters_cf[cluster_str] = self.inverse_transform_original_carla(cluster_cf_df)
+        else:
+            self.original_x_clusters_cf[cluster_str] = self.inverse_transform_original(cluster_cf_df)
         self.cluster_cf_time[cluster_str] = run_time
         for idx in self.x.keys():
             self.proximity(idx, cluster_str=cluster_str)
@@ -640,10 +732,14 @@ class Evaluator():
         """
         clusters_list = self.x_clusters.keys()
         for cluster_str in clusters_list:
-            x_cluster_df = self.x_clusters[cluster_str]
+            if self.framework == 'carla':
+                x_cluster_df = self.x_clusters_carla[cluster_str]
+                model = model_obj.carla_sel
+            else:
+                x_cluster_df = self.x_clusters[cluster_str]
+                model = model_obj.sel
             x_cluster = x_cluster_df.to_numpy()[0]
-            x_cluster_pred = model_obj.sel.predict(x_cluster.reshape(1, -1))
-            x_original = self.original_x_clusters[cluster_str]
+            x_cluster_pred = model.predict(x_cluster.reshape(1, -1))
             self.cluster_validity[cluster_str] = x_cluster_pred == self.undesired_class
             if x_cluster_pred != self.undesired_class:
                 cluster_cf, run_time = x_cluster, 0
@@ -659,6 +755,6 @@ class Evaluator():
                 elif 'rt' in self.method_name:
                     cluster_cf, run_time = rf_tweak(x_cluster, x_cluster_pred, model_obj.rf, data_obj, feasibility_check=True, mutability_check=mutability_check)
                 elif 'cchvae' in self.method_name:
-                    cluster_cf, run_time = cchvae_function(data_obj, cchvae_model, x_cluster_df)
+                    cluster_cf, run_time = cchvae_function(x_cluster_df, cchvae_model)
                     run_time += cchvae_model_time
-            self.add_cluster_cf_data(cluster_str, data_obj, cluster_cf, run_time)
+            self.add_cluster_cf_data(cluster_str, x_cluster, data_obj, cluster_cf, run_time)
