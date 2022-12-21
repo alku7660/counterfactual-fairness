@@ -839,10 +839,10 @@ colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'bla
 # burden_plot(datasets, methods_to_run, colors_dict)
 # fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
 # nawb_plot(datasets, methods_to_run, colors_dict)
-# validity_groups_cf(datasets, methods_to_run)
-# validity_clusters(datasets, methods_to_run)
+validity_groups_cf(datasets, methods_to_run)
+validity_clusters(datasets, methods_to_run)
 # burden_groups_cf(datasets, methods_to_run)
 # burden_cluster_cf(datasets, methods_to_run)
-# nawb_groups_cf(datasets, methods_to_run)
+nawb_groups_cf(datasets, methods_to_run)
 nawb_cluster_cf(datasets, methods_to_run)
 
