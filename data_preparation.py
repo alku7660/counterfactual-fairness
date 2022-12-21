@@ -235,6 +235,52 @@ def prepare_data(data_str):
         processed_df.loc[processed_df['Label'] == ' - 50000.','Label'] = int(0)
         processed_df.loc[processed_df['Label'] == ' 50000+.','Label'] = int(1)
         processed_df['Label']=processed_df['Label'].astype(int)
+    elif data_str == 'credit':
+        raw_df = pd.read_csv(dataset_dir+'/credit/preprocessed_credit.csv')
+        processed_df = raw_df
+        processed_df.loc[processed_df['TotalOverdueCounts'] == 3,'TotalOverdueCounts'] = 4
+        processed_df.loc[processed_df['TotalOverdueCounts'] == 2,'TotalOverdueCounts'] = 3
+        processed_df.loc[processed_df['TotalOverdueCounts'] == 1,'TotalOverdueCounts'] = 2
+        processed_df.loc[processed_df['TotalOverdueCounts'] == 0,'TotalOverdueCounts'] = 1
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 36,'TotalMonthsOverdue'] = 35
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 33,'TotalMonthsOverdue'] = 34
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 32,'TotalMonthsOverdue'] = 33
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 31,'TotalMonthsOverdue'] = 32
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 30,'TotalMonthsOverdue'] = 31
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 29,'TotalMonthsOverdue'] = 30
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 28,'TotalMonthsOverdue'] = 29
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 27,'TotalMonthsOverdue'] = 28
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 26,'TotalMonthsOverdue'] = 27
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 25,'TotalMonthsOverdue'] = 26
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 24,'TotalMonthsOverdue'] = 25
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 23,'TotalMonthsOverdue'] = 24
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 22,'TotalMonthsOverdue'] = 23
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 21,'TotalMonthsOverdue'] = 22
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 20,'TotalMonthsOverdue'] = 21
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 19,'TotalMonthsOverdue'] = 20
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 18,'TotalMonthsOverdue'] = 19
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 17,'TotalMonthsOverdue'] = 18
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 16,'TotalMonthsOverdue'] = 17
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 15,'TotalMonthsOverdue'] = 16
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 14,'TotalMonthsOverdue'] = 15
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 13,'TotalMonthsOverdue'] = 14
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 12,'TotalMonthsOverdue'] = 13
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 11,'TotalMonthsOverdue'] = 12
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 10,'TotalMonthsOverdue'] = 11
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 9,'TotalMonthsOverdue'] = 10
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 8,'TotalMonthsOverdue'] = 9
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 7,'TotalMonthsOverdue'] = 8
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 6,'TotalMonthsOverdue'] = 7
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 5,'TotalMonthsOverdue'] = 6
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 4,'TotalMonthsOverdue'] = 5
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 3,'TotalMonthsOverdue'] = 4
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 2,'TotalMonthsOverdue'] = 3
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 1,'TotalMonthsOverdue'] = 2
+        processed_df.loc[processed_df['TotalMonthsOverdue'] == 0,'TotalMonthsOverdue'] = 1
+        # processed_df.loc[processed_df['AgeGroup'] == 0,'AgeGroup'] = 1
+        # processed_df.loc[processed_df['EducationLevel'] == 2,'EducationLevel'] = 3
+        # processed_df.loc[processed_df['EducationLevel'] == 1,'EducationLevel'] = 2
+        # processed_df.loc[processed_df['EducationLevel'] == 0,'EducationLevel'] = 1
     elif data_str == 'german':
         binary = ['Sex','Single','Unemployed']
         categorical = ['PurposeOfLoan','InstallmentRate','Housing']
@@ -634,5 +680,5 @@ def prepare_data(data_str):
     
     processed_df.to_csv(f'{dataset_dir}/{data_str}/preprocessed_{data_str}.csv')
 
-data_str = 'dutch'
+data_str = 'credit'
 prepare_data(data_str)
