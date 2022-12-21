@@ -463,6 +463,42 @@ def prepare_data(data_str):
         processed_df.loc[df['sex'] == 'Male', 'Sex'] = 1
         processed_df.loc[df['sex'] == 'Female', 'Sex'] = 2
         processed_df['PriorsCount'] = df['priors_count']
+        processed_df.loc[processed_df['PriorsCount'] == 38,'PriorsCount'] = 36
+        processed_df.loc[processed_df['PriorsCount'] == 37,'PriorsCount'] = 35
+        processed_df.loc[processed_df['PriorsCount'] == 36,'PriorsCount'] = 34
+        processed_df.loc[processed_df['PriorsCount'] == 33,'PriorsCount'] = 33
+        processed_df.loc[processed_df['PriorsCount'] == 31,'PriorsCount'] = 32
+        processed_df.loc[processed_df['PriorsCount'] == 30,'PriorsCount'] = 31
+        processed_df.loc[processed_df['PriorsCount'] == 29,'PriorsCount'] = 30
+        processed_df.loc[processed_df['PriorsCount'] == 28,'PriorsCount'] = 29
+        processed_df.loc[processed_df['PriorsCount'] == 27,'PriorsCount'] = 28
+        processed_df.loc[processed_df['PriorsCount'] == 26,'PriorsCount'] = 27
+        processed_df.loc[processed_df['PriorsCount'] == 25,'PriorsCount'] = 26
+        processed_df.loc[processed_df['PriorsCount'] == 24,'PriorsCount'] = 25
+        processed_df.loc[processed_df['PriorsCount'] == 23,'PriorsCount'] = 24
+        processed_df.loc[processed_df['PriorsCount'] == 22,'PriorsCount'] = 23
+        processed_df.loc[processed_df['PriorsCount'] == 21,'PriorsCount'] = 22
+        processed_df.loc[processed_df['PriorsCount'] == 20,'PriorsCount'] = 21
+        processed_df.loc[processed_df['PriorsCount'] == 19,'PriorsCount'] = 20
+        processed_df.loc[processed_df['PriorsCount'] == 18,'PriorsCount'] = 19
+        processed_df.loc[processed_df['PriorsCount'] == 17,'PriorsCount'] = 18
+        processed_df.loc[processed_df['PriorsCount'] == 16,'PriorsCount'] = 17
+        processed_df.loc[processed_df['PriorsCount'] == 15,'PriorsCount'] = 16
+        processed_df.loc[processed_df['PriorsCount'] == 14,'PriorsCount'] = 15
+        processed_df.loc[processed_df['PriorsCount'] == 13,'PriorsCount'] = 14
+        processed_df.loc[processed_df['PriorsCount'] == 12,'PriorsCount'] = 13
+        processed_df.loc[processed_df['PriorsCount'] == 11,'PriorsCount'] = 12
+        processed_df.loc[processed_df['PriorsCount'] == 10,'PriorsCount'] = 11
+        processed_df.loc[processed_df['PriorsCount'] == 9,'PriorsCount'] = 10
+        processed_df.loc[processed_df['PriorsCount'] == 8,'PriorsCount'] = 9
+        processed_df.loc[processed_df['PriorsCount'] == 7,'PriorsCount'] = 8
+        processed_df.loc[processed_df['PriorsCount'] == 6,'PriorsCount'] = 7
+        processed_df.loc[processed_df['PriorsCount'] == 5,'PriorsCount'] = 6
+        processed_df.loc[processed_df['PriorsCount'] == 4,'PriorsCount'] = 5
+        processed_df.loc[processed_df['PriorsCount'] == 3,'PriorsCount'] = 4
+        processed_df.loc[processed_df['PriorsCount'] == 2,'PriorsCount'] = 3
+        processed_df.loc[processed_df['PriorsCount'] == 1,'PriorsCount'] = 2
+        processed_df.loc[processed_df['PriorsCount'] == 0,'PriorsCount'] = 1
         processed_df.loc[df['c_charge_degree'] == 'M', 'ChargeDegree'] = 1
         processed_df.loc[df['c_charge_degree'] == 'F', 'ChargeDegree'] = 2
         processed_df = processed_df.reset_index(drop=True)
@@ -680,5 +716,5 @@ def prepare_data(data_str):
     
     processed_df.to_csv(f'{dataset_dir}/{data_str}/preprocessed_{data_str}.csv')
 
-data_str = 'credit'
+data_str = 'compass'
 prepare_data(data_str)
