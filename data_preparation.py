@@ -323,6 +323,12 @@ def prepare_data(data_str):
         processed_df.loc[processed_df['Age'] == 13,'Age'] = 47
         processed_df.loc[processed_df['Age'] == 14,'Age'] = 52
         processed_df.loc[processed_df['Age'] == 15,'Age'] = 59
+        processed_df.loc[processed_df['EducationLevel'] == 5,'EducationLevel'] = 6
+        processed_df.loc[processed_df['EducationLevel'] == 4,'EducationLevel'] = 5
+        processed_df.loc[processed_df['EducationLevel'] == 3,'EducationLevel'] = 4
+        processed_df.loc[processed_df['EducationLevel'] == 2,'EducationLevel'] = 3
+        processed_df.loc[processed_df['EducationLevel'] == 1,'EducationLevel'] = 2
+        processed_df.loc[processed_df['EducationLevel'] == 0,'EducationLevel'] = 1
     elif data_str == 'bank':
         binary = ['Default','Housing','Loan']
         categorical = ['Job','MaritalStatus','Education','Contact','Month','Poutcome']
@@ -628,5 +634,5 @@ def prepare_data(data_str):
     
     processed_df.to_csv(f'{dataset_dir}/{data_str}/preprocessed_{data_str}.csv')
 
-data_str = 'german'
+data_str = 'dutch'
 prepare_data(data_str)

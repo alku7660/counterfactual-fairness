@@ -15,9 +15,9 @@ import pandas as pd
 import numpy as np
 
 path_here = os.path.abspath('')
-datasets = ['diabetes','student','oulad','law'] # Name of the datasets to be analyzed 
+datasets = ['kdd_census'] # Name of the datasets to be analyzed 
 seed_int = 54321
-train_fraction = 0.95
+train_fraction = 0.7
 step = 0.01
 
 np.random.seed(seed_int)
