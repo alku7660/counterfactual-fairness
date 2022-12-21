@@ -713,8 +713,13 @@ def prepare_data(data_str):
         processed_df.loc[(raw_df['race'] == 1.0) | (raw_df['race'] == 2.0) | (raw_df['race'] == 3.0) | (raw_df['race'] == 4.0) | (raw_df['race'] == 5.0) | (raw_df['race'] == 6.0) | (raw_df['race'] == 8.0),'Race'] = 2
         processed_df.loc[raw_df['race'] == 7.0,'Race'] = 1
         processed_df['BarExam'] = raw_df['pass_bar'].astype(int)
-    
+    elif data_str == 'heart':
+        processed_df = pd.read_csv(dataset_dir+'heart/processed_heart.csv',index_col=0)
+        processed_df.loc[processed_df['ECG'] == 2.0,'ECG'] = 3
+        processed_df.loc[processed_df['ECG'] == 1.0,'ECG'] = 2
+        processed_df.loc[processed_df['ECG'] == 0.0,'ECG'] = 1
+
     processed_df.to_csv(f'{dataset_dir}/{data_str}/preprocessed_{data_str}.csv')
 
-data_str = 'compass'
+data_str = 'heart'
 prepare_data(data_str)
