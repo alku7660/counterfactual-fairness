@@ -64,7 +64,7 @@ def create_boxplot_handles(protected_feat, original_x_df, color_list):
         checked_colors += len(unique_feat_val)
     return list_handles
 
-def create_handles_awb(colors_dict):
+def create_handles_awb(colors_dict, used_features=None):
     """
     DESCRIPTION:            Obtains the accuracy weighted burden for each method and each dataset
 
@@ -76,10 +76,19 @@ def create_handles_awb(colors_dict):
     """
     list_handles = []
     for i in range(len(colors_dict.keys())):
-        key = list(colors_dict.keys())[i]
-        color = colors_dict[key]
-        handle = Line2D([0], [0], color=color, lw=2, label=f'{key}')
-        list_handles.extend([handle])
+        if used_features is None:
+            key = list(colors_dict.keys())[i]
+            color = colors_dict[key]
+            handle = Line2D([0], [0], color=color, lw=2, label=f'{key}')
+            list_handles.extend([handle])
+        else:
+            key = list(colors_dict.keys())[i]
+            if key in used_features:
+                color = colors_dict[key]
+                handle = Line2D([0], [0], color=color, lw=2, label=f'{key}')
+                list_handles.extend([handle])
+            else:
+                continue
     return list_handles
 
 def get_data_names(datasets):
@@ -651,6 +660,75 @@ def burden_groups_cf(datasets, methods):
                         hspace=0.2)
         plt.savefig(results_cf_plots_dir+'group_cf_burden_instances.pdf',format='pdf')
 
+def burden_groups_cf_bar(datasets, method_str):
+        """
+        DESCRIPTION:        Obtains the burden for each sensitive group w.r.t. each of the group counterfactuals
+
+        INPUT:
+        datasets:           Names of the datasets
+        methods:            Names of the methods
+
+        OUTPUT: (None: plot stored)
+        """
+        dataset_names = get_data_names(datasets)
+        fig, ax = plt.subplots(nrows=len(datasets), ncols=1, sharex=False, sharey=False, figsize=(7,10))
+        used_features = []
+        for dataset_idx in range(len(datasets)):
+            width = 0.1
+            multiplier = 0
+            data_str = datasets[dataset_idx]
+            eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
+            protected_feat = eval_obj.feat_protected
+            protected_feat_keys = list(protected_feat.keys())
+            original_x_df = pd.concat(eval_obj.original_x.values(), axis=0)
+            group_cf_proximity = eval_obj.group_cf_proximity
+            groups_names = list(group_cf_proximity.columns)
+            burden_mean = pd.DataFrame(index=groups_names, columns=groups_names)
+            burden_std = pd.DataFrame(index=groups_names, columns=groups_names)
+            feat_list = []
+            for feat_idx in range(len(protected_feat_keys)):   
+                feat = protected_feat_keys[feat_idx]
+                feat_unique_val = original_x_df[feat].unique()
+                _, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+                for feat_val_idx in range(len(feat_unique_val)):
+                    feat_val_instances_idx = idx_feat_values[feat_val_idx]
+                    feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_val_idx],2)]
+                    for group in groups_names:
+                        feat_method_data = group_cf_proximity.loc[feat_val_instances_idx, group].values
+                        burden_mean.loc[feat_val_name, group] = np.mean(feat_method_data)
+                        burden_std.loc[feat_val_name, group] = np.std(feat_method_data, ddof=1)
+                    if feat in ['isMale','isMarried']:
+                        feat_val_name = feat+': '+feat_val_name
+                    feat_list.append(feat_val_name)
+            for group in groups_names:
+                burden_mean.loc['all', group] = np.mean(group_cf_proximity.loc[:, group].values)
+                burden_std.loc['all', group] = np.std(group_cf_proximity.loc[:, group].values, ddof=1)
+            burden_mean = burden_mean.apply(pd.to_numeric)
+            burden_std = burden_std.apply(pd.to_numeric)
+            x = np.arange(len(groups_names))
+            for idx in burden_mean.index:
+                offset = width*multiplier
+                graph = ax[dataset_idx].bar(x + offset, burden_mean.loc[idx, :], width, label=idx, color=colors_dict[idx.capitalize()]) # yerr=burden_std.loc[idx, :]
+                # ax[dataset_idx].bar_label(graph, fmt='%.3f', padding=3)
+                # ax[dataset_idx].legend(loc='upper left', ncol=len(burden_mean.index))
+                ax[dataset_idx].set_xticks(x + width*0.5*(len(x) - 1), [i.upper() for i in groups_names])
+                ax[dataset_idx].set_ylabel(dataset_names[datasets[dataset_idx]])
+                multiplier += 1
+                used_features.append(idx)
+        legend_handles = create_handles_awb(colors_dict, used_features)
+        fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.025), ncol=4, fancybox=True, shadow=True, handles=legend_handles, prop={'size': 10})
+        fig.subplots_adjust(wspace=0.1, hspace=0.1)
+        fig.suptitle(f'{method_str.upper()} $Burden_s$ for Group Counterfactuals')
+        fig.supxlabel(f'Group Counterfactual')
+        fig.supylabel(f'Avg. Burden')
+        plt.subplots_adjust(left=0.125,
+                        bottom=0.1, 
+                        right=0.975, 
+                        top=0.94, 
+                        wspace=0.2, 
+                        hspace=0.2)
+        plt.savefig(f'{results_cf_plots_dir}{method_str.upper()}_group_cf_burden_instances_bar.pdf',format='pdf')
+
 def burden_cluster_cf(datasets, methods):
         """
         DESCRIPTION:        Obtains the burden for each sensitive groups cluster w.r.t. each of the cluster counterfactuals
@@ -828,7 +906,7 @@ def nawb_cluster_cf(datasets, methods):
         plt.savefig(results_cf_plots_dir+'cluster_cf_nawb_instances.pdf',format='pdf')
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
-colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'black',
+colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','Non-white':'dimgray',
                '<25':'thistle','25-60':'violet','>60':'purple','<18':'green','>=18':'yellow','Single':'peachpuff',
                'Married':'peru','Divorced':'saddlebrown','isMarried: True':'cyan','isMarried: False':'darkcyan',
                'isMale: True':'lightcoral','isMale: False':'firebrick','Other':'lightgreen','HS':'limegreen',
@@ -839,10 +917,11 @@ colors_dict = {'Male':'red','Female':'blue','White':'gainsboro','Non-white':'bla
 # burden_plot(datasets, methods_to_run, colors_dict)
 # fnr_burden_plot(datasets, methods_to_run, 'proximity', colors_list)
 # nawb_plot(datasets, methods_to_run, colors_dict)
-validity_groups_cf(datasets, methods_to_run)
-validity_clusters(datasets, methods_to_run)
+# validity_groups_cf(datasets, methods_to_run)
+# validity_clusters(datasets, methods_to_run)
 # burden_groups_cf(datasets, methods_to_run)
 # burden_cluster_cf(datasets, methods_to_run)
-nawb_groups_cf(datasets, methods_to_run)
-nawb_cluster_cf(datasets, methods_to_run)
+# nawb_groups_cf(datasets, methods_to_run)
+# nawb_cluster_cf(datasets, methods_to_run)
+burden_groups_cf_bar(datasets, 'NN')
 
