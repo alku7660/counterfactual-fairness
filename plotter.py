@@ -85,7 +85,7 @@ def create_handles_awb(colors_dict, used_features=None):
             key = list(colors_dict.keys())[i]
             if key in used_features:
                 color = colors_dict[key]
-                handle = Line2D([0], [0], color=color, lw=2, label=f'{key}')
+                handle = Line2D([0], [0], color=color, lw=2, label=f'{key} CF')
                 list_handles.extend([handle])
             else:
                 continue
@@ -706,20 +706,20 @@ def burden_groups_cf_bar(datasets, method_str):
             burden_mean = burden_mean.apply(pd.to_numeric)
             burden_std = burden_std.apply(pd.to_numeric)
             x = np.arange(len(groups_names))
-            for idx in burden_mean.index:
+            for col in burden_mean.columns:
                 offset = width*multiplier
-                graph = ax[dataset_idx].bar(x + offset, burden_mean.loc[idx, :], width, label=idx, color=colors_dict[idx.capitalize()]) # yerr=burden_std.loc[idx, :]
+                graph = ax[dataset_idx].bar(x + offset, burden_mean.loc[:, col], width, label=col, color=colors_dict[col.capitalize()]) # yerr=burden_std.loc[idx, :]
                 # ax[dataset_idx].bar_label(graph, fmt='%.3f', padding=3)
                 # ax[dataset_idx].legend(loc='upper left', ncol=len(burden_mean.index))
-                ax[dataset_idx].set_xticks(x + width*0.5*(len(x) - 1), [i.upper() for i in groups_names])
+                ax[dataset_idx].set_xticks(x + width*0.5*(len(x) - 1), [f'{i.capitalize()} inst.' for i in groups_names])
                 ax[dataset_idx].set_ylabel(dataset_names[datasets[dataset_idx]])
                 multiplier += 1
-                used_features.append(idx)
+                used_features.append(col.capitalize())
         legend_handles = create_handles_awb(colors_dict, used_features)
         fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.025), ncol=4, fancybox=True, shadow=True, handles=legend_handles, prop={'size': 10})
         fig.subplots_adjust(wspace=0.1, hspace=0.1)
         fig.suptitle(f'{method_str.upper()} $Burden_s$ for Group Counterfactuals')
-        fig.supxlabel(f'Group Counterfactual')
+        fig.supxlabel(f'Sensitive Group Instances')
         fig.supylabel(f'Avg. Burden')
         plt.subplots_adjust(left=0.125,
                         bottom=0.1, 
