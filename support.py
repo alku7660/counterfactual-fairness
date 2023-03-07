@@ -35,41 +35,46 @@ def sort_data_distance(x, data, data_label):
     sort_data_distance.sort(key=lambda x: x[1])
     return sort_data_distance
 
-def verify_feasibility(x, cf, mutable_feat, feat_type, feat_step, feat_dir, mutability_check):
+def verify_feasibility(x, cf, data, mutability_check=True):
     """
     Method that indicates whether cf is a feasible counterfactual with respect to x and the feature mutability
     Input x: Instance of interest
     Input cf: Counterfactual to be evaluated
-    Input mutable_feat: Vector indicating mutability of the features of x
-    Input feat_type: Type of the features used
-    Input feat_step: Feature plausible change step size
-    Input feat_dir: Directionality of the features
-    Input mutability_check: Whether to check or not the mutable features    
+    Input data: Data object   
     Output: Boolean value indicating whether cf is a feasible counterfactual with regards to x and the feature mutability vector
+    """
+    """
+    Method that indicates whether the cf is a feasible counterfactual with respect to x, feature mutability and directionality
     """
     toler = 0.000001
     feasibility = True
-    vector = cf - x
-    for i in range(len(feat_type)):
-        if feat_type[i] == 'bin':
+    for i in range(len(data.feat_type)):
+        if data.feat_type[i] == 'bin' or data.feat_type[i] == 'cat':
             if not np.isclose(cf[i], [0,1], atol=toler).any():
                 feasibility = False
                 break
-        elif feat_type[i] == 'num-ord':
-            possible_val = np.linspace(0,1,int(1/feat_step[i]+1), endpoint=True)
-            if not np.isclose(cf[i],possible_val, atol=toler).any():
+        elif data.feat_type[i] == 'ord':
+            possible_val = np.linspace(0, 1, int(1/data.feat_step[i]+1), endpoint=True)
+            if not np.isclose(cf[i], possible_val, atol=toler).any():
                 feasibility = False
                 break  
-        elif cf[i] < 0-toler or cf[i] > 1+toler:
-            feasibility = False
+        else:
+            if cf[i] < 0-toler or cf[i] > 1+toler:
+                feasibility = False
+                break
+        if mutability_check:
+            vector = cf - x
+            if data.feat_dir[i] == 0 and vector[i] != 0:
+                feasibility = False
+                break
+            elif data.feat_dir[i] == 'pos' and vector[i] < 0:
+                feasibility = False
+                break
+            elif data.feat_dir[i] == 'neg' and vector[i] > 0:
+                feasibility = False
+                break
     if mutability_check:
-        if feat_dir[i] == 0 and vector[i] != 0:
-            feasibility = False
-        elif feat_dir[i] == 'pos' and vector[i] < 0:
-            feasibility = False
-        elif feat_dir[i] == 'neg' and vector[i] > 0:
-            feasibility = False
-        if not np.array_equal(x[np.where(mutable_feat == 0)], cf[np.where(mutable_feat == 0)]):
+        if not np.array_equal(x[np.where(data.feat_mutable == 0)], cf[np.where(data.feat_mutable == 0)]):
             feasibility = False
     return feasibility
 

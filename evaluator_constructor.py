@@ -15,6 +15,118 @@ from cchvae_cf import cchvae_function
 import copy
 # from carla.recourse_methods import Face, Dice, GrowingSpheres (REQUIRES ADJUSTMENT / FUTURE WORK)
 
+def distance_calculation(x, y, data, type='euclidean'):
+    """
+    Method that calculates the distance between two points. Default is 'euclidean'. Other types are 'L1', 'mixed_L1' and 'mixed_L1_Linf'
+    """
+    def euclid(x, y):
+        """
+        Calculates the euclidean distance between the instances (inputs must be Numpy arrays)
+        """
+        return np.sqrt(np.sum((x - y)**2))
+
+    def L1(x, y):
+        """
+        Calculates the L1-Norm distance between the instances (inputs must be Numpy arrays)
+        """
+        return np.sum(np.abs(x - y))
+
+    def L0(x, y):
+        """
+        Calculates a simple matching distance between the features of the instances (pass only categortical features, inputs must be Numpy arrays)
+        """
+        return len(list(np.where(x != y)))
+
+    def Linf(x, y):
+        """
+        Calculates the Linf distance
+        """
+        return np.max(np.abs(x - y))
+
+    def L1_L0(x, y, x_original, y_original, data):
+        """
+        Calculates the distance components according to Sharma et al.: Please see: https://arxiv.org/pdf/1905.07857.pdf
+        """
+        x_df, y_df = pd.DataFrame(data=x.reshape(1, -1), index=[0], columns=data.processed_features), pd.DataFrame(data=y.reshape(1, -1), index=[0], columns=data.processed_features)
+        x_original_df, y_original_df = pd.DataFrame(data=x_original, index=[0], columns=data.features), pd.DataFrame(data=y_original, index=[0], columns=data.features)
+        x_continuous_df, y_continuous_df = x_df[data.ordinal + data.continuous], y_df[data.ordinal + data.continuous]
+        x_continuous_np, y_continuous_np = x_continuous_df.to_numpy()[0], y_continuous_df.to_numpy()[0]
+        x_categorical_df, y_categorical_df = x_original_df[data.binary + data.categorical], y_original_df[data.binary + data.categorical]
+        x_categorical_np, y_categorical_np = x_categorical_df.to_numpy()[0], y_categorical_df.to_numpy()[0]
+        L1_distance, L0_distance = L1(x_continuous_np, y_continuous_np), L0(x_categorical_np, y_categorical_np)
+        return L1_distance, L0_distance
+    
+    def L1_L0_L_inf(x, y, x_original, y_original, data, alpha=1/4, beta=1/4):
+        """
+        Calculates the distance used by Karimi et al.: Please see: http://proceedings.mlr.press/v108/karimi20a/karimi20a.pdf
+        """
+        J = len(data.continuous) + len(data.bin_cat_enc_cols)
+        gamma = 1/((alpha + beta)*J)
+        L1_distance, L0_distance = L1_L0(x, y, x_original, y_original, data)
+        Linf_distance = Linf(x, y)
+        return alpha*L0_distance + beta*L1_distance + gamma*Linf_distance
+
+    def max_percentile_shift(x_original, y_original, data):
+        """
+        Calculates the maximum percentile shift as a cost function between two instances
+        """
+        perc_shift_list = []
+        x_original_df, y_original_df = pd.DataFrame(data=x_original, index=[0], columns=data.features), pd.DataFrame(data=y_original, index=[0], columns=data.features)
+        for col in data.features:
+            x_col_value = float(x_original_df[col].values)
+            try:
+                y_col_value = float(y_original_df[col].values)
+            except:
+                perc_shift_list.append(1)
+                continue
+            distribution = data.feat_dist[col]
+            if x_col_value == y_col_value:
+                continue
+            else:
+                if col in data.binary or col in data.categorical:
+                    perc_shift = np.abs(distribution[x_col_value] - distribution[y_col_value])
+                elif col in data.ordinal:
+                    min_val, max_val = min(x_col_value, y_col_value), max(x_col_value, y_col_value)
+                    values_range = [i for i in distribution.keys() if i >= min_val and i <= max_val]
+                    values_range.sort()
+                    prob_values = np.cumsum([distribution[val] for val in values_range])
+                    try:
+                        perc_shift = np.abs(prob_values[-1] - prob_values[0])
+                    except:
+                        perc_shift = 0
+                elif col in data.continuous:
+                    mean_val, std_val = distribution['mean'], distribution['std']
+                    normalized_x = (x_col_value - mean_val)/std_val
+                    normalized_y = (y_col_value - mean_val)/std_val
+                    perc_shift = np.abs(norm.cdf(normalized_x) - norm.cdf(normalized_y))
+            perc_shift_list.append(perc_shift)
+        if len(perc_shift_list) == 0:
+            value_to_return = 0
+        else:
+            value_to_return = max(perc_shift_list)
+        return value_to_return
+
+    x_original, y_original = data.inverse(x), data.inverse(y)
+    if type == 'euclidean':
+        distance = euclid(x, y)
+    elif type == 'L1':
+        distance = L1(x, y)
+    elif type == 'L_inf':
+        distance = Linf(x, y)
+    elif type == 'L1_L0':
+        n_con, n_cat = len(data.continuous), len(data.bin_cat_enc_cols)
+        n = n_con + n_cat
+        L1_distance, L0_distance = L1_L0(x, y, x_original, y_original, data)
+        """
+        Equation from Sharma et al.: Please see: https://arxiv.org/pdf/1905.07857.pdf
+        """
+        distance = (n_con/n)*L1_distance + (n_cat/n)*L0_distance
+    elif type == 'L1_L0_L_inf':
+        distance = L1_L0_L_inf(x, y, x_original, y_original, data)
+    elif type == 'prob':
+        distance = max_percentile_shift(x_original, y_original, data)
+    return distance
+
 class Evaluator():
     """
     DESCRIPTION:        Evaluator Class
@@ -27,28 +139,34 @@ class Evaluator():
     def __init__(self, data_obj, n_feat, method_str):
         self.data_name = data_obj.name
         self.method_name = method_str
-        self.framework = 'carla' if self.method_name in ['gs','face','dice','cchvae'] else 'normal'
-        self.feat_type, self.carla_feat_type = data_obj.feat_type, data_obj.carla_feat_type
-        self.feat_mutable, self.carla_feat_mutable = data_obj.feat_mutable, data_obj.carla_feat_mutable
-        self.feat_cost, self.carla_feat_cost = data_obj.feat_cost, data_obj.carla_feat_cost
-        self.feat_step, self.carla_feat_step = data_obj.feat_step, data_obj.carla_feat_step
-        self.feat_dir, self.carla_feat_dir = data_obj.feat_dir, data_obj.carla_feat_dir
+        # self.framework = 'carla' if self.method_name in ['gs','face','dice','cchvae'] else 'normal'
+        # self.feat_type, self.carla_feat_type = data_obj.feat_type, data_obj.carla_feat_type
+        # self.feat_mutable, self.carla_feat_mutable = data_obj.feat_mutable, data_obj.carla_feat_mutable
+        # self.feat_cost, self.carla_feat_cost = data_obj.feat_cost, data_obj.carla_feat_cost
+        # self.feat_step, self.carla_feat_step = data_obj.feat_step, data_obj.carla_feat_step
+        # self.feat_dir, self.carla_feat_dir = data_obj.feat_dir, data_obj.carla_feat_dir
+        self.feat_type = data_obj.feat_type
+        self.feat_mutable = data_obj.feat_mutable
+        self.feat_step = data_obj.feat_step
+        self.feat_dir = data_obj.feat_dir
         self.feat_protected = data_obj.feat_protected
         self.binary = data_obj.binary
         self.categorical = data_obj.categorical
         self.numerical = data_obj.numerical
-        self.carla_continuous, self.carla_categorical = data_obj.carla_continuous, data_obj.carla_categorical
+        # self.carla_continuous, self.carla_categorical = data_obj.carla_continuous, data_obj.carla_categorical
         self.bin_enc, self.bin_enc_cols  = data_obj.bin_enc, data_obj.bin_enc_cols
         self.cat_enc, self.cat_enc_cols  = data_obj.cat_enc, data_obj.cat_enc_cols
-        self.carla_scaler, self.carla_enc, self.carla_enc_cols = data_obj.carla_scaler, data_obj.carla_enc, data_obj.carla_enc_cols
+        # self.carla_scaler, self.carla_enc, self.carla_enc_cols = data_obj.carla_scaler, data_obj.carla_enc, data_obj.carla_enc_cols
         self.scaler = data_obj.scaler
-        self.data_cols = data_obj.transformed_cols
+        # self.data_cols = data_obj.transformed_cols
+        self.data_cols = data_obj.processed_features
         self.raw_data_cols = data_obj.train_df.columns
-        self.carla_data_cols = data_obj.carla_transformed_cols
+        # self.carla_data_cols = data_obj.carla_transformed_cols
         self.undesired_class = data_obj.undesired_class
         self.desired_class = 1 - self.undesired_class
         self.n_feat = n_feat
-        self.x, self.carla_x, self.original_x, self.x_pred, self.carla_x_pred, self.x_target, self.x_accuracy = {}, {}, {}, {}, {}, {}, {}
+        # self.x, self.carla_x, self.original_x, self.x_pred, self.carla_x_pred, self.x_target, self.x_accuracy = {}, {}, {}, {}, {}, {}, {}
+        self.x, self.original_x, self.x_pred, self.x_target, self.x_accuracy = {}, {}, {}, {}, {}
         self.cf, self.original_cf = {}, {} 
         self.cf_proximity, self.cf_feasibility, self.cf_sparsity, self.cf_validity, self.cf_time = {}, {}, {}, {}, {}
 
@@ -112,7 +230,7 @@ class Evaluator():
         test_data = data_obj.test_df
         test_data_transformed = data_obj.transformed_test_df
         test_data_transformed_index = test_data_transformed.index
-        pred = model_obj.sel.predict(test_data_transformed)
+        pred = model_obj.model.predict(test_data_transformed)
         pred_df = pd.DataFrame(data=pred, index=test_data_transformed_index, columns=['prediction'])
         test_data_with_pred = pd.concat((test_data, pred_df),axis=1)
         for i in self.feat_protected.keys():
@@ -173,7 +291,7 @@ class Evaluator():
         test_data_transformed = data_obj.transformed_test_df
         test_data_transformed_index = test_data_transformed.index
         test_target = data_obj.test_target
-        pred = model_obj.sel.predict(test_data_transformed)
+        pred = model_obj.model.predict(test_data_transformed)
         pred_df = pd.DataFrame(data=pred, index=test_data_transformed_index, columns=['prediction'])
         target_df = pd.DataFrame(data=test_target, index=test_data_transformed_index, columns=['target'])
         test_data_with_pred_target = pd.concat((test_data, pred_df, target_df),axis=1)
@@ -216,7 +334,7 @@ class Evaluator():
         self.stat_parity = self.statistical_parity_eval(stat_proba, stat_length)
         self.eq_odds = self.equalized_odds_eval(odds_proba, odds_length)
 
-    def add_fnr_data(self, desired_ground_truth_test_df, false_undesired_test_df, transformed_false_undesired_test_df):
+    def add_fnr_data(self, data):
         """
         DESCRIPTION:                            Adds the desired ground truth test DataFrame and the false negative test DataFrame
         
@@ -227,32 +345,51 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        self.desired_ground_truth_test_df = desired_ground_truth_test_df
-        self.false_undesired_test_df = false_undesired_test_df
-        self.transformed_false_undesired_test_df = transformed_false_undesired_test_df
+        self.desired_ground_truth_test_df = data.desired_ground_truth_test_df
+        self.false_undesired_test_df = data.false_undesired_test_df
+        self.transformed_false_undesired_test_df = data.transformed_false_undesired_test_df
 
-    def add_specific_x_data(self, idx, x, carla_x, original_x, x_pred, carla_x_pred, x_target):
+    # def add_specific_x_data(self, idx, x, carla_x, original_x, x_pred, carla_x_pred, x_target):
+    #     """
+    #     DESCRIPTION:        Calculates and stores x data found in the Evaluator
+
+    #     INPUT:
+    #     idx:                Index of the instance x
+    #     x:                  Instance of interest in Numpy array
+    #     carla_x:            Instance of interest in CARLA framework format in Numpy array
+    #     original_x:         Instance of interest in original format (before normalization and encoding) in DataFrame
+    #     x_pred:             Predicted label of the instance of interest
+    #     carla_x_pred:       Predicted label of the instance of interest by CARLA model
+    #     x_target:           Ground truth label of the instance of interest
+
+    #     OUTPUT: (None: stored as class attributes)
+    #     """
+    #     self.x[idx] = pd.DataFrame(data=x.reshape(1, -1), index=[idx], columns=self.data_cols)
+    #     self.carla_x[idx] = pd.DataFrame(data=carla_x.reshape(1, -1), index=[idx], columns=self.carla_data_cols)
+    #     self.original_x[idx] = original_x
+    #     self.x_pred[idx] = x_pred[0]
+    #     self.carla_x_pred[idx] = carla_x_pred[0]
+    #     self.x_target[idx] = x_target
+    #     self.x_accuracy[idx] = self.accuracy(idx)
+
+    def add_specific_x_data(self, ioi):
         """
         DESCRIPTION:        Calculates and stores x data found in the Evaluator
 
         INPUT:
-        idx:                Index of the instance x
+        ioi:                Instance of interest object
         x:                  Instance of interest in Numpy array
-        carla_x:            Instance of interest in CARLA framework format in Numpy array
         original_x:         Instance of interest in original format (before normalization and encoding) in DataFrame
         x_pred:             Predicted label of the instance of interest
-        carla_x_pred:       Predicted label of the instance of interest by CARLA model
         x_target:           Ground truth label of the instance of interest
 
         OUTPUT: (None: stored as class attributes)
         """
-        self.x[idx] = pd.DataFrame(data=x.reshape(1, -1), index=[idx], columns=self.data_cols)
-        self.carla_x[idx] = pd.DataFrame(data=carla_x.reshape(1, -1), index=[idx], columns=self.carla_data_cols)
-        self.original_x[idx] = original_x
-        self.x_pred[idx] = x_pred[0]
-        self.carla_x_pred[idx] = carla_x_pred[0]
-        self.x_target[idx] = x_target
-        self.x_accuracy[idx] = self.accuracy(idx)
+        self.x[ioi.idx] = pd.DataFrame(data=ioi.normal_x.reshape(1, -1), index=[ioi.idx], columns=self.data_cols)
+        self.original_x[ioi.idx] = ioi.x
+        self.x_pred[ioi.idx] = ioi.x_label
+        self.x_target[ioi.idx] = ioi.x_target
+        self.x_accuracy[ioi.idx] = self.accuracy(ioi.idx)
 
     def transform_instance(self, instance):
         """
@@ -338,22 +475,51 @@ class Evaluator():
             original_instance_df = pd.concat((original_instance_df, instance_cat_df), axis=1)
         return original_instance_df
 
-    def add_specific_cf_data(self, idx, data_obj, cf, cf_time):
+    # def add_specific_cf_data(self, idx, data_obj, cf, cf_time):
+    #     """
+    #     DESCRIPTION:        Calculates and stores a cf method result and performance metrics into the Pandas DataFrame found in the Evaluator
+
+    #     INPUT:
+    #     idx:                Index of the instance of interest
+    #     data_obj:           Dataset object
+    #     cf:                 Counterfactual instance obtained
+    #     cf_time:            Run time for the counterfactual method used
+    #     """
+    #     if self.framework == 'carla':
+    #         cols = data_obj.carla_transformed_cols
+    #         x = self.carla_x[idx].to_numpy()[0]
+    #     else:
+    #         cols = data_obj.transformed_cols
+    #         x = self.x[idx].to_numpy()[0]
+    #     if cf is not None and not np.isnan(np.sum(cf)):
+    #         if isinstance(cf, pd.DataFrame):
+    #             self.cf[idx] = cf
+    #         elif isinstance(cf, pd.Series):
+    #             cf_np = cf.to_numpy()
+    #             self.cf[idx] = pd.DataFrame(data=cf_np, index=[idx], columns=cols) 
+    #         else:
+    #             self.cf[idx] = pd.DataFrame(data=cf.reshape(1, -1), index=[idx], columns=cols)
+    #     else:
+    #         penalize_instance = self.search_desired_class_penalize(x, data_obj)
+    #         self.cf[idx] = pd.DataFrame(data=[penalize_instance], index=[idx], columns=cols)
+    #     self.cf_validity[idx] = True
+    #     self.original_cf[idx] = self.inverse_transform_original_carla(self.cf[idx]) if self.framework == 'carla' else self.inverse_transform_original(self.cf[idx])
+    #     self.proximity(idx)
+    #     self.feasibility(idx)
+    #     self.sparsity(data_obj, idx)
+    #     self.cf_time[idx] = cf_time
+
+    def add_specific_cf_data(self, counterfactual):
         """
         DESCRIPTION:        Calculates and stores a cf method result and performance metrics into the Pandas DataFrame found in the Evaluator
 
         INPUT:
-        idx:                Index of the instance of interest
-        data_obj:           Dataset object
-        cf:                 Counterfactual instance obtained
-        cf_time:            Run time for the counterfactual method used
+        counterfactual:     Counterfactual object
         """
-        if self.framework == 'carla':
-            cols = data_obj.carla_transformed_cols
-            x = self.carla_x[idx].to_numpy()[0]
-        else:
-            cols = data_obj.transformed_cols
-            x = self.x[idx].to_numpy()[0]
+        idx = counterfactual.ioi.idx
+        cols = counterfactual.data.processed_features
+        x = self.x[idx].to_numpy()[0]
+        cf, cf_time = counterfactual.cf_method.normal_x_cf, counterfactual.cf_method.run_time
         if cf is not None and not np.isnan(np.sum(cf)):
             if isinstance(cf, pd.DataFrame):
                 self.cf[idx] = cf
@@ -363,13 +529,13 @@ class Evaluator():
             else:
                 self.cf[idx] = pd.DataFrame(data=cf.reshape(1, -1), index=[idx], columns=cols)
         else:
-            penalize_instance = self.search_desired_class_penalize(x, data_obj)
+            penalize_instance = self.search_desired_class_penalize(x, counterfactual.data)
             self.cf[idx] = pd.DataFrame(data=[penalize_instance], index=[idx], columns=cols)
         self.cf_validity[idx] = True
         self.original_cf[idx] = self.inverse_transform_original_carla(self.cf[idx]) if self.framework == 'carla' else self.inverse_transform_original(self.cf[idx])
         self.proximity(idx)
         self.feasibility(idx)
-        self.sparsity(data_obj, idx)
+        self.sparsity(counterfactual.data, idx)
         self.cf_time[idx] = cf_time
 
     def accuracy(self, idx):
@@ -427,16 +593,17 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        if self.framework == 'carla':
-            x_idx = self.carla_x[idx]
-            step = self.carla_feat_step
-            types = self.carla_feat_type
-            direc = self.carla_feat_dir
-        else:
-            x_idx = self.x[idx]
-            step = self.feat_step
-            types = self.feat_type
-            direc = self.feat_dir
+        # if self.framework == 'carla':
+        #     x_idx = self.carla_x[idx]
+        #     step = self.carla_feat_step
+        #     types = self.carla_feat_type
+        #     direc = self.carla_feat_dir
+        # else:
+        x_idx = self.x[idx]
+        step = self.feat_step
+        types = self.feat_type
+        direc = self.feat_dir
+        
         toler = 0.000001
         feasibility = True
         if group is not None and cluster_str is None:
@@ -533,10 +700,59 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        pred = model_obj.carla_sel.predict(self.groups_cf[group]) if self.framework == 'carla' else model_obj.sel.predict(self.groups_cf[group])
+        # pred = model_obj.carla_sel.predict(self.groups_cf[group]) if self.framework == 'carla' else model_obj.model.predict(self.groups_cf[group])
+        pred = model_obj.model.predict(self.groups_cf[group])
         self.group_cf_validity[group] = pred != self.undesired_class
 
-    def evaluate_cf_models(self, idx, data_obj, model_obj, epsilon_ft, carla_model, cchvae_model = None, cchvae_model_time = 0):
+    # def evaluate_cf_models(self, idx, data_obj, model_obj, epsilon_ft, carla_model, cchvae_model = None, cchvae_model_time = 0):
+    #     """
+    #     DESCRIPTION:        Evaluates the specific counterfactual method on the isntance of interest
+
+    #     INPUT:
+    #     idx:                Index of the instance of interest
+    #     data_obj:           Dataset object
+    #     model_obj:          Model object
+    #     epsilon_ft:         Parameter for the Feature Tweaking counterfactual method
+    #     carla_model:        CARLA framework classifier model
+    #     x_original:         Instance of interest in the original format (For CARLA framework transformation)
+
+    #     OUTPUT: (None: stored as class attributes)
+    #     """
+    #     x_df = self.x[idx]
+    #     x_np = x_df.to_numpy()[0]
+    #     carla_x_df = self.carla_x[idx]
+    #     x_pred = self.x_pred[idx]
+    #     if 'mutable' in self.method_name:
+    #         mutability_check = False
+    #     else:
+    #         mutability_check = True
+    #     if 'nn' in self.method_name:
+    #         cf, run_time = near_neigh(x_np ,x_pred, data_obj, mutability_check)
+    #     elif 'mo' in self.method_name:
+    #         cf, run_time = min_obs(x_np, x_pred, data_obj, mutability_check)
+    #     elif 'rt' in self.method_name:
+    #         cf, run_time = rf_tweak(x_np, x_pred, model_obj.rf, data_obj, True, mutability_check)
+    #     elif 'cchvae' in self.method_name:
+    #         cf, run_time = cchvae_function(carla_x_df, cchvae_model)
+    #         run_time += cchvae_model_time
+    #     # WORK IN PROGRESS:
+    #     # elif 'ft' in self.method_name:
+    #     #     cf, run_time = feat_tweak(x_np, model_obj.rf, epsilon_ft)
+    #     # elif 'face' in self.method_name:
+    #     #     cf, run_time = face_function(data_obj, carla_model, x_original)
+    #     # elif 'gs' in self.method_name:
+    #     #     cf, run_time = gs_function(data_obj, carla_model, x_original)
+    #     # elif 'dice' in self.method_name:
+    #     #     cf, run_time = dice_function(data_obj, carla_model, x_original)
+    #     # elif 'juice' in self.method_name:
+    #     #     results = JUICE(x_np, x_pred, data_obj, model_obj.sel, 'proximity', mutability_check)
+    #     #     cf, run_time = results[0], results[4]
+
+    #     print(f'  {self.method_name} (time (s): {np.round_(run_time, 2)})')
+    #     print(f'---------------------------')
+    #     self.add_specific_cf_data(idx, data_obj, cf, run_time)
+
+    def evaluate_cf_models(self, idx, data_obj, model_obj, epsilon_ft):
         """
         DESCRIPTION:        Evaluates the specific counterfactual method on the isntance of interest
 
@@ -545,14 +761,13 @@ class Evaluator():
         data_obj:           Dataset object
         model_obj:          Model object
         epsilon_ft:         Parameter for the Feature Tweaking counterfactual method
-        carla_model:        CARLA framework classifier model
         x_original:         Instance of interest in the original format (For CARLA framework transformation)
 
         OUTPUT: (None: stored as class attributes)
         """
         x_df = self.x[idx]
         x_np = x_df.to_numpy()[0]
-        carla_x_df = self.carla_x[idx]
+        # carla_x_df = self.carla_x[idx]
         x_pred = self.x_pred[idx]
         if 'mutable' in self.method_name:
             mutability_check = False
@@ -562,28 +777,15 @@ class Evaluator():
             cf, run_time = near_neigh(x_np ,x_pred, data_obj, mutability_check)
         elif 'mo' in self.method_name:
             cf, run_time = min_obs(x_np, x_pred, data_obj, mutability_check)
+        elif 'cchvae' in self.method_name:
+            cf, run_time = cchvae_function(x_np, x_pred, data_obj, mutability_check)
         elif 'rt' in self.method_name:
             cf, run_time = rf_tweak(x_np, x_pred, model_obj.rf, data_obj, True, mutability_check)
-        elif 'cchvae' in self.method_name:
-            cf, run_time = cchvae_function(carla_x_df, cchvae_model)
-            run_time += cchvae_model_time
-        # WORK IN PROGRESS:
-        # elif 'ft' in self.method_name:
-        #     cf, run_time = feat_tweak(x_np, model_obj.rf, epsilon_ft)
-        # elif 'face' in self.method_name:
-        #     cf, run_time = face_function(data_obj, carla_model, x_original)
-        # elif 'gs' in self.method_name:
-        #     cf, run_time = gs_function(data_obj, carla_model, x_original)
-        # elif 'dice' in self.method_name:
-        #     cf, run_time = dice_function(data_obj, carla_model, x_original)
-        # elif 'juice' in self.method_name:
-        #     results = JUICE(x_np, x_pred, data_obj, model_obj.sel, 'proximity', mutability_check)
-        #     cf, run_time = results[0], results[4]
 
         print(f'  {self.method_name} (time (s): {np.round_(run_time, 2)})')
         print(f'---------------------------')
         self.add_specific_cf_data(idx, data_obj, cf, run_time)
-    
+
     def prepare_groups_clusters_analysis(self):
         """
         DESCRIPTION:            Preallocates the required dictionaries and DataFrames for the analysis of groups and clusters
@@ -737,7 +939,7 @@ class Evaluator():
                 model = model_obj.carla_sel
             else:
                 x_cluster_df = self.x_clusters[cluster_str]
-                model = model_obj.sel
+                model = model_obj.model
             x_cluster = x_cluster_df.to_numpy()[0]
             x_cluster_pred = model.predict(x_cluster.reshape(1, -1))
             self.cluster_validity[cluster_str] = x_cluster_pred == self.undesired_class

@@ -275,13 +275,13 @@ class Dataset:
         OUTPUT: (None: stored as class attributes)
         undesired_test_df:                  DataFrame containing the original instances with the undesired predicted label
         undesired_test_np:                  Numpy array containing the original instances with the undesired predicted label
-        undesired_transformed_test_df:      DataFrame containing the original instances with the undesired predicted label
-        undesired_transformed_test_np:      Numpy array containing the original instances with the undesired predicted label
+        undesired_transformed_test_df:      DataFrame containing the transformed instances with the undesired predicted label
+        undesired_transformed_test_np:      Numpy array containing the transformed instances with the undesired predicted label
         undesired_test_target:              Ground truth label of the instances predicted with the undesired label
         """
         undesired_test_df = self.test_df.copy()
         undesired_transformed_test_df = self.transformed_test_df.copy()
-        undesired_test_df['pred'] = model.sel.predict(self.transformed_test_df)
+        undesired_test_df['pred'] = model.model.predict(self.transformed_test_df)
         undesired_test_target = self.test_target.loc[undesired_test_df['pred'] == self.undesired_class]
         undesired_transformed_test_df = undesired_transformed_test_df.loc[undesired_test_df['pred'] == self.undesired_class]
         undesired_test_df = undesired_test_df.loc[undesired_test_df['pred'] == self.undesired_class]

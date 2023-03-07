@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import time
 import copy
-from carla.recourse_methods import CCHVAE
+# from carla.recourse_methods import CCHVAE
 
 def cchvae_function(x_carla_df, cchvae_model):
     """
