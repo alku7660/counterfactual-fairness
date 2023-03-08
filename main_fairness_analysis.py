@@ -25,7 +25,6 @@ n_feat = 50                # Number of examples to generate synthetically per fe
 epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feature tweaking algorithm
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
-perc = 0.1                   # Percentage of false negative test samples to consider for the counterfactuals search
 np.random.seed(seed_int)
 
 if __name__=='__main__':
@@ -40,7 +39,7 @@ if __name__=='__main__':
         data.undesired_test(model)
         
         for method_str in methods_to_run:
-        
+            num_instances = 5          # Number of false negative test samples to consider for the counterfactuals search
             print(f'---------------------------------------')  
             print(f'                    Dataset: {data_str}')
             print(f'                     Method: {method_str}')
@@ -64,8 +63,8 @@ if __name__=='__main__':
             cf_evaluator.add_fairness_measures(data, model)
             # cf_evaluator.add_fnr_data(desired_ground_truth_test_df, false_undesired_test_df, transformed_false_undesired_test_df)
             cf_evaluator.add_fnr_data(data)
-            
-            for i in range(int(len(data.false_undesired_test_df)*perc)):
+            num_instances = num_instances if int(len(data.false_undesired_test_df)) > num_instances else int(len(data.false_undesired_test_df))
+            for i in range(int(len(num_instances))):
                 
                 ioi = IOI(i, data, model, type='euclidean')
                 print(f'---------------------------')

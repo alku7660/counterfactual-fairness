@@ -181,10 +181,7 @@ class Evaluator():
         OUTPUT:
         penalize_instance:  The furthest training instance available
         """
-        if self.framework == 'carla':
-            data_np = data.carla_transformed_train_np  
-        else:
-            data_np = data.transformed_train_np
+        data_np = data.transformed_train_np
         train_desired_class = data_np[data.train_target != self.undesired_class]
         sorted_train_x = sort_data_distance(x, train_desired_class, data.train_target[data.train_target != self.undesired_class])
         penalize_instance = sorted_train_x[-1][0]
@@ -411,21 +408,21 @@ class Evaluator():
         transformed_instance_df = pd.concat((enc_instance_bin_df, enc_instance_cat_df, scaled_instance_num_df), axis=1)
         return transformed_instance_df
     
-    def transform_instance_to_carla(self, instance):
-        """
-        DESCRIPTION:            Transforms an instance to the preprocessed features in the CARLA framework
+    # def transform_instance_to_carla(self, instance):
+    #     """
+    #     DESCRIPTION:            Transforms an instance to the preprocessed features in the CARLA framework
 
-        INPUT:
-        instance:               Instance of interest
+    #     INPUT:
+    #     instance:               Instance of interest
 
-        OUTPUT:
-        transformed_instance:   Transformed instance of interest in the CARLA framework
-        """
-        con_data, cat_data = instance[self.carla_continuous], instance[self.carla_categorical]
-        scaled_con_data, enc_cat_data = self.carla_scaler.transform(con_data), self.carla_enc.transform(cat_data)
-        scaled_con_df, enc_cat_df = pd.DataFrame(scaled_con_data, index=instance.index, columns=self.carla_continuous), pd.DataFrame(enc_cat_data, index=instance.index, columns=self.carla_enc_cols)
-        carla_instance_df = pd.concat((scaled_con_df, enc_cat_df), axis=1)
-        return carla_instance_df
+    #     OUTPUT:
+    #     transformed_instance:   Transformed instance of interest in the CARLA framework
+    #     """
+    #     con_data, cat_data = instance[self.carla_continuous], instance[self.carla_categorical]
+    #     scaled_con_data, enc_cat_data = self.carla_scaler.transform(con_data), self.carla_enc.transform(cat_data)
+    #     scaled_con_df, enc_cat_df = pd.DataFrame(scaled_con_data, index=instance.index, columns=self.carla_continuous), pd.DataFrame(enc_cat_data, index=instance.index, columns=self.carla_enc_cols)
+    #     carla_instance_df = pd.concat((scaled_con_df, enc_cat_df), axis=1)
+    #     return carla_instance_df
 
     def inverse_transform_original(self, instance):
         """
@@ -453,27 +450,27 @@ class Evaluator():
             original_instance_df = pd.concat((original_instance_df, instance_num_pd), axis=1)
         return original_instance_df
 
-    def inverse_transform_original_carla(self, instance):
-        """
-        DESCRIPTION:            Transforms an instance from CARLA framework format to the original features
+    # def inverse_transform_original_carla(self, instance):
+    #     """
+    #     DESCRIPTION:            Transforms an instance from CARLA framework format to the original features
         
-        INPUT:
-        instance:               Instance of interest
+    #     INPUT:
+    #     instance:               Instance of interest
 
-        OUTPUT:
-        original_instance_df:   Instance of interest in the original feature format
-        """
-        instance_index = instance.index
-        original_instance_df = pd.DataFrame(index=instance_index)
-        if len(self.carla_continuous) > 0:
-            instance_con = self.carla_scaler.inverse_transform(instance[self.carla_continuous])
-            instance_con_df = pd.DataFrame(data=instance_con, index=instance_index, columns=self.carla_continuous)
-            original_instance_df = pd.concat((original_instance_df, instance_con_df), axis=1)
-        if len(self.carla_enc_cols) > 0:
-            instance_cat = self.carla_enc.inverse_transform(instance[self.carla_enc_cols])
-            instance_cat_df = pd.DataFrame(data=instance_cat, index=instance_index, columns=self.carla_categorical)
-            original_instance_df = pd.concat((original_instance_df, instance_cat_df), axis=1)
-        return original_instance_df
+    #     OUTPUT:
+    #     original_instance_df:   Instance of interest in the original feature format
+    #     """
+    #     instance_index = instance.index
+    #     original_instance_df = pd.DataFrame(index=instance_index)
+    #     if len(self.carla_continuous) > 0:
+    #         instance_con = self.carla_scaler.inverse_transform(instance[self.carla_continuous])
+    #         instance_con_df = pd.DataFrame(data=instance_con, index=instance_index, columns=self.carla_continuous)
+    #         original_instance_df = pd.concat((original_instance_df, instance_con_df), axis=1)
+    #     if len(self.carla_enc_cols) > 0:
+    #         instance_cat = self.carla_enc.inverse_transform(instance[self.carla_enc_cols])
+    #         instance_cat_df = pd.DataFrame(data=instance_cat, index=instance_index, columns=self.carla_categorical)
+    #         original_instance_df = pd.concat((original_instance_df, instance_cat_df), axis=1)
+    #     return original_instance_df
 
     # def add_specific_cf_data(self, idx, data_obj, cf, cf_time):
     #     """
@@ -532,7 +529,7 @@ class Evaluator():
             penalize_instance = self.search_desired_class_penalize(x, counterfactual.data)
             self.cf[idx] = pd.DataFrame(data=[penalize_instance], index=[idx], columns=cols)
         self.cf_validity[idx] = True
-        self.original_cf[idx] = self.inverse_transform_original_carla(self.cf[idx]) if self.framework == 'carla' else self.inverse_transform_original(self.cf[idx])
+        self.original_cf[idx] = self.inverse_transform_original(self.cf[idx])
         self.proximity(idx)
         self.feasibility(idx)
         self.sparsity(counterfactual.data, idx)
@@ -562,7 +559,7 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        x = self.carla_x[idx] if self.framework == 'carla' else self.x[idx]
+        x = self.x[idx]
         if group is not None and cluster_str is None:
             cf = self.groups_cf[group]
         elif group is None and cluster_str is not None:
@@ -660,12 +657,8 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        if self.framework == 'carla':
-            x = self.carla_x[idx]
-            cat = data_obj.carla_feat_cat
-        else:
-            x = self.x[idx]
-            cat = data_obj.feat_cat
+        x = self.x[idx]
+        cat = data_obj.feat_cat
         if group is not None and cluster_str is None:
             cf = self.groups_cf[group]
         elif group is None and cluster_str is not None:
@@ -818,7 +811,7 @@ class Evaluator():
         original_x_df = pd.concat(self.original_x.values(), axis=0)
         cf_df = pd.concat(self.cf.values(), axis=0)
         self.groups_cf['all'] = cf_df.mean(axis=0).to_frame().T
-        original_all_cf = self.inverse_transform_original_carla(self.groups_cf['all']) if self.framework == 'carla' else self.inverse_transform_original(self.groups_cf['all'])
+        original_all_cf = self.inverse_transform_original(self.groups_cf['all'])
         self.original_groups_cf['all'] = original_all_cf
         for idx in self.original_x.keys():
             self.proximity(idx, group='all')
@@ -833,7 +826,7 @@ class Evaluator():
                 feat_values_idx = original_x_df_feat_val.index.tolist()
                 cf_df_feat_val = cf_df.loc[feat_values_idx,:]
                 self.groups_cf[feat_val_name] = cf_df_feat_val.mean(axis=0).to_frame().T
-                original_feat_val_cf = self.inverse_transform_original_carla(self.groups_cf[feat_val_name]) if self.framework == 'carla' else self.inverse_transform_original(self.groups_cf[feat_val_name])
+                original_feat_val_cf = self.inverse_transform_original(self.groups_cf[feat_val_name])
                 self.original_groups_cf[feat_val_name] = original_feat_val_cf
                 for idx in self.original_x.keys():
                     self.proximity(idx, group=feat_val_name)
@@ -849,14 +842,15 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)      
         """
-        self.x_clusters, self.x_clusters_carla, self.original_x_clusters = {}, {}, {}
+        # self.x_clusters, self.x_clusters_carla, self.original_x_clusters = {}, {}, {}
+        self.x_clusters, self.original_x_clusters = {}, {}
         self.x_clusters_cf, self.original_x_clusters_cf = {}, {}
         x_df = pd.concat(self.x.values(), axis=0)
         original_x_df = pd.concat(self.original_x.values(), axis=0)
         x_cluster_all = x_df.mean(axis=0).to_frame().T
         self.original_x_clusters['all'] = self.inverse_transform_original(x_cluster_all)
         self.x_clusters['all'] = self.transform_instance(self.original_x_clusters['all'])
-        self.x_clusters_carla['all'] = self.transform_instance_to_carla(self.original_x_clusters['all'])
+        # self.x_clusters_carla['all'] = self.transform_instance_to_carla(self.original_x_clusters['all'])
         for feat in self.feat_protected:
             feat_unique_val = original_x_df[feat].unique()
             for feat_val in feat_unique_val:
@@ -867,7 +861,7 @@ class Evaluator():
                 x_cluster_feat_val = x_df_feat_val.mean(axis=0).to_frame().T
                 self.original_x_clusters[feat_val_name] = self.inverse_transform_original(x_cluster_feat_val)
                 self.x_clusters[feat_val_name] = self.transform_instance(self.original_x_clusters[feat_val_name])
-                self.x_clusters_carla[feat_val_name] = self.transform_instance_to_carla(self.original_x_clusters[feat_val_name]) 
+                # self.x_clusters_carla[feat_val_name] = self.transform_instance_to_carla(self.original_x_clusters[feat_val_name]) 
     
     def cluster_search_desired_class_penalize(self, x_cluster, data):
         """
@@ -880,10 +874,7 @@ class Evaluator():
         OUTPUT:
         penalize_instance:  The furthest training instance available
         """
-        if self.framework == 'carla':
-            data_np = data.carla_transformed_train_np  
-        else:
-            data_np = data.transformed_train_np
+        data_np = data.transformed_train_np
         train_desired_class = data_np[data.train_target != self.undesired_class]
         sorted_train_x = sort_data_distance(x_cluster, train_desired_class, data.train_target[data.train_target != self.undesired_class])
         penalize_instance = sorted_train_x[-1][0]
@@ -901,27 +892,21 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        if self.framework == 'carla':
-            cols = self.carla_data_cols
-        else:
-            cols = self.data_cols
+        cols = self.data_cols
         if cluster_cf is None:
             cluster_cf = self.cluster_search_desired_class_penalize(x_cluster, data_obj)
         else:
             cluster_cf = cluster_cf
         cluster_cf_df = pd.DataFrame(cluster_cf.reshape(1, -1), index=[0], columns=cols)
         self.x_clusters_cf[cluster_str] = cluster_cf_df
-        if self.framework == 'carla':
-            self.original_x_clusters_cf[cluster_str] = self.inverse_transform_original_carla(cluster_cf_df)
-        else:
-            self.original_x_clusters_cf[cluster_str] = self.inverse_transform_original(cluster_cf_df)
+        self.original_x_clusters_cf[cluster_str] = self.inverse_transform_original(cluster_cf_df)
         self.cluster_cf_time[cluster_str] = run_time
         for idx in self.x.keys():
             self.proximity(idx, cluster_str=cluster_str)
             self.feasibility(idx, cluster_str=cluster_str)
             self.sparsity(data_obj, idx, cluster_str=cluster_str)
 
-    def add_clusters_cf(self, data_obj, model_obj, carla_model, cchvae_model=None, cchvae_model_time=0):
+    def add_clusters_cf(self, data_obj, model_obj):
         """
         DESCRIPTION:            Find counterfactuals to the clusters found
 
@@ -934,12 +919,8 @@ class Evaluator():
         """
         clusters_list = self.x_clusters.keys()
         for cluster_str in clusters_list:
-            if self.framework == 'carla':
-                x_cluster_df = self.x_clusters_carla[cluster_str]
-                model = model_obj.carla_sel
-            else:
-                x_cluster_df = self.x_clusters[cluster_str]
-                model = model_obj.model
+            x_cluster_df = self.x_clusters[cluster_str]
+            model = model_obj.model
             x_cluster = x_cluster_df.to_numpy()[0]
             x_cluster_pred = model.predict(x_cluster.reshape(1, -1))
             self.cluster_validity[cluster_str] = x_cluster_pred == self.undesired_class
