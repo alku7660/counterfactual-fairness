@@ -8,10 +8,8 @@ Imports
 import numpy as np
 import pandas as pd
 from support import euclidean, sort_data_distance
-from nn_method import near_neigh
-from mo import min_obs
-from rt import rf_tweak
 from support import verify_feasibility
+from scipy.stats import norm
 import copy
 
 def distance_calculation(x, y, data, type='euclidean'):
@@ -580,39 +578,6 @@ class Evaluator():
         """
         pred = model_obj.model.predict(self.groups_cf[group])
         self.group_cf_validity[group] = pred != self.undesired_class
-
-    def evaluate_cf_models(self, idx, data_obj, model_obj, epsilon_ft):
-        """
-        DESCRIPTION:        Evaluates the specific counterfactual method on the isntance of interest
-
-        INPUT:
-        idx:                Index of the instance of interest
-        data_obj:           Dataset object
-        model_obj:          Model object
-        epsilon_ft:         Parameter for the Feature Tweaking counterfactual method
-        x_original:         Instance of interest in the original format (For CARLA framework transformation)
-
-        OUTPUT: (None: stored as class attributes)
-        """
-        x_df = self.x[idx]
-        x_np = x_df.to_numpy()[0]
-        x_pred = self.x_pred[idx]
-        if 'mutable' in self.method_name:
-            mutability_check = False
-        else:
-            mutability_check = True
-        if 'nn' in self.method_name:
-            cf, run_time = near_neigh(x_np ,x_pred, data_obj, mutability_check)
-        elif 'mo' in self.method_name:
-            cf, run_time = min_obs(x_np, x_pred, data_obj, mutability_check)
-        elif 'cchvae' in self.method_name:
-            cf, run_time = cchvae_function(x_np, x_pred, data_obj, mutability_check)
-        elif 'rt' in self.method_name:
-            cf, run_time = rf_tweak(x_np, x_pred, model_obj.rf, data_obj, True, mutability_check)
-
-        print(f'  {self.method_name} (time (s): {np.round_(run_time, 2)})')
-        print(f'---------------------------')
-        self.add_specific_cf_data(idx, data_obj, cf, run_time)
 
     def prepare_groups_clusters_analysis(self):
         """
