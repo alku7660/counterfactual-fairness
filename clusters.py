@@ -34,8 +34,8 @@ class CLUSTERS:
         """
         if method == 'mean':
             centroid = instances_df.mean(axis=0).to_frame().T
-        elif method == 'max':
-            centroid = instances_df.max(axis=0).to_frame().T
+        elif method == 'mode':
+            centroid = instances_df['Age'].mode(axis=0)
         return centroid
 
     def find_viable_clusters(self, model):
@@ -75,8 +75,8 @@ class CLUSTERS:
             sensitive_group_cluster_centroids_dict = dict()
             for feat_val in idx_list_by_sensitive_group:
                 idx_list_feat_val = idx_list_by_sensitive_group[feat_val]
-                sensitive_group_instances_df = self.transformed_false_undesired_test_df.iloc[idx_list_feat_val]
-                centroid = self.calculate_centroid(sensitive_group_instances_df, method='mean')
+                sensitive_group_instances_df = self.transformed_false_undesired_test_df.loc[idx_list_feat_val]
+                centroid = self.calculate_centroid(sensitive_group_instances_df, method='mode')
                 centroid_label = model.model.predict(centroid)
                 if centroid_label != self.undesired_class:
                     clusters_instances_list, clusters_centroids_list = hierarchical_clusters(sensitive_group_instances_df)

@@ -17,7 +17,7 @@ from support import path_here, save_obj
 import time
 
 datasets = ['german','dutch'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
-methods_to_run = ['cchvae','ijuice'] # ['nn','mo','ft','rt','gs','face','dice','cchvae'] 
+methods_to_run = ['nn','mo','cchvae','ijuice'] # ['nn','mo','ft','rt','gs','face','dice','cchvae'] 
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -62,22 +62,6 @@ if __name__=='__main__':
                         print(f'---------------------------')
                         counterfactual = Counterfactual(data, model, method_str, centroid, type='euclidean')
                         cf_evaluator.add_cf_data(counterfactual, centroid)
-                # cf_evaluator.add_specific_x_data(idx, x_np, carla_x_np, x_original_df, x_label, carla_x_label, x_target)
-                
-                """
-                Main function: Find CF for all FN
-                """
-                # cf_evaluator.evaluate_cf_models(idx, data, model, epsilon_ft, carla_model, cchvae_model=cchvae_model, cchvae_model_time=cchvae_model_time)
-                # cf_evaluator.evaluate_cf_models(idx, data, model, epsilon_ft)
-                
-            """
-            Additional functions: Find group counterfactuals and clusters counterfactuals
-            """
-            # cf_evaluator.add_clusters()
-            # cf_evaluator.prepare_groups_clusters_analysis()
-            # cf_evaluator.add_clusters_cf(data, model, carla_model, cchvae_model=cchvae_model, cchvae_model_time=cchvae_model_time)
-            # cf_evaluator.add_clusters_cf(data, model)
-            # cf_evaluator.add_groups_cf(data, model)
                             
             print(f'---------------------------')
             print(f'  DONE: {data_str} CF Evaluation')
