@@ -15,7 +15,7 @@ class Model:
         """
         Method that delivers the best model and its parameters according to the Grid Search done
         """
-        if data_str in ['bank','ionosphere','german','dutch','kdd_census','student','heart']:
+        if data_str in ['bank','ionosphere','german','dutch','student','heart','kdd_census']:
             best = 'rf'
         elif data_str in ['adult','compass','credit','diabetes','german','law','oulad','synthetic_athlete','synthetic_disease']:
             best = 'mlp'
@@ -49,7 +49,7 @@ class Model:
         """
         Constructs a model for the dataset using sklearn modules
         """
-        grid_search_results = pd.read_csv(results_grid_search+'grid_search_final.csv', index_col = ['dataset','model'])
+        grid_search_results = pd.read_csv(results_grid_search+'grid_search.csv', index_col = ['dataset','model'])
         sel_model_str, params_best, params_rf = self.best_model_params(grid_search_results, data.name)
         best_model, rf_model = self.classifier(sel_model_str, params_best, params_rf, data.transformed_train_np, data.train_target, data.transformed_test_np, data.test_target)
         return best_model, rf_model

@@ -33,7 +33,7 @@ def min_obs(counterfactual):
         data_distance_mo.append((all_data[i], dist, all_labels[i]))      
     data_distance_mo.sort(key=lambda x: x[1])
     for i in data_distance_mo:
-        if i[2] != ioi.label and not np.array_equal(ioi.normal_x, i[0]):
+        if i[2] != ioi.x_label and not np.array_equal(ioi.normal_x, i[0]):
             mo_cf = i[0]
             break
     if mo_cf is None:

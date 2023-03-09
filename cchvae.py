@@ -256,13 +256,13 @@ class MyOwnDataSet(Data):
         return self._dataset_test
 
     def transform(self, df):
-        df_cat = pd.DataFrame(self._mlmodel.data.encoder.transform(df[self._mlmodel.data.categorical]), index=df.index, columns=list(self.encoder.get_feature_names(self._categorical)))
+        df_cat = pd.DataFrame(self._mlmodel.data.encoder.transform(df[self._mlmodel.data.categorical]), index=df.index, columns=list(self.encoder.get_feature_names_out(self._categorical)))
         df_con = pd.DataFrame(self._mlmodel.data.scaler.transform(df[self._mlmodel.data.continuous]), index=df.index, columns=self._mlmodel.data.continuous)
         transformed_df = pd.concat((df_con, df_cat), axis=1)
         return transformed_df
     
     def inverse_transform(self, df):
-        df_cat = pd.DataFrame(self.encoder.inverse_transform(df[list(self.encoder.get_feature_names(self._categorical))]), index=df.index, columns=self._categorical)
+        df_cat = pd.DataFrame(self.encoder.inverse_transform(df[list(self.encoder.get_feature_names_out(self._categorical))]), index=df.index, columns=self._categorical)
         df_con = pd.DataFrame(self.scaler.inverse_transform(df[self._continuous]), index=df.index, columns=self._continuous)
         original_df = pd.concat((df_con, df_cat), axis=1)
         return original_df
@@ -554,7 +554,7 @@ class CCHVAE(RecourseMethod):
 
     def get_counterfactuals(self, factuals: pd.DataFrame) -> pd.DataFrame:
         # factuals = self._mlmodel.get_ordered_features(factuals)
-        encoded_feature_names = self._mlmodel.data.encoder.get_feature_names(self._mlmodel.data.categorical)
+        encoded_feature_names = self._mlmodel.data.encoder.get_feature_names_out(self._mlmodel.data.categorical)
         cat_features_indices = [factuals.columns.get_loc(feature) for feature in encoded_feature_names]
         df_cfs = factuals.apply(lambda x: self._counterfactual_search(self._step, x.reshape((1, -1)), cat_features_indices), raw=True, axis=1)
         cf_pred = self._mlmodel.predict(df_cfs)

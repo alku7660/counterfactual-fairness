@@ -125,6 +125,10 @@ def get_data_names(datasets):
             data_dict[i] = 'Oulad'
         elif i == 'law':
             data_dict[i] = 'Law'
+        elif i == 'synthetic_athlete':
+            data_dict[i] = 'Athlete'
+        elif i == 'synthetic_disease':
+            data_dict[i] = 'Disease'
     return data_dict
 
 def get_metric_names(metrics):

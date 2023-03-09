@@ -171,7 +171,6 @@ class Dataset:
         del self.desired_ground_truth_test_df[self.label_name[0]]
         del self.false_undesired_test_df[self.label_name[0]]
 
-
     def define_feat_type(self):
         """
         Method that obtains a feature type vector corresponding to each of the features

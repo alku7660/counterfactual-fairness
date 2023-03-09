@@ -1,17 +1,18 @@
 from nnt import NN
 from mocopy import MO
 from cchvae import CCHVAE
-# from ijuice import IJUICE
+from ijuice import IJUICE
 
 
 class Counterfactual:
 
-    def __init__(self, data, model, method, ioi, type='euclidean'):
+    def __init__(self, data, model, method, ioi, type='euclidean', lagrange=0.5):
         self.data = data
         self.model = model
         self.method = method
         self.ioi = ioi
         self.type = type
+        self.lagrange = lagrange
         self.cf_method = self.select_cf_method()
 
     def select_cf_method(self):
@@ -25,8 +26,8 @@ class Counterfactual:
             cf_method = MO(self)
         elif self.method == 'cchvae':
             cf_method = CCHVAE(self)
-        # elif self.method == 'ijuice':
-        #     cf_method = IJUICE(self)
+        elif self.method == 'ijuice':
+            cf_method = IJUICE(self)
         # elif self.method == 'ft':
         #     cf_method = FT(self)
         # elif self.method == 'rt':
