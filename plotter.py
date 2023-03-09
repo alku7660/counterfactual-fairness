@@ -16,7 +16,7 @@ from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
 import seaborn as sns
-from main_fairness_analysis import datasets, methods_to_run
+from fairness_individual import datasets, methods_to_run
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
     """

@@ -7,36 +7,37 @@ Imports
 """
 import numpy as np
 import time
-from support import sort_data_distance, verify_feasibility
+from evaluator_constructor import distance_calculation
 
-#Minimum Observable method
-def min_obs(x, x_label, data, mutability_check=True):
-    """
-    DESCRIPTION:        Returns the minimum observable counterfactual with respect to instance of interest x
-    
-    INPUT:
-    x:                  Instance of interest
-    x_label:            Label of instance of interest x
-    data:               Dataset object
+class MO:
 
-    OUTPUT:
-    mo_cf:              Minimum observable counterfactual to the instance of interest x
-    mo_cf_dist_x:       Distance between mo_cf and instance of interest x
+    def __init__(self, counterfactual) -> None:
+        self.normal_x_cf, self.run_time = min_obs(counterfactual)
+
+def min_obs(counterfactual):
     """
+    Function that returns the minimum observable counterfactual with respect to instance of interest x
+    """
+    data = counterfactual.data
+    ioi = counterfactual.ioi
+    model = counterfactual.model
+    type = counterfactual.type
+
     start_time = time.time()
     mo_cf = None
-    all_data = np.vstack((data.transformed_train_np, data.undesired_transformed_test_np))
-    all_labels = np.hstack((data.train_target, data.undesired_test_target))
-    data_distance_mo = sort_data_distance(x, all_data, all_labels)
+    all_data = np.vstack((data.transformed_train_np, data.transformed_test_np))
+    all_labels = np.hstack((data.train_target, model.model.predict(data.transformed_test_np)))
+    data_distance_mo = []
+    for i in range(all_data.shape[0]):
+        dist = distance_calculation(all_data[i], ioi.normal_x, data)
+        data_distance_mo.append((all_data[i], dist, all_labels[i]))      
+    data_distance_mo.sort(key=lambda x: x[1])
     for i in data_distance_mo:
-        if i[2] != x_label and verify_feasibility(x, i[0], data.feat_mutable, data.feat_type, data.feat_step, data.feat_dir, mutability_check) and not np.array_equal(x, i[0]):
+        if i[2] != ioi.x_label and not np.array_equal(ioi.normal_x, i[0]):
             mo_cf = i[0]
             break
     if mo_cf is None:
         print(f'MO could not find a feasible CF!')
-        for i in data_distance_mo:
-            if i[2] != x_label and not np.array_equal(x, i[0]):
-                mo_cf = i[0]
         end_time = time.time()
         return mo_cf, end_time - start_time
     end_time = time.time()

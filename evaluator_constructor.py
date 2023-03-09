@@ -11,7 +11,7 @@ from support import euclidean, sort_data_distance
 from nn_method import near_neigh
 from mo import min_obs
 from rt import rf_tweak
-from cchvae_cf import cchvae_function
+from support import verify_feasibility
 import copy
 
 def distance_calculation(x, y, data, type='euclidean'):
@@ -154,9 +154,7 @@ class Evaluator():
         self.undesired_class = data_obj.undesired_class
         self.desired_class = 1 - self.undesired_class
         self.n_feat = n_feat
-        self.x, self.original_x, self.x_pred, self.x_target, self.x_accuracy = {}, {}, {}, {}, {}
-        self.cf, self.original_cf = {}, {} 
-        self.cf_proximity, self.cf_feasibility, self.cf_sparsity, self.cf_validity, self.cf_time = {}, {}, {}, {}, {}
+        self.cf_df = pd.DataFrame()
 
     def search_desired_class_penalize(self, x, data):
         """
@@ -399,7 +397,7 @@ class Evaluator():
             original_instance_df = pd.concat((original_instance_df, instance_num_pd), axis=1)
         return original_instance_df
 
-    def add_specific_cf_data(self, counterfactual):
+    def add_specific_cf_data(self, counterfactual, centroid):
         """
         DESCRIPTION:        Calculates and stores a cf method result and performance metrics into the Pandas DataFrame found in the Evaluator
 
@@ -408,7 +406,7 @@ class Evaluator():
         """
         idx = counterfactual.ioi.idx
         cols = counterfactual.data.processed_features
-        x = self.x[idx].to_numpy()[0]
+        x = centroid.x
         cf, cf_time = counterfactual.cf_method.normal_x_cf, counterfactual.cf_method.run_time
         if cf is not None and not np.isnan(np.sum(cf)):
             if isinstance(cf, pd.DataFrame):
@@ -714,7 +712,7 @@ class Evaluator():
         penalize_instance = sorted_train_x[-1][0]
         return penalize_instance
 
-    def add_cluster_cf_data(self, cluster_str, x_cluster, data_obj, cluster_cf, run_time):
+    def add_cf_data(self, counterfactual, centroid):
         """
         DESCRIPTION:            Stores the cluster CF and obtains all the performance measures for the cluster counterfactual 
         
@@ -726,52 +724,18 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        cols = self.data_cols
-        if cluster_cf is None:
-            cluster_cf = self.cluster_search_desired_class_penalize(x_cluster, data_obj)
-        else:
-            cluster_cf = cluster_cf
-        cluster_cf_df = pd.DataFrame(cluster_cf.reshape(1, -1), index=[0], columns=cols)
-        self.x_clusters_cf[cluster_str] = cluster_cf_df
-        self.original_x_clusters_cf[cluster_str] = self.inverse_transform_original(cluster_cf_df)
-        self.cluster_cf_time[cluster_str] = run_time
-        for idx in self.x.keys():
-            self.proximity(idx, cluster_str=cluster_str)
-            self.feasibility(idx, cluster_str=cluster_str)
-            self.sparsity(data_obj, idx, cluster_str=cluster_str)
-
-    def add_clusters_cf(self, data_obj, model_obj):
+        cf_proximity = distance_calculation(centroid.normal_x, counterfactual.normal_x_cf)
+        cf_feasibility = verify_feasibility(centroid.normal_x, counterfactual.normal_x_cf, counterfactual.data)
+        x_cf = self.inverse_transform_original(counterfactual.normal_x_cf)
+        cols = ['feature','feat_value','centroid_idx','normal_centroid','centroid',
+                'normal_cf','cf','cf_proximity','cf_feasibility','cf_time']
+        data_list = [centroid.feat, centroid.feat_val, centroid.idx, centroid.normal_x, centroid.x,
+                counterfactual.normal_x_cf, x_cf, cf_proximity, cf_feasibility, counterfactual.run_time]
+        data_df = pd.DataFrame(data=data_list, index=len(self.cf_df), columns=cols)
+        self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
+    
+    def add_cluster_data(self, cluster_obj):
         """
-        DESCRIPTION:            Find counterfactuals to the clusters found
-
-        INPUT:
-        data_obj:               Dataset object
-        model_obj:              Model object
-        carla_model:            CARLA framework model
-
-        OUTPUT: (None: stored as class attributes)
+        Adds the data from the clusters (cluster object)
         """
-        clusters_list = self.x_clusters.keys()
-        for cluster_str in clusters_list:
-            x_cluster_df = self.x_clusters[cluster_str]
-            model = model_obj.model
-            x_cluster = x_cluster_df.to_numpy()[0]
-            x_cluster_pred = model.predict(x_cluster.reshape(1, -1))
-            self.cluster_validity[cluster_str] = x_cluster_pred == self.undesired_class
-            if x_cluster_pred != self.undesired_class:
-                cluster_cf, run_time = x_cluster, 0
-            else:
-                if 'mutable' in self.method_name:
-                    mutability_check = False
-                else:
-                    mutability_check = True
-                if 'nn' in self.method_name:
-                    cluster_cf, run_time = near_neigh(x_cluster, x_cluster_pred, data_obj, mutability_check)
-                elif 'mo' in self.method_name:
-                    cluster_cf, run_time = min_obs(x_cluster, x_cluster_pred, data_obj, mutability_check)
-                elif 'rt' in self.method_name:
-                    cluster_cf, run_time = rf_tweak(x_cluster, x_cluster_pred, model_obj.rf, data_obj, feasibility_check=True, mutability_check=mutability_check)
-                elif 'cchvae' in self.method_name:
-                    cluster_cf, run_time = cchvae_function(x_cluster_df, cchvae_model)
-                    run_time += cchvae_model_time
-            self.add_cluster_cf_data(cluster_str, x_cluster, data_obj, cluster_cf, run_time)
+        self.cluster_obj = cluster_obj

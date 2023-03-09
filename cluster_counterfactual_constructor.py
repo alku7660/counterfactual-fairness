@@ -6,18 +6,18 @@ from ijuice import IJUICE
 
 class Counterfactual:
 
-    def __init__(self, data, model, method, ioi, type='euclidean', lagrange=0.5):
+    def __init__(self, data, model, method, centroid, type='euclidean', lagrange=0.5):
         self.data = data
         self.model = model
         self.method = method
-        self.ioi = ioi
+        self.ioi = centroid
         self.type = type
         self.lagrange = lagrange
         self.cf_method = self.select_cf_method()
 
     def select_cf_method(self):
         """
-        Method that selects the method to find the counterfactual and stores it in "normal_x_cf"
+        Selects the method to find the counterfactual and stores it in "normal_x_cf"
         ['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice','ijuice']
         """
         if self.method == 'nn':

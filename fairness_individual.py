@@ -15,7 +15,7 @@ from support import path_here, save_obj
 import time
 
 datasets = ['german','dutch'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
-methods_to_run = ['nn','mo','cchvae','ijuice'] # ['nn','mo','ft','rt','gs','face','dice','cchvae'] 
+methods_to_run = ['cchvae','ijuice'] # ['nn','mo','ft','rt','gs','face','dice','cchvae'] 
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -25,22 +25,20 @@ only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class 
 np.random.seed(seed_int)
 
 if __name__=='__main__':
-
     for data_str in datasets:
-
         data = load_dataset(data_str, train_fraction, seed_int, step)
         model = Model(data)
         data.undesired_test(model)
-        print(f'---------------------------------------')  
-        print(f'                    Dataset: {data_str}')
-        print(f'                     Method: {method_str}')
-        print(f'        Train dataset shape: {data.train_df.shape}')
-        print(f'         Test dataset shape: {data.false_undesired_test_df.shape}')
-        print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
-        print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
-        print(f'---------------------------------------')
-        
         for method_str in methods_to_run:
+            print(f'---------------------------------------')  
+            print(f'                    Dataset: {data_str}')
+            print(f'                     Method: {method_str}')
+            print(f'        Train dataset shape: {data.train_df.shape}')
+            print(f'         Test dataset shape: {data.false_undesired_test_df.shape}')
+            print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
+            print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
+            print(f'---------------------------------------')
+            
             num_instances = 3          # Number of false negative test samples to consider for the counterfactuals search
             cf_evaluator = Evaluator(data, n_feat, method_str)        
             cf_evaluator.add_fairness_measures(data, model)
