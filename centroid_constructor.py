@@ -35,9 +35,9 @@ class CENTROID:
         self.centroid_idx = centroid_idx
         self.feat = feat
         self.feat_val = feat_val
-        self.normal_x = centroid_list[centroid_idx]
-        self.normal_x_df = pd.DataFrame(data=self.normal_x, index=[self.centroid_idx], columns=data.processed_features)
-        self.x = inverse_transform_original(self.normal_x, data)
+        self.normal_x_df = centroid_list[centroid_idx]
+        self.normal_x = self.normal_x_df.values[0]
+        self.x = inverse_transform_original(self.normal_x_df, data).values
         self.x_label = model.model.predict(self.normal_x.reshape(1, -1))
         self.train_sorted, self.train_sorting_time = self.sorted(data, type)
     
@@ -48,7 +48,7 @@ class CENTROID:
         start_time = time.time()
         sort_data_distance = []
         for i in range(data.transformed_train_np.shape[0]):
-            dist = distance_calculation(data.transformed_train_np[i], self.normal_centroid, data, type)
+            dist = distance_calculation(data.transformed_train_np[i], self.normal_x, data, type)
             sort_data_distance.append((data.transformed_train_np[i], dist, data.train_target[i]))      
         sort_data_distance.sort(key=lambda x: x[1])
         end_time = time.time()

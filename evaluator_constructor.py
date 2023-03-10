@@ -689,14 +689,15 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        cf_proximity = distance_calculation(centroid.normal_x, counterfactual.normal_x_cf)
-        cf_feasibility = verify_feasibility(centroid.normal_x, counterfactual.normal_x_cf, counterfactual.data)
-        x_cf = self.inverse_transform_original(counterfactual.normal_x_cf)
+        cf_proximity = distance_calculation(centroid.normal_x, counterfactual.cf_method.normal_x_cf, counterfactual.data)
+        cf_feasibility = verify_feasibility(centroid.normal_x, counterfactual.cf_method.normal_x_cf, counterfactual.data)
+        normal_x_cf_df = pd.DataFrame(data=counterfactual.cf_method.normal_x_cf.reshape(1,-1), index=[0], columns=counterfactual.data.processed_features)
+        x_cf = self.inverse_transform_original(normal_x_cf_df).values
         cols = ['feature','feat_value','centroid_idx','normal_centroid','centroid',
                 'normal_cf','cf','cf_proximity','cf_feasibility','cf_time']
-        data_list = [centroid.feat, centroid.feat_val, centroid.idx, centroid.normal_x, centroid.x,
-                counterfactual.normal_x_cf, x_cf, cf_proximity, cf_feasibility, counterfactual.run_time]
-        data_df = pd.DataFrame(data=data_list, index=len(self.cf_df), columns=cols)
+        data_list = [centroid.feat, centroid.feat_val, centroid.centroid_idx, centroid.normal_x, centroid.x,
+                counterfactual.cf_method.normal_x_cf, x_cf, cf_proximity, cf_feasibility, counterfactual.cf_method.run_time]
+        data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
         self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
     
     def add_cluster_data(self, cluster_obj):

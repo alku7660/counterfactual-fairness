@@ -16,7 +16,7 @@ from sklearn.metrics import f1_score
 from support import path_here, save_obj
 import time
 
-datasets = ['german','dutch'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
+datasets = ['adult','kdd_census','german','dutch'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
 methods_to_run = ['nn','mo','cchvae','ijuice'] # ['nn','mo','ft','rt','gs','face','dice','cchvae'] 
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training

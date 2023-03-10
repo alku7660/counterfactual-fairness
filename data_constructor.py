@@ -181,34 +181,44 @@ class Dataset:
             for i in feat_list:
                 if 'Sex' in i or 'Native' in i or 'WorkClass' in i or 'Marital' in i or 'Occupation' in i or 'Relation' in i or 'Race' in i:
                     feat_type.loc[i] = 'bin'
+                elif 'WorkClass' in i or 'Marital' in i or 'Occupation' in i or 'Relation' in i:
+                    feat_type.loc[i] = 'cat'
                 elif 'EducationLevel' in i or 'Age' in i:
                     feat_type.loc[i] = 'ord'
                 elif 'EducationNumber' in i or 'Capital' in i or 'Hours' in i:
                     feat_type.loc[i] = 'cont'
         elif self.name == 'kdd_census':
             for i in feat_list:
-                if 'Sex' in i or 'Race' in i or 'Industry' in i or 'Occupation' in i:
+                if 'Sex' in i or 'Race' in i:
                     feat_type.loc[i] = 'bin'
+                elif  'Industry' in i or 'Occupation' in i:
+                    feat_type.loc[i] = 'cat'
                 elif 'Age' in i or 'WageHour' in i or 'Capital' in i or 'Dividends' in i or 'WorkWeeksYear' in i:
                     feat_type.loc[i] = 'cont'
         elif self.name == 'german':
             for i in feat_list:
-                if 'Sex' in i or 'Single' in i or 'Unemployed' in i or 'Housing' in i or 'PurposeOfLoan' in i or 'InstallmentRate' in i:
+                if 'Sex' in i or 'Single' in i or 'Unemployed' in i:
                     feat_type.loc[i] = 'bin'
+                elif 'Housing' in i or 'PurposeOfLoan' in i or 'InstallmentRate' in i:
+                    feat_type.loc[i] = 'cat'
                 elif 'Age' in i or 'Credit' in i or 'Loan' in i:
                     feat_type.loc[i] = 'cont'
         elif self.name == 'dutch':
             for i in feat_list:
-                if 'Sex' in i or 'HouseholdPosition' in i or 'HouseholdSize' in i or 'Country' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i:
+                if 'Sex' in i:
                     feat_type.loc[i] = 'bin'
+                elif 'HouseholdPosition' in i or 'HouseholdSize' in i or 'Country' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i:
+                    feat_type.loc[i] = 'cat'
                 elif 'EducationLevel' in i:
                     feat_type.loc[i] = 'ord'
                 elif 'Age' in i:
                     feat_type.loc[i] = 'cont'
         elif self.name == 'bank':
             for i in feat_list:
-                if 'Default' in i or 'Housing' in i or 'Loan' in i or 'Job' in i or 'MaritalStatus' in i or 'Education' in i or 'Contact' in i or 'Month' in i or 'Poutcome' in i:
+                if 'Default' in i or 'Housing' in i or 'Loan' in i:
                     feat_type.loc[i] = 'bin'
+                elif 'Job' in i or 'MaritalStatus' in i or 'Education' in i or 'Contact' in i or 'Month' in i or 'Poutcome' in i:
+                    feat_type.loc[i] = 'cat'
                 elif 'Age' in i:
                     feat_type.loc[i] = 'ord'
                 elif 'Balance' in i or 'Day' in i or 'Duration' in i or 'Campaign' in i or 'Pdays' in i or 'Previous' in i:
@@ -229,32 +239,40 @@ class Dataset:
                     feat_type.loc[i] = 'ord'
         elif self.name == 'diabetes':
             for i in feat_list:
-                if 'DiabetesMed' in i or 'Race' in i or 'Sex' in i or 'A1CResult' in i or 'Metformin' in i or 'Chlorpropamide' in i or 'Glipizide' in i or 'Rosiglitazone' in i or 'Acarbose' in i or 'Miglitol' in i:
+                if 'DiabetesMed' in i or 'Sex' in i:
                     feat_type.loc[i] = 'bin'
+                elif 'Race' in i or 'A1CResult' in i or 'Metformin' in i or 'Chlorpropamide' in i or 'Glipizide' in i or 'Rosiglitazone' in i or 'Acarbose' in i or 'Miglitol' in i:
+                    feat_type.loc[i] = 'cat'
                 elif 'AgeGroup' in i:
                     feat_type.loc[i] = 'ord'
                 elif 'TimeInHospital' in i or 'NumProcedures' in i or 'NumMedications' in i or 'NumEmergency' in i:
                     feat_type.loc[i] = 'cont'
         elif self.name == 'student':
             for i in feat_list:
-                if 'Age' in i or 'School' in i or 'Sex' in i or 'Address' in i or 'FamilySize' in i or 'ParentStatus' in i or 'SchoolSupport' in i or 'FamilySupport' in i or 'ExtraPaid' in i or 'ExtraActivities' in i or 'Nursery' in i or 'HigherEdu' in i or 'Internet' in i or 'Romantic' in i or 'MotherJob' in i or 'FatherJob' in i or 'SchoolReason' in i:
+                if 'Age' in i or 'School' in i or 'Sex' in i or 'Address' in i or 'FamilySize' in i or 'ParentStatus' in i or 'SchoolSupport' in i or 'FamilySupport' in i or 'ExtraPaid' in i or 'ExtraActivities' in i or 'Nursery' in i or 'HigherEdu' in i or 'Internet' in i or 'Romantic' in i:
                     feat_type.loc[i] = 'bin'
+                elif 'MotherJob' in i or 'FatherJob' in i or 'SchoolReason' in i:
+                    feat_type.loc[i] = 'cat'
                 elif 'MotherEducation' in i or 'FatherEducation' in i:
                     feat_type.loc[i] = 'ord'
                 elif 'TravelTime' in i or 'ClassFailures' in i or 'GoOut' in i:
                     feat_type.loc[i] = 'cont'
         elif self.name == 'oulad':
             for i in feat_list:
-                if 'Sex' in i or 'Disability' in i or 'Region' in i or 'CodeModule' in i or 'CodePresentation' in i or 'HighestEducation' in i or 'IMDBand' in i:
+                if 'Sex' in i or 'Disability' in i:
                     feat_type.loc[i] = 'bin'
+                elif 'Region' in i or 'CodeModule' in i or 'CodePresentation' in i or 'HighestEducation' in i or 'IMDBand' in i:
+                    feat_type.loc[i] = 'cat'
                 elif 'NumPrevAttempts' in i or 'StudiedCredits' in i:
                     feat_type.loc[i] = 'cont'
                 elif 'AgeGroup' in i:
                     feat_type.loc[i] = 'ord'
         elif self.name == 'law':
             for i in feat_list:
-                if 'FamilyIncome' in i or 'Tier' in i or 'Race' in i or 'WorkFullTime' in i or 'Sex' in i:
+                if 'Race' in i or 'WorkFullTime' in i or 'Sex' in i:
                     feat_type.loc[i] = 'bin'
+                elif 'FamilyIncome' in i or 'Tier' in i:
+                    feat_type.loc[i] = 'cat'
                 elif 'Decile1stYear' in i or 'Decile3rdYear' in i or 'LSAT' in i or 'UndergradGPA' in i or 'FirstYearGPA' in i or 'CumulativeGPA' in i:
                     feat_type.loc[i] = 'cont'
         elif self.name == 'ionosphere':
@@ -278,8 +296,10 @@ class Dataset:
                     feat_type.loc[i] = 'cont'
         elif self.name == 'synthetic_disease':
             for i in feat_list:
-                if 'Smokes' in i or 'Diet' in i or 'Stress' in i:
+                if 'Smokes' in i:
                     feat_type.loc[i] = 'bin'
+                elif 'Diet' in i or 'Stress' in i:
+                    feat_type.loc[i] = 'cat'
                 elif 'Weight' in i:
                     feat_type.loc[i] = 'ord'
                 elif 'Age' in i or 'ExerciseMinutes' in i or 'SleepHours' in i:
@@ -499,10 +519,8 @@ class Dataset:
         feat_list = feat_cat.index.tolist()
         if self.name == 'adult':
             for i in feat_list:
-                if 'Sex' in i or 'Native' in i or 'EducationLevel' in i or 'EducationNumber' in i or 'Capital' in i or 'Hours' in i or 'Race' in i:
+                if 'Sex' in i or 'Native' in i or 'EducationLevel' in i or 'EducationNumber' in i or 'Capital' in i or 'Hours' in i or 'Race' in i or 'Age' in i:
                     feat_cat.loc[i] = 'non'
-                elif 'Age' in i:
-                    feat_cat.loc[i] = 'cat_0'
                 elif 'WorkClass' in i:
                     feat_cat.loc[i] = 'cat_1'
                 elif 'Marital' in i:
