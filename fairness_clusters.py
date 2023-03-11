@@ -64,7 +64,7 @@ if __name__=='__main__':
                         print(f'---------------------------')
                         counterfactual = Counterfactual(data, model, method_str, centroid, type='euclidean')
                         cf_evaluator.add_cf_data(counterfactual, centroid)
-                            
+
             print(f'---------------------------')
             print(f'  DONE: {data_str} CF Evaluation')
             print(f'---------------------------')

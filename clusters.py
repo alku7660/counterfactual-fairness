@@ -60,30 +60,30 @@ class CLUSTERS:
         Finds the appropriate clusters so that the predicted label is still the negative class
         """
 
-        def hierarchical_clusters(instances_df):
+        def hierarchical_clusters(instances_df, clusters_instances_list=[], clusters_centroids_list=[]):
             """
             If centroid not of undesired class, start hierarchical clustering
             """
-            for i in range(2, len(instances_df)+1):
-                clustering = AgglomerativeClustering(n_clusters = i, linkage=self.metric)
-                clustering.fit(instances_df)
-                instances_df['cluster'] = clustering.labels_
-                unique_clustering_labels = np.unique(clustering.labels_)
-                clusters_instances_list = []
-                clusters_centroids_list = []
-                for j in unique_clustering_labels:
-                    cluster_instances_df = instances_df.loc[instances_df['cluster'] == j]
-                    cluster_instances_df_no_cluster = copy.deepcopy(cluster_instances_df)
-                    del cluster_instances_df_no_cluster['cluster']
-                    centroid = self.calculate_centroid(cluster_instances_df_no_cluster)
-                    centroid_label = model.model.predict(centroid)
-                    if centroid_label != self.undesired_class:
-                        break
-                    else:
-                        clusters_instances_list.append(cluster_instances_df_no_cluster.index)
-                        clusters_centroids_list.append(centroid)
-                if len(clusters_instances_list) == len(unique_clustering_labels):
-                    break
+            # for i in range(2, len(instances_df)+1):
+            clustering = AgglomerativeClustering(n_clusters = 2, linkage=self.metric)
+            clustering.fit(instances_df)
+            instances_df['cluster'] = clustering.labels_
+            unique_clustering_labels = np.unique(clustering.labels_)
+            # clusters_instances_list = []
+            # clusters_centroids_list = []
+            for j in unique_clustering_labels:
+                cluster_instances_df = instances_df.loc[instances_df['cluster'] == j]
+                cluster_instances_df_j_cluster = copy.deepcopy(cluster_instances_df)
+                del cluster_instances_df_j_cluster['cluster']
+                centroid = self.calculate_centroid(cluster_instances_df_j_cluster)
+                centroid_label = model.model.predict(centroid)
+                if centroid_label != self.undesired_class:
+                    clusters_instances_list, clusters_centroids_list = hierarchical_clusters(cluster_instances_df_j_cluster, clusters_instances_list, clusters_centroids_list)
+                else:
+                    clusters_instances_list.append(cluster_instances_df_j_cluster.index)
+                    clusters_centroids_list.append(centroid)
+            # if len(clusters_instances_list) == len(unique_clustering_labels):
+            #     break
             return clusters_instances_list, clusters_centroids_list
 
         feature_cluster_instances_dict = dict()
@@ -93,12 +93,13 @@ class CLUSTERS:
             sensitive_group_cluster_instances_dict = dict()
             sensitive_group_cluster_centroids_dict = dict()
             for feat_val in idx_list_by_sensitive_group:
+                clusters_instances_list, clusters_centroids_list = [], []
                 idx_list_feat_val = idx_list_by_sensitive_group[feat_val]
                 sensitive_group_instances_df = self.transformed_false_undesired_test_df.loc[idx_list_feat_val]
                 centroid = self.calculate_centroid(sensitive_group_instances_df)
                 centroid_label = model.model.predict(centroid)
                 if centroid_label != self.undesired_class:
-                    clusters_instances_list, clusters_centroids_list = hierarchical_clusters(sensitive_group_instances_df)
+                    clusters_instances_list, clusters_centroids_list = hierarchical_clusters(sensitive_group_instances_df, clusters_instances_list=clusters_instances_list, clusters_centroids_list=clusters_centroids_list)
                 else:
                     clusters_instances_list, clusters_centroids_list = [idx_list_feat_val], [centroid]
                 sensitive_group_cluster_instances_dict[feat_val] = clusters_instances_list
