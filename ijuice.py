@@ -283,7 +283,7 @@ class IJUICE:
                             elif node_i[nonzero_index] > values[-1]:
                                 value_node_i_idx_inf, value_node_i_idx_sup = len(values) - 1, len(values) - 1
                             for k in range(len(values) - 1):
-                                if node_i[nonzero_index] < values[k+1] and node_i[nonzero_index] > values[k]:
+                                if node_i[nonzero_index] <= values[k+1] and node_i[nonzero_index] >= values[k]:
                                     value_node_i_idx_inf, value_node_i_idx_sup = k, k+1  
                         close_node_j_values = [values[value_node_i_idx_inf], values[value_node_i_idx_sup]]
                         if any(np.isclose(node_j[nonzero_index], close_node_j_values)):
