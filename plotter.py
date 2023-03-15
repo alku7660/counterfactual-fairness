@@ -16,7 +16,7 @@ from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
 import seaborn as sns
-from fairness_individual import datasets, methods_to_run
+from fairness_clusters import datasets, methods_to_run
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
     """
@@ -908,6 +908,28 @@ def nawb_cluster_cf(datasets, methods):
                         wspace=0.2, 
                         hspace=0.2)
         plt.savefig(results_cf_plots_dir+'cluster_cf_nawb_instances.pdf',format='pdf')
+
+def plot_centroids():
+    """
+    Plot all centroids of clusters found for each feature and feature_value
+    """
+    method_str = 'nn'
+    for data_str in datasets:
+        eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
+        clusters = eval_obj.cluster_obj
+        cluster_centroid_dict = clusters.centroids
+        cluster_instance_dict = clusters.clusters
+        cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
+        for feat in cluster_centroid_feat_list:
+                feat_val_list = list(cluster_centroid_dict[feat].keys())
+                fig, ax = plt.subplots(nrows=1, ncols=len(feat_val_list))
+                for feat_val_idx in range(len(feat_val_list)):
+                    feat_val = feat_val_list[feat_val_idx]
+                    centroid_list = cluster_centroid_dict[feat][feat_val]
+                    instance_list = cluster_instance_dict[feat][feat_val]
+                    for idx in range(len(centroid_list)):
+                        ax[idx].plot(centroid_list[idx])
+
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
 colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','Non-white':'dimgray',
