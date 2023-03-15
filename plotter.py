@@ -920,16 +920,46 @@ def plot_centroids():
         cluster_centroid_dict = clusters.centroids
         cluster_instance_dict = clusters.clusters
         cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
+        features = eval_obj.binary + eval_obj.categorical + eval_obj.numerical
         for feat in cluster_centroid_feat_list:
+            feat_val_list = list(cluster_centroid_dict[feat].keys())
+            fig, ax = plt.subplots(nrows=1, ncols=len(feat_val_list))
+            for feat_val_idx in range(len(feat_val_list)):
+                feat_val = feat_val_list[feat_val_idx]
+                centroid_list = cluster_centroid_dict[feat][feat_val]
+                instance_list = cluster_instance_dict[feat][feat_val]
+                for idx in range(len(centroid_list)):
+                    ax[feat_val_idx].plot(features, centroid_list[idx], color=colors_list[feat_val_idx])
+                ax[feat_val_idx].set_xlabel('Features')
+                ax[feat_val_idx].set_ylabel('Values')
+                ax[feat_val_idx].set_title(f'{feat}')
+                ax[feat_val_idx].legend([Line2D([0], [0], color=colors_list[feat_val_idx_plot], lw=3) for feat_val_idx_plot in range(len(feat_val_list))])
+        plt.savefig(f'{results_cf_plots_dir}{data_str}_centroids.pdf', format='pdf')
+
+def plot_centroids_cfs():
+    """
+    Plots the centroids with their corresponding counterfactuals
+    """
+    for data_str in datasets:
+        for method_idx in range(len(methods_to_run)):
+            method_str = methods_to_run[method_idx]
+            eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
+            clusters = eval_obj.cluster_obj
+            cluster_centroid_dict = clusters.centroids
+            cluster_instance_dict = clusters.clusters
+            cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
+            features = eval_obj.binary + eval_obj.categorical + eval_obj.numerical
+            for feat in cluster_centroid_feat_list:
                 feat_val_list = list(cluster_centroid_dict[feat].keys())
-                fig, ax = plt.subplots(nrows=1, ncols=len(feat_val_list))
                 for feat_val_idx in range(len(feat_val_list)):
                     feat_val = feat_val_list[feat_val_idx]
                     centroid_list = cluster_centroid_dict[feat][feat_val]
                     instance_list = cluster_instance_dict[feat][feat_val]
+                    fig, ax = plt.subplots(nrows=len(methods_to_run), ncols=len(centroid_list))
                     for idx in range(len(centroid_list)):
-                        ax[idx].plot(centroid_list[idx])
-
+                        cf = eval_obj.cf_df[eval_obj.cf_df['centroid_idx'] == idx]['cf']
+                        ax[method_idx, idx].plot(features, centroid_list[idx], 'r--')
+                        ax[method_idx, idx].plot(features, cf, 'b--')
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
 colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','Non-white':'dimgray',
