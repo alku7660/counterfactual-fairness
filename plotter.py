@@ -15,7 +15,7 @@ from matplotlib.ticker import FormatStrFormatter
 from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
-import seaborn as sns
+# import seaborn as sns
 from fairness_clusters import datasets, methods_to_run
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
@@ -909,6 +909,32 @@ def nawb_cluster_cf(datasets, methods):
                         hspace=0.2)
         plt.savefig(results_cf_plots_dir+'cluster_cf_nawb_instances.pdf',format='pdf')
 
+def inverse_transform_only(bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical, instance):
+    """
+    DESCRIPTION:            Transforms an instance to the original features
+    
+    INPUT:
+    instance:               Instance of interest
+
+    OUTPUT:
+    original_instance_df:   Instance of interest in the original feature format
+    """
+    instance_index = instance.index
+    original_instance_df = pd.DataFrame(index=instance_index)
+    if len(bin_enc_cols) > 0:
+        instance_bin = bin_enc.inverse_transform(instance[bin_enc_cols])
+        instance_bin_pd = pd.DataFrame(data=instance_bin, index=instance_index, columns=binary)
+        original_instance_df = pd.concat((original_instance_df, instance_bin_pd), axis=1)
+    if len(cat_enc_cols) > 0:
+        instance_cat = cat_enc.inverse_transform(instance[cat_enc_cols])
+        instance_cat_pd = pd.DataFrame(data=instance_cat, index=instance_index, columns=categorical)
+        original_instance_df = pd.concat((original_instance_df, instance_cat_pd), axis=1)
+    if len(numerical) > 0:
+        instance_num = instance[numerical]
+        instance_num_pd = pd.DataFrame(data=instance_num, index=instance_index, columns=numerical)
+        original_instance_df = pd.concat((original_instance_df, instance_num_pd), axis=1)
+    return original_instance_df
+
 def plot_centroids():
     """
     Plot all centroids of clusters found for each feature and feature_value
@@ -929,12 +955,16 @@ def plot_centroids():
                 centroid_list = cluster_centroid_dict[feat][feat_val]
                 instance_list = cluster_instance_dict[feat][feat_val]
                 for idx in range(len(centroid_list)):
-                    ax[feat_val_idx].plot(features, centroid_list[idx], color=colors_list[feat_val_idx])
+                    bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical = eval_obj.bin_enc, eval_obj.cat_enc, eval_obj.bin_enc_cols, eval_obj.cat_enc_cols, eval_obj.binary, eval_obj.categorical, eval_obj.numerical
+                    centroid_original = inverse_transform_only(bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical, centroid_list[idx]).values[0]
+                    ax[feat_val_idx].plot(features, centroid_original, color=colors_list[feat_val_idx])
                 ax[feat_val_idx].set_xlabel('Features')
                 ax[feat_val_idx].set_ylabel('Values')
-                ax[feat_val_idx].set_title(f'{feat}')
-                ax[feat_val_idx].legend([Line2D([0], [0], color=colors_list[feat_val_idx_plot], lw=3) for feat_val_idx_plot in range(len(feat_val_list))])
-        plt.savefig(f'{results_cf_plots_dir}{data_str}_centroids.pdf', format='pdf')
+                ax[feat_val_idx].set_title(f'{feat}: {feat_val} (#: {int(np.sum([len(instance_list[i]) for i in range(len(instance_list))]))} C: {len(centroid_list)})', wrap=True)
+                ax[feat_val_idx].set_xticklabels(features, rotation=45, ha='right')
+                # legend_list = [Line2D([0], [0], color=colors_list[feat_val_idx_plot], lw=3) for feat_val_idx_plot in range(len(feat_val_list))]
+                # ax[feat_val_idx].legend(legend_list, feat_val_list)
+            plt.savefig(f'{results_cf_plots_dir}{data_str}_{feat}_centroids.pdf', format='pdf')
 
 def plot_centroids_cfs():
     """
@@ -954,12 +984,39 @@ def plot_centroids_cfs():
                 for feat_val_idx in range(len(feat_val_list)):
                     feat_val = feat_val_list[feat_val_idx]
                     centroid_list = cluster_centroid_dict[feat][feat_val]
+                    fig, ax = plt.subplots(nrows=1, ncols=len(centroid_list))
                     instance_list = cluster_instance_dict[feat][feat_val]
-                    fig, ax = plt.subplots(nrows=len(methods_to_run), ncols=len(centroid_list))
                     for idx in range(len(centroid_list)):
-                        cf = eval_obj.cf_df[eval_obj.cf_df['centroid_idx'] == idx]['cf']
-                        ax[method_idx, idx].plot(features, centroid_list[idx], 'r--')
-                        ax[method_idx, idx].plot(features, cf, 'b--')
+                        cf = eval_obj.cf_df[(eval_obj.cf_df['feature'] == feat) & (eval_obj.cf_df['feat_value'] == feat_val) & (eval_obj.cf_df['centroid_idx'] == idx)]['normal_cf'].values[0]
+                        bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical = eval_obj.bin_enc, eval_obj.cat_enc, eval_obj.bin_enc_cols, eval_obj.cat_enc_cols, eval_obj.binary, eval_obj.categorical, eval_obj.numerical
+                        centroid_original = inverse_transform_only(bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical, centroid_list[idx]).values[0]
+                        cf_df = pd.DataFrame(cf.reshape(1,-1), index = [0], columns=eval_obj.data_cols)
+                        cf_original = inverse_transform_only(bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical, cf_df).values[0]
+                        if len(centroid_list) > 1:
+                            ax[idx].plot(features, centroid_original, 'r--')
+                            ax[idx].plot(features, cf_original, 'b--')
+                            ax[idx].set_xlabel('Features')
+                            # ax[idx].set_ylabel('Values')
+                            # ax[idx].set_title(f'{method_str.upper()}, Cluster {idx+1}')
+                            ax[idx].get_xaxis().set_visible(False)
+                            ax[idx].set_xticklabels(features, rotation=45, ha='right')
+                        else:
+                            ax.plot(features, centroid_original, 'r--')
+                            ax.plot(features, cf_original, 'b--')
+                            ax.set_xlabel('Features')
+                            # ax.set_ylabel('Values')
+                            # ax.set_title(f'{method_str.upper()}, Cluster {idx+1}')
+                            ax.get_xaxis().set_visible(False)
+                            ax.set_xticklabels(features, rotation=45, ha='right')
+                        # legend_list = [Line2D([0], [0], color=colors_list[feat_val_idx_plot], lw=3) for feat_val_idx_plot in range(len(feat_val_list))]
+                        # if len(centroid_list) > 1:
+                        #     ax[method_idx, idx].legend(legend_list, feat_val_list)
+                        # else:
+                        #     ax[method_idx].legend(legend_list, feat_val_list)
+                    fig.suptitle(f'{method_str.upper()}')
+                    # fig.tight_layout()
+                    plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{feat}_{feat_val}_centroids_cfs.pdf', format='pdf')
+        
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
 colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','Non-white':'dimgray',
@@ -979,5 +1036,7 @@ colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','N
 # burden_cluster_cf(datasets, methods_to_run)
 # nawb_groups_cf(datasets, methods_to_run)
 # nawb_cluster_cf(datasets, methods_to_run)
-burden_groups_cf_bar(datasets, 'NN')
+# burden_groups_cf_bar(datasets, 'NN')
+# plot_centroids()
+plot_centroids_cfs()
 
