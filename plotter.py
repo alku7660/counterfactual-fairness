@@ -971,27 +971,25 @@ def plot_centroids():
                 ax.fig.suptitle(f'{data_str.capitalize()} ({feat}: {feat_val})') 
                 plt.savefig(f'{results_cf_plots_dir}{data_str}_{feat}_{feat_val}_instances.pdf', format='pdf')
 
-def estimate_difference(centroid, instances, feat_type):
+def estimate_difference(eval_obj, centroid, instances, feat_type):
     """
     Obtains the differences among the centroid and the instances
     """
     difference = copy.deepcopy(instances)
-    for feat in centroid.columns:
-        for idx in range(len(difference)):
-            instance = difference.iloc[idx]
-            index_inst = difference.index[idx]
-            feat_original = [s for s in feat_type.index if feat in s[:-4]][0]
-            if feat_type[feat_original] in ['bin','cat']:
-                difference.loc[index_inst, feat] = 1 if instance[feat] != centroid[feat].values[0] else 0
-            else:
-                difference.loc[index_inst, feat] = np.abs(centroid[feat] - instance[feat].values[0]) 
+    cat_bin_features = eval_obj.categorical + eval_obj.binary
+    num_features = eval_obj.numerical
+    for idx in range(len(instances)):
+        inst_idx = instances.iloc[idx].name
+        for feat in cat_bin_features:
+            difference.loc[inst_idx, feat] = 1 if difference.loc[inst_idx, feat] != centroid[feat].values[0] else 0
+        for feat in num_features:    
+            difference.loc[inst_idx, feat] = np.abs(centroid[feat].values[0] - difference.loc[inst_idx, feat]) 
     return difference
 
 def plot_centroids_cfs():
     """
     Plots the centroids with their corresponding counterfactuals
     """
-    method_str = 'nn'
     for data_str in datasets:
         for method_idx in range(len(methods_to_run)):
             method_str = methods_to_run[method_idx]
@@ -1014,7 +1012,7 @@ def plot_centroids_cfs():
                         instances_df['Clusters'] = [idx]*len(instances_df)
                         cluster_number_series = instances_df.pop('Clusters')
                         centroid_original = eval_obj.inverse_transform_original(centroid_list[idx])
-                        difference_df = estimate_difference(centroid_original, instances_df, eval_obj.feat_type)
+                        difference_df = estimate_difference(eval_obj, centroid_original, instances_df, eval_obj.feat_type)
                         difference_all_df = pd.concat((difference_all_df, difference_df))
                         cluster_number_series_all = pd.concat((cluster_number_series_all, cluster_number_series), axis=0)
                     cluster_number_series_all.name = 'Clusters'
@@ -1022,7 +1020,7 @@ def plot_centroids_cfs():
                     map_var = dict(zip(cluster_number_series_all.unique(), cm.rainbow(np.linspace(0, 1, len_clusters))))
                     cluster_colors = cluster_number_series_all.map(map_var)
                     ax[feat_val_idx] = sns.clustermap(difference_all_df, row_colors=cluster_colors, row_cluster=False, col_cluster=False, cbar_pos=(0.05, .4, .01, .2), figsize=(4, 4), standard_scale=1)
-                    ax[feat_val_idx].fig.suptitle(f'{data_str.capitalize()} ({feat}: {feat_val})') 
+                    ax[feat_val_idx].fig.suptitle(f'{data_str.capitalize()} ({feat}: {feat_val}) Centroid difference') 
                     plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{feat}_{feat_val}_instances.pdf', format='pdf')
     
     # for data_str in datasets:
