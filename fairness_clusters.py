@@ -6,8 +6,8 @@ warnings.filterwarnings("ignore")
 from data_constructor import load_dataset
 from model_constructor import Model
 from ioi_constructor import IOI
-from clusters import CLUSTERS
-from centroid_constructor import CENTROID
+from clusters_constructor import Clusters
+from centroid_constructor import Centroid
 from cluster_counterfactual_constructor import Counterfactual
 from evaluator_constructor import Evaluator
 import numpy as np
@@ -32,7 +32,7 @@ if __name__=='__main__':
         data = load_dataset(data_str, train_fraction, seed_int, step)
         model = Model(data)
         data.undesired_test(model)
-        clusters_obj = CLUSTERS(data, model, metric=clustering_metric)
+        clusters_obj = Clusters(data, model, metric=clustering_metric)
         cluster_centroid_dict = clusters_obj.centroids
         cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
         for method_str in methods_to_run:
@@ -53,7 +53,7 @@ if __name__=='__main__':
                 for feat_val in feat_val_list:
                     centroid_list = cluster_centroid_dict[feat][feat_val]
                     for centroid_idx in range(len(centroid_list)):
-                        centroid = CENTROID(centroid_idx, centroid_list, feat_val, feat, data, model, type='euclidean')
+                        centroid = Centroid(centroid_idx, centroid_list, feat_val, feat, data, model, type='euclidean')
                         print(f'---------------------------')
                         print(f'        Dataset: {data_str}')
                         print(f'         Method: {method_str}')

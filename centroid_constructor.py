@@ -29,7 +29,7 @@ def inverse_transform_original(centroid, data):
         original_centroid_df = pd.concat((original_centroid_df, centroid_num_pd), axis=1)
     return original_centroid_df
 
-class CENTROID:
+class Centroid:
 
     def __init__(self, centroid_idx, centroid_list, feat_val, feat, data, model, type='euclidean') -> None:
         self.centroid_idx = centroid_idx

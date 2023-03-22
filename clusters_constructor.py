@@ -3,7 +3,7 @@ import pandas as pd
 import copy
 from sklearn.cluster import AgglomerativeClustering
 
-class CLUSTERS:
+class Clusters:
     def __init__(self, data, model, metric='single') -> None:
         self.false_undesired_test_df = data.false_undesired_test_df
         self.transformed_false_undesired_test_df = data.transformed_false_undesired_test_df
@@ -64,13 +64,10 @@ class CLUSTERS:
             """
             If centroid not of undesired class, start hierarchical clustering
             """
-            # for i in range(2, len(instances_df)+1):
             clustering = AgglomerativeClustering(n_clusters = 2, linkage=self.metric)
             clustering.fit(instances_df)
             instances_df['cluster'] = clustering.labels_
             unique_clustering_labels = np.unique(clustering.labels_)
-            # clusters_instances_list = []
-            # clusters_centroids_list = []
             for j in unique_clustering_labels:
                 cluster_instances_df = instances_df.loc[instances_df['cluster'] == j]
                 cluster_instances_df_j_cluster = copy.deepcopy(cluster_instances_df)
@@ -82,8 +79,6 @@ class CLUSTERS:
                 else:
                     clusters_instances_list.append(cluster_instances_df_j_cluster.index)
                     clusters_centroids_list.append(centroid)
-            # if len(clusters_instances_list) == len(unique_clustering_labels):
-            #     break
             return clusters_instances_list, clusters_centroids_list
 
         feature_cluster_instances_dict = dict()
