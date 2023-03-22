@@ -179,7 +179,7 @@ class Dataset:
         feat_list = feat_type.index.tolist()
         if self.name == 'adult':
             for i in feat_list:
-                if 'Sex' in i or 'Native' in i or 'WorkClass' in i or 'Marital' in i or 'Occupation' in i or 'Relation' in i or 'Race' in i:
+                if 'Sex' in i or 'Native' in i or 'Race' in i:
                     feat_type.loc[i] = 'bin'
                 elif 'WorkClass' in i or 'Marital' in i or 'Occupation' in i or 'Relation' in i:
                     feat_type.loc[i] = 'cat'

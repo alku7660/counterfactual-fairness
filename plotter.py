@@ -3,6 +3,7 @@ warnings.filterwarnings("ignore")
 import numpy as np
 import pandas as pd
 import pickle
+import copy
 from support import path_here, results_cf_obj_method_dir, results_cf_plots_dir
 import matplotlib
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
@@ -11,11 +12,12 @@ import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 12})
 from matplotlib.lines import Line2D
 from matplotlib import colors
+from matplotlib.pyplot import cm
 from matplotlib.ticker import FormatStrFormatter
 from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
-# import seaborn as sns
+import seaborn as sns
 from fairness_clusters import datasets, methods_to_run
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
@@ -946,25 +948,43 @@ def plot_centroids():
         cluster_centroid_dict = clusters.centroids
         cluster_instance_dict = clusters.clusters
         cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
-        features = eval_obj.binary + eval_obj.categorical + eval_obj.numerical
         for feat in cluster_centroid_feat_list:
             feat_val_list = list(cluster_centroid_dict[feat].keys())
-            fig, ax = plt.subplots(nrows=1, ncols=len(feat_val_list))
             for feat_val_idx in range(len(feat_val_list)):
                 feat_val = feat_val_list[feat_val_idx]
                 centroid_list = cluster_centroid_dict[feat][feat_val]
                 instance_list = cluster_instance_dict[feat][feat_val]
-                for idx in range(len(centroid_list)):
-                    bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical = eval_obj.bin_enc, eval_obj.cat_enc, eval_obj.bin_enc_cols, eval_obj.cat_enc_cols, eval_obj.binary, eval_obj.categorical, eval_obj.numerical
-                    centroid_original = inverse_transform_only(bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical, centroid_list[idx]).values[0]
-                    ax[feat_val_idx].plot(features, centroid_original, color=colors_list[feat_val_idx])
-                ax[feat_val_idx].set_xlabel('Features')
-                ax[feat_val_idx].set_ylabel('Values')
-                ax[feat_val_idx].set_title(f'{feat}: {feat_val} (#: {int(np.sum([len(instance_list[i]) for i in range(len(instance_list))]))} C: {len(centroid_list)})', wrap=True)
-                ax[feat_val_idx].set_xticklabels(features, rotation=45, ha='right')
-                # legend_list = [Line2D([0], [0], color=colors_list[feat_val_idx_plot], lw=3) for feat_val_idx_plot in range(len(feat_val_list))]
-                # ax[feat_val_idx].legend(legend_list, feat_val_list)
-            plt.savefig(f'{results_cf_plots_dir}{data_str}_{feat}_centroids.pdf', format='pdf')
+                fig, ax = plt.subplots(figsize=(4, 4))
+                cluster_number_series_all = pd.Series()
+                instances_all_df = pd.DataFrame()
+                for idx in range(len(instance_list)):
+                    instances_df = clusters.false_undesired_test_df.loc[instance_list[idx]]
+                    instances_df['Clusters'] = [idx]*len(instances_df)
+                    cluster_number_series = instances_df.pop('Clusters')
+                    instances_all_df = pd.concat((instances_all_df, instances_df))
+                    cluster_number_series_all = pd.concat((cluster_number_series_all, cluster_number_series), axis=0)
+                cluster_number_series_all.name = 'Clusters'
+                len_clusters = len(cluster_number_series_all.unique())
+                map_var = dict(zip(cluster_number_series_all.unique(), cm.rainbow(np.linspace(0, 1, len_clusters))))
+                cluster_colors = cluster_number_series_all.map(map_var)
+                ax = sns.clustermap(instances_all_df, row_colors=cluster_colors, row_cluster=False, col_cluster=False, cbar_pos=(0.05, .4, .01, .2), figsize=(4, 4), standard_scale=1)
+                ax.fig.suptitle(f'{data_str.capitalize()} ({feat}: {feat_val})') 
+                plt.savefig(f'{results_cf_plots_dir}{data_str}_{feat}_{feat_val}_instances.pdf', format='pdf')
+
+def estimate_difference(eval_obj, centroid, instances, feat_type):
+    """
+    Obtains the differences among the centroid and the instances
+    """
+    difference = copy.deepcopy(instances)
+    cat_bin_features = eval_obj.categorical + eval_obj.binary
+    num_features = eval_obj.numerical
+    for idx in range(len(instances)):
+        inst_idx = instances.iloc[idx].name
+        for feat in cat_bin_features:
+            difference.loc[inst_idx, feat] = 1 if difference.loc[inst_idx, feat] != centroid[feat].values[0] else 0
+        for feat in num_features:    
+            difference.loc[inst_idx, feat] = np.abs(centroid[feat].values[0] - difference.loc[inst_idx, feat]) 
+    return difference
 
 def plot_centroids_cfs():
     """
@@ -978,44 +998,77 @@ def plot_centroids_cfs():
             cluster_centroid_dict = clusters.centroids
             cluster_instance_dict = clusters.clusters
             cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
-            features = eval_obj.binary + eval_obj.categorical + eval_obj.numerical
             for feat in cluster_centroid_feat_list:
                 feat_val_list = list(cluster_centroid_dict[feat].keys())
                 for feat_val_idx in range(len(feat_val_list)):
                     feat_val = feat_val_list[feat_val_idx]
                     centroid_list = cluster_centroid_dict[feat][feat_val]
-                    fig, ax = plt.subplots(nrows=1, ncols=len(centroid_list))
                     instance_list = cluster_instance_dict[feat][feat_val]
-                    for idx in range(len(centroid_list)):
-                        cf = eval_obj.cf_df[(eval_obj.cf_df['feature'] == feat) & (eval_obj.cf_df['feat_value'] == feat_val) & (eval_obj.cf_df['centroid_idx'] == idx)]['normal_cf'].values[0]
-                        bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical = eval_obj.bin_enc, eval_obj.cat_enc, eval_obj.bin_enc_cols, eval_obj.cat_enc_cols, eval_obj.binary, eval_obj.categorical, eval_obj.numerical
-                        centroid_original = inverse_transform_only(bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical, centroid_list[idx]).values[0]
-                        cf_df = pd.DataFrame(cf.reshape(1,-1), index = [0], columns=eval_obj.data_cols)
-                        cf_original = inverse_transform_only(bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical, cf_df).values[0]
-                        if len(centroid_list) > 1:
-                            ax[idx].plot(features, centroid_original, 'r--')
-                            ax[idx].plot(features, cf_original, 'b--')
-                            ax[idx].set_xlabel('Features')
-                            # ax[idx].set_ylabel('Values')
-                            # ax[idx].set_title(f'{method_str.upper()}, Cluster {idx+1}')
-                            ax[idx].get_xaxis().set_visible(False)
-                            ax[idx].set_xticklabels(features, rotation=45, ha='right')
-                        else:
-                            ax.plot(features, centroid_original, 'r--')
-                            ax.plot(features, cf_original, 'b--')
-                            ax.set_xlabel('Features')
-                            # ax.set_ylabel('Values')
-                            # ax.set_title(f'{method_str.upper()}, Cluster {idx+1}')
-                            ax.get_xaxis().set_visible(False)
-                            ax.set_xticklabels(features, rotation=45, ha='right')
-                        # legend_list = [Line2D([0], [0], color=colors_list[feat_val_idx_plot], lw=3) for feat_val_idx_plot in range(len(feat_val_list))]
-                        # if len(centroid_list) > 1:
-                        #     ax[method_idx, idx].legend(legend_list, feat_val_list)
-                        # else:
-                        #     ax[method_idx].legend(legend_list, feat_val_list)
-                    fig.suptitle(f'{method_str.upper()}')
-                    # fig.tight_layout()
-                    plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{feat}_{feat_val}_centroids_cfs.pdf', format='pdf')
+                    fig, ax = plt.subplots(figsize=(4*len(feat_val_list), 4), nrows=1, ncols=len(feat_val_list))
+                    cluster_number_series_all = pd.Series()
+                    difference_all_df = pd.DataFrame()
+                    for idx in range(len(instance_list)):
+                        instances_df = clusters.false_undesired_test_df.loc[instance_list[idx]]
+                        instances_df['Clusters'] = [idx]*len(instances_df)
+                        cluster_number_series = instances_df.pop('Clusters')
+                        centroid_original = eval_obj.inverse_transform_original(centroid_list[idx])
+                        difference_df = estimate_difference(eval_obj, centroid_original, instances_df, eval_obj.feat_type)
+                        difference_all_df = pd.concat((difference_all_df, difference_df))
+                        cluster_number_series_all = pd.concat((cluster_number_series_all, cluster_number_series), axis=0)
+                    cluster_number_series_all.name = 'Clusters'
+                    len_clusters = len(cluster_number_series_all.unique())
+                    map_var = dict(zip(cluster_number_series_all.unique(), cm.rainbow(np.linspace(0, 1, len_clusters))))
+                    cluster_colors = cluster_number_series_all.map(map_var)
+                    ax[feat_val_idx] = sns.clustermap(difference_all_df, row_colors=cluster_colors, row_cluster=False, col_cluster=False, cbar_pos=(0.05, .4, .01, .2), figsize=(4, 4), standard_scale=1)
+                    ax[feat_val_idx].fig.suptitle(f'{data_str.capitalize()} ({feat}: {feat_val}) Centroid difference') 
+                    plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{feat}_{feat_val}_instances.pdf', format='pdf')
+    
+    # for data_str in datasets:
+    #     for method_idx in range(len(methods_to_run)):
+    #         method_str = methods_to_run[method_idx]
+    #         eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
+    #         clusters = eval_obj.cluster_obj
+    #         cluster_centroid_dict = clusters.centroids
+    #         cluster_instance_dict = clusters.clusters
+    #         cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
+    #         features = eval_obj.binary + eval_obj.categorical + eval_obj.numerical
+    #         for feat in cluster_centroid_feat_list:
+    #             feat_val_list = list(cluster_centroid_dict[feat].keys())
+    #             for feat_val_idx in range(len(feat_val_list)):
+    #                 feat_val = feat_val_list[feat_val_idx]
+    #                 centroid_list = cluster_centroid_dict[feat][feat_val]
+    #                 fig, ax = plt.subplots(nrows=1, ncols=len(centroid_list))
+    #                 instance_list = cluster_instance_dict[feat][feat_val]
+    #                 for idx in range(len(centroid_list)):
+    #                     cf = eval_obj.cf_df[(eval_obj.cf_df['feature'] == feat) & (eval_obj.cf_df['feat_value'] == feat_val) & (eval_obj.cf_df['centroid_idx'] == idx)]['normal_cf'].values[0]
+    #                     bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical = eval_obj.bin_enc, eval_obj.cat_enc, eval_obj.bin_enc_cols, eval_obj.cat_enc_cols, eval_obj.binary, eval_obj.categorical, eval_obj.numerical
+    #                     centroid_original = inverse_transform_only(bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical, centroid_list[idx]).values[0]
+    #                     cf_df = pd.DataFrame(cf.reshape(1,-1), index = [0], columns=eval_obj.data_cols)
+    #                     cf_original = inverse_transform_only(bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical, cf_df).values[0]
+    #                     if len(centroid_list) > 1:
+    #                         ax[idx].plot(features, centroid_original, 'r--')
+    #                         ax[idx].plot(features, cf_original, 'b--')
+    #                         ax[idx].set_xlabel('Features')
+    #                         # ax[idx].set_ylabel('Values')
+    #                         # ax[idx].set_title(f'{method_str.upper()}, Cluster {idx+1}')
+    #                         ax[idx].get_xaxis().set_visible(False)
+    #                         ax[idx].set_xticklabels(features, rotation=45, ha='right')
+    #                     else:
+    #                         ax.plot(features, centroid_original, 'r--')
+    #                         ax.plot(features, cf_original, 'b--')
+    #                         ax.set_xlabel('Features')
+    #                         # ax.set_ylabel('Values')
+    #                         # ax.set_title(f'{method_str.upper()}, Cluster {idx+1}')
+    #                         ax.get_xaxis().set_visible(False)
+    #                         ax.set_xticklabels(features, rotation=45, ha='right')
+    #                     # legend_list = [Line2D([0], [0], color=colors_list[feat_val_idx_plot], lw=3) for feat_val_idx_plot in range(len(feat_val_list))]
+    #                     # if len(centroid_list) > 1:
+    #                     #     ax[method_idx, idx].legend(legend_list, feat_val_list)
+    #                     # else:
+    #                     #     ax[method_idx].legend(legend_list, feat_val_list)
+    #                 fig.suptitle(f'{method_str.upper()}')
+    #                 # fig.tight_layout()
+    #                 plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{feat}_{feat_val}_centroids_cfs.pdf', format='pdf')
         
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
