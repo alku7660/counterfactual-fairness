@@ -1,10 +1,10 @@
 import numpy as np
+import pandas as pd
 from itertools import product
 import networkx as nx
 import gurobipy as gp
 from gurobipy import GRB, tuplelist
-from evaluator_constructor import distance_calculation
-from support import verify_feasibility
+from evaluator_constructor import distance_calculation, verify_feasibility
 from nnt import nn_for_juice
 import time
 from scipy.stats import norm
@@ -13,14 +13,17 @@ class IJUICE:
 
     def __init__(self, counterfactual):
         self.normal_ioi = counterfactual.ioi.normal_x
-        self.ioi_label = counterfactual.ioi.x_label
+        self.ioi_label = counterfactual.ioi.label
         self.lagrange = counterfactual.lagrange
+        self.t = counterfactual.t
+        self.k = counterfactual.k
         self.potential_justifiers = self.find_potential_justifiers(counterfactual)
         self.potential_justifiers = self.nn_list(counterfactual)
         start_time = time.time()
         self.normal_x_cf, self.justifiers, self.justifier_ratio = self.Ijuice(counterfactual)
         end_time = time.time()
         self.run_time = end_time - start_time
+        self.justifiers = self.transform_dataframe(counterfactual)
 
     def find_potential_justifiers(self, counterfactual, ijuice_search=False):
         """
@@ -44,9 +47,8 @@ class IJUICE:
                 sort_potential_justifiers.append((potential_justifiers[i], dist))
         sort_potential_justifiers.sort(key=lambda x: x[1])
         sort_potential_justifiers = [i[0] for i in sort_potential_justifiers]
-        if len(sort_potential_justifiers) > 100:
-            sort_potential_justifiers = sort_potential_justifiers[:100]
-        # sort_potential_justifiers = sort_potential_justifiers[:30]
+        if len(sort_potential_justifiers) > self.t:
+            sort_potential_justifiers = sort_potential_justifiers[:self.t]
         return sort_potential_justifiers
 
     def nn_list(self, counterfactual):
@@ -61,8 +63,8 @@ class IJUICE:
             # print(f'Justifier {i+1}: Length permutations: {len_permutations}')
         permutations_potential_justifiers.sort(key=lambda x: x[1])
         permutations_potential_justifiers = [i[0] for i in permutations_potential_justifiers]
-        if len(permutations_potential_justifiers) > 10:
-            permutations_potential_justifiers = permutations_potential_justifiers[:10]
+        if len(permutations_potential_justifiers) > self.k:
+            permutations_potential_justifiers = permutations_potential_justifiers[:self.k]
         return permutations_potential_justifiers
 
     def Ijuice(self, counterfactual):
@@ -94,13 +96,6 @@ class IJUICE:
         """
         Method that defines how to discretize the continuous features
         """
-        # if split in ['2','5','10','20','50','100']:
-        #     value = list(np.linspace(min_val, max_val, num = int(split) + 1, endpoint = True))
-        # elif split == 'train': # Most likely only using this, because the others require several divisions for each of the continuous features ranges
-        
-        # sorted_feat_i = list(np.sort(data.transformed_train_np[:,i][(data.transformed_train_np[:,i] >= min_val) & (data.transformed_train_np[:,i] <= max_val)]))
-        # value = list(np.unique(sorted_feat_i))
-        
         sorted_feat_i = list(np.sort(data.transformed_train_np[:,i][(data.transformed_train_np[:,i] >= min_val) & (data.transformed_train_np[:,i] <= max_val)]))
         value = list(np.unique(sorted_feat_i))
         if len(value) <= 100:
@@ -151,14 +146,6 @@ class IJUICE:
                             value = [potential_justifier_k[i]]
                         feat_checked.extend([i])
                     elif feat_i in data.cat_enc_cols:
-                        # idx_cat_i = data.idx_cat_cols_dict[feat_i[:-2]]
-                        # nn_cat_idx = list(potential_justifier_k[idx_cat_i])
-                        # if any(item in idx_cat_i for item in nonzero_index):
-                        #     ioi_cat_idx = list(normal_x[idx_cat_i])
-                        #     value = [nn_cat_idx, ioi_cat_idx]
-                        # else:
-                        #     value = [nn_cat_idx]
-                        # feat_checked.extend(idx_cat_i)
                         idx_cat_i = data.idx_cat_cols_dict[feat_i[:-4]]
                         nn_cat_idx = list(potential_justifier_k[idx_cat_i])
                         if any(item in idx_cat_i for item in nonzero_index):
@@ -205,11 +192,10 @@ class IJUICE:
         """
         graph_nodes = []
         for k in range(len(self.potential_justifiers)):
-            # print(f'Neighbor {k+1}, Length: {len(graph_nodes)}')
             feat_possible_values_k = self.pot_justifier_feat_possible_values[k]
             permutations = product(*feat_possible_values_k)
             for i in permutations:
-                perm_i = self.make_array(i)                     # 
+                perm_i = self.make_array(i)
                 if model.model.predict(perm_i.reshape(1, -1)) != self.ioi_label and \
                     not any(np.array_equal(perm_i, x) for x in graph_nodes) and \
                     not any(np.array_equal(perm_i, x) for x in self.potential_justifiers):
@@ -317,7 +303,7 @@ class IJUICE:
             else:
                 sol_x_idx = min(potential_CF, key=potential_CF.get)
                 sol_x = self.all_nodes[sol_x_idx - 1]
-            justifiers = [sol_x]
+            justifiers = [sol_x_idx]
         else:
             """
             MODEL
@@ -331,7 +317,7 @@ class IJUICE:
             """
             set_I = list(self.C.keys())   
             cf = opt_model.addVars(set_I, vtype=GRB.BINARY, name='Counterfactual')   # Node chosen as destination
-            source = opt_model.addVars(set_I, vtype=GRB.BINARY, name='Justifiers')       # Nodes chosen as sources (justifier points)
+            source = opt_model.addVars(set_I, vtype=GRB.BINARY, name='Justifiers')   # Nodes chosen as sources (justifier points)
             edge = gp.tupledict()
             
             """
@@ -349,7 +335,7 @@ class IJUICE:
                     opt_model.addConstr(source[v] == 0)
             opt_model.addConstr(source.sum() >= 1)
             opt_model.addConstr(cf.sum() == 1)
-            opt_model.setObjective(cf.prod(self.C)*self.lagrange - source.sum()/len_justifiers*(1-self.lagrange), GRB.MINIMIZE)  # cf.prod(self.C) - source.sum()/len_justifiers
+            opt_model.setObjective(cf.prod(self.C)*self.lagrange - source.sum()/len_justifiers*(1-self.lagrange), GRB.MINIMIZE)
             list_excluded_nodes = list(np.setdiff1d(set_I, list(G.nodes)))
             for v in list_excluded_nodes:
                 opt_model.addConstr(source[v] == 0)
@@ -365,11 +351,12 @@ class IJUICE:
                     if self.F[i]:
                         potential_CF[i] = self.C[i]
                 if len(potential_CF) == 0:
-                    sol_x = self.find_potential_justifiers(counterfactual, ijuice_search=True)[0]
+                    sol_x_idx = 0
+                    sol_x = self.find_potential_justifiers(counterfactual, ijuice_search=True)[sol_x_idx]
                 else:
                     sol_x_idx = min(potential_CF, key=potential_CF.get)
                     sol_x = self.all_nodes[sol_x_idx - 1]
-                justifiers = [sol_x]
+                justifiers = [sol_x_idx]
             else:
                 for i in self.C.keys():
                     if cf[i].x > 0:
@@ -397,3 +384,15 @@ class IJUICE:
         justifier_ratio = len(justifiers)/len(self.potential_justifiers)
         print(f'Justifier Ratio (%): {np.round(justifier_ratio*100, 2)}')
         return sol_x, justifiers, justifier_ratio
+
+    def transform_dataframe(self, counterfactual):
+        """
+        Transforms the justifiers into dataframe
+        """
+        justifiers_original = []
+        for idx in range(len(self.justifiers)):
+            instance_idx = self.justifiers[idx]
+            justifier_original = counterfactual.data.inverse(self.potential_justifiers[instance_idx - 1])
+            justifiers_original.extend(justifier_original)
+        justifiers_original = pd.DataFrame(data=justifiers_original, columns=counterfactual.data.features)
+        return justifiers_original
