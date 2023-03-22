@@ -19,7 +19,7 @@ class Counterfactual:
 
     def select_cf_method(self):
         """
-        Method that selects the method to find the counterfactual and stores it in "normal_x_cf"
+        Selects the method to find the counterfactual and stores it in "normal_x_cf"
         ['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice','ijuice']
         """
         if self.method == 'nn':

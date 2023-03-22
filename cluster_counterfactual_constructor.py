@@ -6,13 +6,15 @@ from ijuice import IJUICE
 
 class Counterfactual:
 
-    def __init__(self, data, model, method, centroid, type='euclidean', lagrange=0.5):
+    def __init__(self, data, model, method, centroid, type='euclidean', lagrange=0.5, t=100, k=10):
         self.data = data
         self.model = model
         self.method = method
         self.ioi = centroid
         self.type = type
         self.lagrange = lagrange
+        self.t = t
+        self.k = k
         self.cf_method = self.select_cf_method()
 
     def select_cf_method(self):
