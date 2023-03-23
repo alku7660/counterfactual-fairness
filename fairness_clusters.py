@@ -17,7 +17,7 @@ from support import path_here, save_obj
 import time
 
 datasets = ['adult'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
-methods_to_run = ['nn','ijuice'] # ['nn','mo','ft','rt','gs','face','dice','cchvae'] 
+methods_to_run = ['fijuice'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -33,42 +33,30 @@ if __name__=='__main__':
         model = Model(data)
         data.undesired_test(model)
         clusters_obj = Clusters(data, model, metric=clustering_metric)
-        cluster_centroid_dict = clusters_obj.centroids
-        cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
-        for method_str in methods_to_run:
-            print(f'---------------------------------------')  
-            print(f'                    Dataset: {data_str}')
-            print(f'                     Method: {method_str}')
-            print(f'        Train dataset shape: {data.train_df.shape}')
-            print(f'         Test dataset shape: {data.false_undesired_test_df.shape}')
-            print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
-            print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
-            print(f'---------------------------------------')
-            cf_evaluator = Evaluator(data, n_feat, method_str)        
-            cf_evaluator.add_fairness_measures(data, model)
-            cf_evaluator.add_fnr_data(data)
-            cf_evaluator.add_cluster_data(clusters_obj)
-            for feat in cluster_centroid_feat_list:
-                feat_val_list = list(cluster_centroid_dict[feat].keys())
-                for feat_val in feat_val_list:
-                    centroid_list = cluster_centroid_dict[feat][feat_val]
-                    for centroid_idx in range(len(centroid_list)):
-                        centroid = Centroid(centroid_idx, centroid_list, feat_val, feat, data, model, type='euclidean')
-                        print(f'---------------------------')
-                        print(f'        Dataset: {data_str}')
-                        print(f'         Method: {method_str}')
-                        print(f'        Feature: {feat}')
-                        print(f'    Feat. value: {feat_val}')
-                        print(f'     Centr. Idx: {centroid_idx+1}')
-                        print(f' Total clusters: {len(centroid_list)}')
-                        print(f'---------------------------')
-                        counterfactual = Counterfactual(data, model, method_str, centroid, type='euclidean')
-                        cf_evaluator.add_cf_data(counterfactual, centroid)
+        
+        print(f'---------------------------------------')
+        print(f'                    Dataset: {data_str}')
+        print(f'        Train dataset shape: {data.train_df.shape}')
+        print(f'         Test dataset shape: {data.false_undesired_test_df.shape}')
+        print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
+        print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
+        print(f'---------------------------------------')
+        cf_evaluator = Evaluator(data, n_feat, methods_to_run[0])
+        cf_evaluator.add_fairness_measures(data, model)
+        cf_evaluator.add_fnr_data(data)
+        cf_evaluator.add_cluster_data(clusters_obj)
+        
+        print(f'---------------------------')
+        print(f'    Dataset: {data_str}')
+        print(f'     Method: {methods_to_run[0]}')
+        print(f'---------------------------')
+        counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, type='euclidean', t=100, k=1)
+        cf_evaluator.add_cf_data(counterfactual, centroid)
 
-            print(f'---------------------------')
-            print(f'  DONE: {data_str} CF Evaluation')
-            print(f'---------------------------')
-            save_obj(cf_evaluator, f'{data_str}_{method_str}_eval.pkl')
+        print(f'---------------------------')
+        print(f'  DONE: {data_str} CF Evaluation')
+        print(f'---------------------------')
+        save_obj(cf_evaluator, f'{data_str}_{methods_to_run[0]}_eval.pkl')
 
     print(f'---------------------------')
     print(f'  DONE: All CFs and Datasets')

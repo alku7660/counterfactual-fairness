@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import copy
 from sklearn.cluster import AgglomerativeClustering
+from centroid_constructor import Centroid
 
 class Clusters:
     def __init__(self, data, model, metric='single') -> None:
@@ -15,6 +16,7 @@ class Clusters:
         self.metric = metric
         self.sensitive_feat_idx_dict = self.select_instances_by_sensitive_group()
         self.clusters, self.centroids = self.find_viable_clusters(model)
+        self.centroids = self.define_centroids(data, model)
 
     def select_instances_by_sensitive_group(self):
         """
@@ -102,3 +104,18 @@ class Clusters:
             feature_cluster_instances_dict[feat_name] = sensitive_group_cluster_instances_dict
             feature_cluster_centroids_dict[feat_name] = sensitive_group_cluster_centroids_dict
         return feature_cluster_instances_dict, feature_cluster_centroids_dict
+
+    def define_centroids(self, data, model):
+        """
+        Creates the list of centroid objects
+        """
+        centroid_list = []
+        centroids_feat_list = list(self.centroids.keys())
+        for feat in centroids_feat_list:
+            feat_val_list = list(centroids_feat_list[feat].keys())
+            for feat_val in feat_val_list:
+                centroid_list = self.centroids[feat][feat_val]
+                for centroid_idx in range(len(centroid_list)):
+                    centroid = Centroid(centroid_idx, centroid_list, feat_val, feat, data, model, type='euclidean')
+                    centroid_list.append(centroid)
+        return centroid_list

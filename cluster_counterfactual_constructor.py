@@ -2,15 +2,15 @@ from nnt import NN
 from mo import MO
 from cchvae import CCHVAE
 from ijuice import IJUICE
-
+from fijuice import FIJUICE
 
 class Counterfactual:
 
-    def __init__(self, data, model, method, centroid, type='euclidean', lagrange=0.5, t=100, k=10):
+    def __init__(self, data, model, method, cluster, type='euclidean', lagrange=0.5, t=100, k=10):
         self.data = data
         self.model = model
         self.method = method
-        self.ioi = centroid
+        self.cluster = cluster
         self.type = type
         self.lagrange = lagrange
         self.t = t
@@ -30,6 +30,8 @@ class Counterfactual:
             cf_method = CCHVAE(self)
         elif self.method == 'ijuice':
             cf_method = IJUICE(self)
+        elif self.method == 'fijuice':
+            cf_method = FIJUICE(self)
         # elif self.method == 'ft':
         #     cf_method = FT(self)
         # elif self.method == 'rt':

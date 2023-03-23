@@ -9,11 +9,11 @@ from nnt import nn_for_juice
 import time
 from scipy.stats import norm
 
-class IJUICE:
+class FIJUICE:
 
     def __init__(self, counterfactual):
-        self.normal_ioi = counterfactual.ioi.normal_x
-        self.ioi_label = counterfactual.ioi.label
+        self.cluster = counterfactual.cluster
+        self.ioi_label = self.cluster.undesired_class
         self.lagrange = counterfactual.lagrange
         self.t = counterfactual.t
         self.k = counterfactual.k

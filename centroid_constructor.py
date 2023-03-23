@@ -39,18 +39,18 @@ class Centroid:
         self.normal_x = self.normal_x_df.values[0]
         self.x = inverse_transform_original(self.normal_x_df, data).values
         self.x_label = model.model.predict(self.normal_x.reshape(1, -1))
-        self.train_sorted, self.train_sorting_time = self.sorted(data, type)
+        # self.train_sorted, self.train_sorting_time = self.sorted(data, type)
     
-    def sorted(self, data, type):
-        """
-        Function to organize dataset with respect to distance to instance x
-        """
-        start_time = time.time()
-        sort_data_distance = []
-        for i in range(data.transformed_train_np.shape[0]):
-            dist = distance_calculation(data.transformed_train_np[i], self.normal_x, data, type)
-            sort_data_distance.append((data.transformed_train_np[i], dist, data.train_target[i]))      
-        sort_data_distance.sort(key=lambda x: x[1])
-        end_time = time.time()
-        total_time = end_time - start_time 
-        return sort_data_distance, total_time
+    # def sorted(self, data, type):
+    #     """
+    #     Function to organize dataset with respect to distance to instance x
+    #     """
+    #     start_time = time.time()
+    #     sort_data_distance = []
+    #     for i in range(data.transformed_train_np.shape[0]):
+    #         dist = distance_calculation(data.transformed_train_np[i], self.normal_x, data, type)
+    #         sort_data_distance.append((data.transformed_train_np[i], dist, data.train_target[i]))      
+    #     sort_data_distance.sort(key=lambda x: x[1])
+    #     end_time = time.time()
+    #     total_time = end_time - start_time 
+    #     return sort_data_distance, total_time
