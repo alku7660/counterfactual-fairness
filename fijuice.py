@@ -144,7 +144,7 @@ class FIJUICE:
         pot_justifier_feat_possible_values_all_centroids = {}
         for c_idx in range(len(self.cluster.centroids)):
             pot_justifier_feat_possible_values = {}
-            idx = self.cluster.centroids[c_idx].centroid_idx
+            # idx = self.cluster.centroids[c_idx].centroid_idx
             normal_centroid = self.cluster.centroids[c_idx].normal_x
             for k in range(len(points)):
                 potential_justifier_k = points[k]
@@ -187,7 +187,7 @@ class FIJUICE:
                             feat_checked.extend([i])
                         feat_possible_values.append(value)
                 pot_justifier_feat_possible_values[k] = feat_possible_values
-            pot_justifier_feat_possible_values_all_centroids[idx] = pot_justifier_feat_possible_values
+            pot_justifier_feat_possible_values_all_centroids[c_idx] = pot_justifier_feat_possible_values
         return pot_justifier_feat_possible_values
 
     def make_array(self, i):
@@ -209,9 +209,9 @@ class FIJUICE:
         """
         graph_nodes = []
         for c_idx in range(len(self.cluster.centroids)):
-            idx = self.cluster.centroids[c_idx].centroid_idx
+            # idx = self.cluster.centroids[c_idx].centroid_idx
             for k in range(len(self.potential_justifiers)):
-                feat_possible_values_k = self.pot_justifier_feat_possible_values[idx][k]
+                feat_possible_values_k = self.pot_justifier_feat_possible_values[c_idx][k]
                 permutations = product(*feat_possible_values_k)
                 for i in permutations:
                     perm_i = self.make_array(i)
@@ -245,18 +245,17 @@ class FIJUICE:
                 F[c_idx, k] = verify_feasibility(normal_centroid, node_k, data)
         return F
 
-    def get_all_adjacency(self, data, model):
+    def get_all_adjacency(self, data):
         """
         Method that outputs the adjacency matrix required for optimization
         """
         toler = 0.00001
-        nodes = self.all_nodes
         justifiers_array = np.array(self.potential_justifiers)
         A = tuplelist()
-        for i in range(1, len(nodes) + 1):
-            node_i = nodes[i - 1]
-            for j in range(i + 1, len(nodes) + 1):
-                node_j = nodes[j - 1]
+        for i in range(1, len(self.all_nodes) + 1):
+            node_i = self.all_nodes[i - 1]
+            for j in range(i + 1, len(self.all_nodes) + 1):
+                node_j = self.all_nodes[j - 1]
                 vector_ij = node_j - node_i
                 nonzero_index = list(np.nonzero(vector_ij)[0])
                 feat_nonzero = [data.processed_features[l] for l in nonzero_index]
@@ -324,32 +323,39 @@ class FIJUICE:
                     if self.F[c_idx, i]:
                         potential_CF[c_idx, i] = self.C[c_idx, i]
                 if len(potential_CF) == 0:
+                    pot_justifiers = self.find_potential_justifiers(counterfactual, ijuice_search=True)
                     sol_x_idx = 0
-                    sol_x = self.find_potential_justifiers(counterfactual, ijuice_search=True)[sol_x_idx]
+                    justifiers[c_idx, sol_x_idx] = pot_justifiers[pot_justifiers['centroid_idx'] == sol_x_idx]['justifiers'][0]
                 else:
                     sol_x_idx = min(potential_CF, key=potential_CF.get)
                     sol_x = self.all_nodes[sol_x_idx - 1]
-                justifiers = [sol_x_idx]
+                justifiers[c_idx, sol_x_idx] = sol_x
         else:
             """
             MODEL
             """
-            opt_model = gp.Model(name='iJUICE')
+            opt_model = gp.Model(name='FiJUICE')
             G = nx.DiGraph()
             G.add_edges_from(self.A)
             
             """
-            SETS AND VARIABLES
+            SETS
             """
-            set_I = list(self.C.keys())   
-            cf = opt_model.addVars(set_I, vtype=GRB.BINARY, name='Counterfactual')   # Node chosen as destination
-            source = opt_model.addVars(set_I, vtype=GRB.BINARY, name='Justifiers')   # Nodes chosen as sources (justifier points)
+            set_Centroids = range(1, len(self.clusters.centroids) + 1)
+            set_N = list(self.C.keys())
+            len_justifiers = len(self.potential_justifiers)
+            set_Sources = range(1, len_justifiers + 1)
+               
+            """
+            VARIABLES
+            """
+            cf = opt_model.addVars(set_Centroids, set_N, vtype=GRB.BINARY, name='Counterfactual')   # Node chosen as destination
+            source = opt_model.addVars(set_Sources, set_N, vtype=GRB.BINARY, name='Justifiers')   # Nodes chosen as sources (justifier points)
             edge = gp.tupledict()
             
             """
             CONSTRAINTS AND OBJECTIVE
             """
-            len_justifiers = len(self.potential_justifiers)
             for (i,j) in G.edges:
                 edge[i,j] = opt_model.addVar(vtype=GRB.INTEGER, name='Path')
             for v in G.nodes:
@@ -362,7 +368,7 @@ class FIJUICE:
             opt_model.addConstr(source.sum() >= 1)
             opt_model.addConstr(cf.sum() == 1)
             opt_model.setObjective(cf.prod(self.C)*self.lagrange - source.sum()/len_justifiers*(1-self.lagrange), GRB.MINIMIZE)
-            list_excluded_nodes = list(np.setdiff1d(set_I, list(G.nodes)))
+            list_excluded_nodes = list(np.setdiff1d(set_N, list(G.nodes)))
             for v in list_excluded_nodes:
                 opt_model.addConstr(source[v] == 0)
                 opt_model.addConstr(cf[v] == 0)

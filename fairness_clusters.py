@@ -25,6 +25,7 @@ epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feat
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 clustering_metric = 'complete' # Clustering metric used
+dist = 'L1_L0'
 np.random.seed(seed_int)
 
 if __name__=='__main__':
