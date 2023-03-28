@@ -240,7 +240,7 @@ class FIJUICE:
         F = {}
         for c_idx in range(1, len(self.clusters.centroids) + 1):
             normal_centroid = self.cluster.centroids[c_idx - 1].normal_x
-            for k in range(1, len(self.all_nodes)+1):
+            for k in range(1, len(self.all_nodes) + 1):
                 node_k = self.all_nodes[k-1]
                 F[c_idx, k] = verify_feasibility(normal_centroid, node_k, data)
         return F
@@ -319,15 +319,17 @@ class FIJUICE:
             justifiers = {}
             for c_idx in range(1, len(self.cluster.centroids) + 1):
                 potential_CF = {}
-                for i in range(1, len(self.all_nodes) + 1):
+                for i in range(1, len(self.potential_justifiers) + 1):
                     if self.F[c_idx, i]:
                         potential_CF[c_idx, i] = self.C[c_idx, i]
+
+            for c_idx in range(1, len(self.cluster.centroids) + 1):
                 if len(potential_CF) == 0:
                     pot_justifiers = self.find_potential_justifiers(counterfactual, ijuice_search=True)
                     sol_x_idx = 0
-                    justifiers[c_idx, sol_x_idx] = pot_justifiers[pot_justifiers['centroid_idx'] == sol_x_idx]['justifiers'][0]
+                    sol_x = pot_justifiers[pot_justifiers['centroid_idx'] == c_idx]['justifiers'][sol_x_idx]
                 else:
-                    sol_x_idx = min(potential_CF, key=potential_CF.get)
+                    _, sol_x_idx = min(potential_CF, key=potential_CF.get)
                     sol_x = self.all_nodes[sol_x_idx - 1]
                 justifiers[c_idx, sol_x_idx] = sol_x
         else:
@@ -341,7 +343,7 @@ class FIJUICE:
             """
             SETS
             """
-            set_Centroids = range(1, len(self.clusters.centroids) + 1)
+            set_Centroids = range(1, len(self.cluster.centroids) + 1)
             set_N = list(self.C.keys())
             len_justifiers = len(self.potential_justifiers)
             set_Sources = range(1, len_justifiers + 1)
@@ -349,50 +351,72 @@ class FIJUICE:
             """
             VARIABLES
             """
-            cf = opt_model.addVars(set_Centroids, set_N, vtype=GRB.BINARY, name='Counterfactual')   # Node chosen as destination
-            source = opt_model.addVars(set_Sources, set_N, vtype=GRB.BINARY, name='Justifiers')   # Nodes chosen as sources (justifier points)
+            for (i,j) in G.edges:
+                edge[i,j] = opt_model.addVar(vtype=GRB.INTEGER, name='Path')
+            cf = opt_model.addVars(set_Centroids, G.nodes, vtype=GRB.BINARY, name='Counterfactual')   # Node chosen as destination
+            source = opt_model.addVars(set_Sources, G.nodes, vtype=GRB.INTEGER, name='Justifiers')   # Nodes chosen as sources (justifier points)
             edge = gp.tupledict()
             
             """
             CONSTRAINTS AND OBJECTIVE
             """
-            for (i,j) in G.edges:
-                edge[i,j] = opt_model.addVar(vtype=GRB.INTEGER, name='Path')
-            for v in G.nodes:
-                opt_model.addConstr(cf[v] <= self.F[v])
-                if v <= len_justifiers:
-                    opt_model.addConstr(gp.quicksum(edge[i,v] for i in G.predecessors(v)) - gp.quicksum(edge[v,j] for j in G.successors(v)) == -source[v]) # Source contraints
-                else:
-                    opt_model.addConstr(gp.quicksum(edge[i,v] for i in G.predecessors(v)) - gp.quicksum(edge[v,j] for j in G.successors(v)) == cf[v]*source.sum()) # Sink constraints
-                    opt_model.addConstr(source[v] == 0)
-            opt_model.addConstr(source.sum() >= 1)
-            opt_model.addConstr(cf.sum() == 1)
-            opt_model.setObjective(cf.prod(self.C)*self.lagrange - source.sum()/len_justifiers*(1-self.lagrange), GRB.MINIMIZE)
-            list_excluded_nodes = list(np.setdiff1d(set_N, list(G.nodes)))
-            for v in list_excluded_nodes:
-                opt_model.addConstr(source[v] == 0)
-                opt_model.addConstr(cf[v] == 0)
+            for c in set_Centroids:
+                for n in G.nodes:
+                    opt_model.addConstr(cf[c, n] <= self.F[c, n])
+            
+            for n in G.nodes:
+                if n in set_Sources:
+                    opt_model.addConstr(gp.quicksum(edge[i, n] for i in G.predecessors(n)) - gp.quicksum(edge[n, j] for j in G.successors(n)) == -gp.quicksum(source[n, k] for k in G.nodes)) # Source contraints. A source may justify more than one CF
+            
+            for c in set_Centroids:
+                for n in G.nodes:
+                    if n not in set_Sources:
+                        opt_model.addConstr(gp.quicksum(edge[i, n] for i in G.predecessors(n)) - gp.quicksum(edge[n, j] for j in G.successors(n)) == cf[c, n]*gp.quicksum(source[s, n] for s in set_Sources)) # Sink constraints
+                        # opt_model.addConstr(source[n] == 0)
+            
+            for c in set_Centroids:
+                opt_model.addConstr(gp.quicksum(cf[c, i] for i in G.nodes) == 1)
+            
+            opt_model.addConstr(gp.quicksum(source[s, i] for s in set_Sources for i in G.nodes) >= len(self.cluster.centroids))
+                        
+            opt_model.setObjective(cf.prod(self.C)*self.lagrange + gp.quicksum(np.abs(cf[c, i]*self.C[c, i] - cf[e, j]*self.C[e, j]) for c, e in set_Centroids for i, j in G.nodes if (c, i) != (e, j))*(1-self.lagrange), GRB.MINIMIZE)
+            
+            # list_excluded_nodes = list(np.setdiff1d(set_N, list(G.nodes)))
+            # for v in list_excluded_nodes:
+            #     for s in set_Sources:
+            #         opt_model.addConstr(source[s, v] == 0)
+            #     for c in set_Centroids:
+            #         opt_model.addConstr(cf[c, v] == 0)
+
             """
             OPTIMIZATION AND RESULTS
             """
             opt_model.optimize()
             time.sleep(0.5)
             if opt_model.status == 3 or len(self.all_nodes) == len(self.potential_justifiers):
-                potential_CF = {}
-                for i in self.C.keys():
-                    if self.F[i]:
-                        potential_CF[i] = self.C[i]
-                if len(potential_CF) == 0:
-                    sol_x_idx = 0
-                    sol_x = self.find_potential_justifiers(counterfactual, ijuice_search=True)[sol_x_idx]
-                else:
-                    sol_x_idx = min(potential_CF, key=potential_CF.get)
-                    sol_x = self.all_nodes[sol_x_idx - 1]
-                justifiers = [sol_x_idx]
+                sol_x = {}
+                for c_idx in range(1, len(self.cluster.centroids) + 1):
+                    potential_CF = {}
+                    for i in range(1, len(self.all_nodes) + 1):
+                        if self.F[c_idx, i]:
+                            potential_CF[c_idx, i] = self.C[c_idx, i]
+                
+                for c_idx in range(1, len(self.cluster.centroids) + 1):
+                    potential_CF_c = [potential_CF[c_idx, i] for i in G.nodes]
+                    if len(potential_CF_c) == 0:
+                        pot_justifiers = self.find_potential_justifiers(counterfactual, ijuice_search=True)
+                        sol_x_idx = 0
+                        justifiers[c_idx, sol_x_idx] = pot_justifiers[pot_justifiers['centroid_idx'] == sol_x_idx]['justifiers'][0]
+                    else:
+                        sol_x_idx = min(potential_CF, key=potential_CF.get)
+                        justifiers[c_idx, sol_x_idx] = self.all_nodes[sol_x_idx - 1]
+                            
+                        justifiers[c_idx, sol_x_idx] = sol_x
             else:
-                for i in self.C.keys():
-                    if cf[i].x > 0:
-                        sol_x = self.all_nodes[i - 1]
+                for c in set_Centroids:
+                    for i in G.nodes:
+                        if cf[c, i].x > 0:
+                            sol_x = self.all_nodes[i - 1]
                 print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
                 print(f'Solution:')
                 justifiers = []

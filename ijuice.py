@@ -295,11 +295,12 @@ class IJUICE:
 
         if len(self.A) == 0:
             potential_CF = {}
-            for i in self.C.keys():
+            for i in range(1, len(self.potential_justifiers) + 1):
                 if self.F[i]:
                     potential_CF[i] = self.C[i]
             if len(potential_CF) == 0:
-                sol_x = self.find_potential_justifiers(counterfactual, ijuice_search=True)[0]
+                sol_x_idx = 0
+                sol_x = self.find_potential_justifiers(counterfactual, ijuice_search=True)[sol_x_idx]
             else:
                 sol_x_idx = min(potential_CF, key=potential_CF.get)
                 sol_x = self.all_nodes[sol_x_idx - 1]
@@ -347,7 +348,7 @@ class IJUICE:
             time.sleep(0.5)
             if opt_model.status == 3 or len(self.all_nodes) == len(self.potential_justifiers):
                 potential_CF = {}
-                for i in self.C.keys():
+                for i in range(1, len(self.potential_justifiers) + 1):
                     if self.F[i]:
                         potential_CF[i] = self.C[i]
                 if len(potential_CF) == 0:
