@@ -303,11 +303,12 @@ class FIJUICE:
 
     def do_optimize_all(self, counterfactual):
         """
-        Method that finds iJUICE CF using an optimization package
+        Method that finds FiJUICE CF using Gurobi optimization package
         """
+
         def output_path(node, cf_node, path=[]):
             """
-            Function that prints the connection paths from a justifier towards the found CF
+            Prints the connection paths from a justifier towards the found CF
             """
             path.extend([node])
             if cf_node == node:
@@ -315,23 +316,32 @@ class FIJUICE:
             new_node = [j for j in G.successors(node) if edge[node,j].x >= 0.9][0]
             return output_path(new_node, cf_node, path)
 
-        if len(self.A) == 0:
-            justifiers = {}
+        def unfeasible_case(self):
+            """
+            Obtains the feasible justified solution when the problem is unfeasible
+            """
+            sol_x, justifiers, centroids_solved = {}, {}, []
             for c_idx in range(1, len(self.cluster.centroids) + 1):
                 potential_CF = {}
                 for i in range(1, len(self.potential_justifiers) + 1):
                     if self.F[c_idx, i]:
                         potential_CF[c_idx, i] = self.C[c_idx, i]
+                        centroids_solved.append(c_idx)
+            for c_idx in centroids_solved:
+                centroids_solved_i = dict(potential_CF[tup] for tup in potential_CF.keys() if tup[0] == c_idx)
+                _, sol_x_idx = min(centroids_solved_i, key=centroids_solved_i.get)
+                sol_x[c_idx, sol_x_idx] = self.all_nodes[sol_x_idx - 1]
+                justifiers[c_idx, sol_x_idx] = self.all_nodes[sol_x_idx - 1]
+            for c_idx in range(1, len(self.cluster.centroids) + 1) not in centroids_solved:
+                pot_justifiers = self.find_potential_justifiers(counterfactual, ijuice_search=True)
+                sol_x_idx = 0
+                cf_instance = pot_justifiers[pot_justifiers['centroid_idx'] == c_idx]['justifiers'][sol_x_idx]
+                sol_x[c_idx, sol_x_idx] = cf_instance
+                justifiers[c_idx, sol_x_idx] = cf_instance
+            return sol_x, justifiers       
 
-            for c_idx in range(1, len(self.cluster.centroids) + 1):
-                if len(potential_CF) == 0:
-                    pot_justifiers = self.find_potential_justifiers(counterfactual, ijuice_search=True)
-                    sol_x_idx = 0
-                    sol_x = pot_justifiers[pot_justifiers['centroid_idx'] == c_idx]['justifiers'][sol_x_idx]
-                else:
-                    _, sol_x_idx = min(potential_CF, key=potential_CF.get)
-                    sol_x = self.all_nodes[sol_x_idx - 1]
-                justifiers[c_idx, sol_x_idx] = sol_x
+        if len(self.A) == 0:
+            sol_x, justifiers = unfeasible_case(self)
         else:
             """
             MODEL
@@ -392,63 +402,50 @@ class FIJUICE:
             OPTIMIZATION AND RESULTS
             """
             opt_model.optimize()
-            time.sleep(0.5)
+            time.sleep(0.25)
             if opt_model.status == 3 or len(self.all_nodes) == len(self.potential_justifiers):
-                sol_x = {}
-                for c_idx in range(1, len(self.cluster.centroids) + 1):
-                    potential_CF = {}
-                    for i in range(1, len(self.all_nodes) + 1):
-                        if self.F[c_idx, i]:
-                            potential_CF[c_idx, i] = self.C[c_idx, i]
-                
-                for c_idx in range(1, len(self.cluster.centroids) + 1):
-                    potential_CF_c = [potential_CF[c_idx, i] for i in G.nodes]
-                    if len(potential_CF_c) == 0:
-                        pot_justifiers = self.find_potential_justifiers(counterfactual, ijuice_search=True)
-                        sol_x_idx = 0
-                        justifiers[c_idx, sol_x_idx] = pot_justifiers[pot_justifiers['centroid_idx'] == sol_x_idx]['justifiers'][0]
-                    else:
-                        sol_x_idx = min(potential_CF, key=potential_CF.get)
-                        justifiers[c_idx, sol_x_idx] = self.all_nodes[sol_x_idx - 1]
-                            
-                        justifiers[c_idx, sol_x_idx] = sol_x
+               sol_x, justifiers = unfeasible_case(self)
             else:
+                print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
+                sol_x, justifiers, nodes_solution = {}, {}, []
                 for c in set_Centroids:
                     for i in G.nodes:
                         if cf[c, i].x > 0:
-                            sol_x = self.all_nodes[i - 1]
-                print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
+                            sol_x[c, i] = self.all_nodes[i - 1]
+                            nodes_solution.append(i)
+                for s in set_Sources:
+                    for i in nodes_solution:
+                        if source[s, i].x > 0.1:
+                            justifiers[s, i] = self.all_nodes[i - 1]
+                time.sleep(0.25)
                 print(f'Solution:')
-                justifiers = []
-                for i in self.C.keys():
-                    if source[i].x > 0.1:
-                        justifiers.append(i)
-                print(f'Number of justifiers: {len(justifiers)}')
-                time.sleep(0.5)
-                for i in self.C.keys():
-                    if cf[i].x > 0.1:
-                        print(f'cf({i}): {cf[i].x}')
-                        print(f'Node {i}: {self.all_nodes[i - 1]}')
-                        print(f'Original IOI: {self.normal_ioi}')
-                        print(f'Euclidean Distance: {np.round(np.sqrt(np.sum((self.all_nodes[i - 1] - self.normal_ioi)**2)),3)}')
-                        cf_node_idx = i
-                time.sleep(0.5)
-                for i in justifiers:
+                for c in set_Centroids:
+                    for i in G.nodes:
+                        if cf[c, i].x > 0.1:
+                            print(f'cf({c, i}): {cf[c, i].x}')
+                            print(f'Node {i}: {self.all_nodes[i - 1]}')
+                            print(f'Original Centroid: {self.cluster.centroids[c - 1]}')
+                            print(f'Distance: {np.round(self.C[c, i], 3)}')
+                time.sleep(0.25)
+                for s, i in justifiers.keys():
                     path = []
-                    print(f'Source {i} Path to CF: {output_path(i, cf_node_idx, path=path)}')
+                    print(f'Source {s} Path to CF : {output_path(s, i, path=path)}')
                     time.sleep(0.25)
-        justifier_ratio = len(justifiers)/len(self.potential_justifiers)
-        print(f'Justifier Ratio (%): {np.round(justifier_ratio*100, 2)}')
+            justifier_ratio = {}
+            for i in nodes_solution:
+                list_cf_justifier = [tup[0] for tup in justifiers.keys() if tup[1] == i]
+                justifier_ratio[i] = len(list_cf_justifier)/len(self.potential_justifiers)    
+                print(f'Justifier Ratio (%) for node {i}: {np.round(justifier_ratio*100, 2)}')
         return sol_x, justifiers, justifier_ratio
 
     def transform_dataframe(self, counterfactual):
         """
         Transforms the justifiers into dataframe
         """
-        justifiers_original = []
-        for idx in range(len(self.justifiers)):
-            instance_idx = self.justifiers[idx]
-            justifier_original = counterfactual.data.inverse(self.potential_justifiers[instance_idx - 1])
-            justifiers_original.extend(justifier_original)
-        justifiers_original = pd.DataFrame(data=justifiers_original, columns=counterfactual.data.features)
+        justifiers_original = {}
+        for s, i in self.justifiers.keys():
+            justifier_instance = self.justifiers[s, i]
+            justifier_original = counterfactual.data.inverse(justifier_instance)
+            justifier_original_df = pd.DataFrame(data=justifier_original, columns=counterfactual.data.features)
+            justifiers_original[s, i] = justifier_original_df
         return justifiers_original
