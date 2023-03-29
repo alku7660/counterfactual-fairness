@@ -22,16 +22,16 @@ class Counterfactual:
         Selects the method to find the counterfactual and stores it in "normal_x_cf"
         ['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice','ijuice']
         """
-        if self.method == 'nn':
-            cf_method = NN(self)
-        elif self.method == 'mo':
-            cf_method = MO(self)
-        elif self.method == 'cchvae':
-            cf_method = CCHVAE(self)
-        elif self.method == 'ijuice':
-            cf_method = IJUICE(self)
-        elif self.method == 'fijuice':
+        if self.method == 'fijuice':
             cf_method = FIJUICE(self)
+        # elif self.method == 'nn':
+        #     cf_method = NN(self)
+        # elif self.method == 'mo':
+        #     cf_method = MO(self)
+        # elif self.method == 'cchvae':
+        #     cf_method = CCHVAE(self)
+        # elif self.method == 'ijuice':
+        #     cf_method = IJUICE(self)
         # elif self.method == 'ft':
         #     cf_method = FT(self)
         # elif self.method == 'rt':

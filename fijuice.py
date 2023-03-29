@@ -412,7 +412,8 @@ class FIJUICE:
                     for i in G.nodes:
                         if cf[c, i].x > 0:
                             sol_x[c, i] = self.all_nodes[i - 1]
-                            nodes_solution.append(i)
+                            if i not in nodes_solution:
+                                nodes_solution.append(i)
                 for s in set_Sources:
                     for i in nodes_solution:
                         if source[s, i].x > 0.1:
