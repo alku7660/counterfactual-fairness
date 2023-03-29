@@ -36,9 +36,9 @@ class FIJUICE:
             potential_justifiers = train_np[(train_target != self.ioi_label) & (train_pred != self.ioi_label)]
         else:
             potential_justifiers = train_np[train_target != self.ioi_label]
-        potential_justifiers_df = pd.DataFrame(cols = ['centroid_idx','centroid','feat','feat_val','justifiers'])
-        for c in self.cluster.centroids:
-            idx = c.centroid_idx
+        potential_justifiers_df = pd.DataFrame(columns = ['centroid','feat','feat_val','justifiers'])
+        for idx in range(len(self.cluster.centroids)):
+            c = self.cluster.centroids[idx]
             feat = c.feat
             feat_val = c.feat_val
             normal_centroid = c.normal_x
@@ -55,7 +55,8 @@ class FIJUICE:
             sort_potential_justifiers_centroid = [i[0] for i in sort_potential_justifiers_centroid]
             if len(sort_potential_justifiers_centroid) > self.t:
                 sort_potential_justifiers_centroid = sort_potential_justifiers_centroid[:self.t]
-            potential_justifiers_df = pd.concat((potential_justifiers_df, [idx, normal_centroid, feat, feat_val, sort_potential_justifiers_centroid]), axis=0)
+            centroid_df_data = pd.DataFrame([[normal_centroid, feat, feat_val, sort_potential_justifiers_centroid]], index=[idx], columns=potential_justifiers_df.columns)
+            potential_justifiers_df = pd.concat((potential_justifiers_df, centroid_df_data), axis=0)
         return potential_justifiers_df
 
     def nn_list(self, counterfactual):
@@ -407,26 +408,23 @@ class FIJUICE:
                sol_x, justifiers = unfeasible_case(self)
             else:
                 print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
+                print(f'Solution:')
                 sol_x, justifiers, nodes_solution = {}, {}, []
                 for c in set_Centroids:
                     for i in G.nodes:
-                        if cf[c, i].x > 0:
-                            sol_x[c, i] = self.all_nodes[i - 1]
+                        if cf[c, i].x > 0.1:
+                            sol_x[c] = self.all_nodes[i - 1]
                             if i not in nodes_solution:
                                 nodes_solution.append(i)
+                            print(f'cf({c, i}): {cf[c, i].x}')
+                            print(f'Node {i}: {self.all_nodes[i - 1]}')
+                            print(f'Original Centroid: {self.cluster.centroids[c - 1].normal_x}')
+                            print(f'Distance: {np.round(self.C[c, i], 3)}')
                 for s in set_Sources:
                     for i in nodes_solution:
                         if source[s, i].x > 0.1:
                             justifiers[s, i] = self.all_nodes[i - 1]
                 time.sleep(0.25)
-                print(f'Solution:')
-                for c in set_Centroids:
-                    for i in G.nodes:
-                        if cf[c, i].x > 0.1:
-                            print(f'cf({c, i}): {cf[c, i].x}')
-                            print(f'Node {i}: {self.all_nodes[i - 1]}')
-                            print(f'Original Centroid: {self.cluster.centroids[c - 1]}')
-                            print(f'Distance: {np.round(self.C[c, i], 3)}')
                 time.sleep(0.25)
                 for s, i in justifiers.keys():
                     path = []

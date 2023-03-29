@@ -109,13 +109,13 @@ class Clusters:
         """
         Creates the list of centroid objects
         """
-        centroid_list = []
+        centroid_obj_list = []
         centroids_feat_list = list(self.centroids.keys())
         for feat in centroids_feat_list:
-            feat_val_list = list(centroids_feat_list[feat].keys())
+            feat_val_list = list(self.centroids[feat].keys())
             for feat_val in feat_val_list:
                 centroid_list = self.centroids[feat][feat_val]
                 for centroid_idx in range(len(centroid_list)):
                     centroid = Centroid(centroid_idx, centroid_list, feat_val, feat, data, model, type='euclidean')
-                    centroid_list.append(centroid)
-        return centroid_list
+                    centroid_obj_list.append(centroid)
+        return centroid_obj_list

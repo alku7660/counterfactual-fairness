@@ -16,7 +16,7 @@ from sklearn.metrics import f1_score
 from support import path_here, save_obj
 import time
 
-datasets = ['adult'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
+datasets = ['student'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
 methods_to_run = ['fijuice'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -51,13 +51,13 @@ if __name__=='__main__':
         print(f'    Dataset: {data_str}')
         print(f'     Method: {methods_to_run[0]}')
         print(f'---------------------------')
-        counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, type='euclidean', t=100, k=1)
-        cf_evaluator.add_cf_data(counterfactual, centroid)
+        counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, type=dist, t=100, k=1)
+        cf_evaluator.add_cf_data(counterfactual)
 
         print(f'---------------------------')
         print(f'  DONE: {data_str} CF Evaluation')
         print(f'---------------------------')
-        save_obj(cf_evaluator, f'{data_str}_{methods_to_run[0]}_eval.pkl')
+        save_obj(cf_evaluator, f'{data_str}_fijuice_cluster_eval.pkl')
 
     print(f'---------------------------')
     print(f'  DONE: All CFs and Datasets')

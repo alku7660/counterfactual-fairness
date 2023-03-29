@@ -677,7 +677,7 @@ class Evaluator():
         penalize_instance = sorted_train_x[-1][0]
         return penalize_instance
 
-    def add_cf_data(self, counterfactual, centroid):
+    def add_cf_data(self, counterfactual):
         """
         DESCRIPTION:            Stores the cluster CF and obtains all the performance measures for the cluster counterfactual 
         
@@ -689,16 +689,19 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        cf_proximity = distance_calculation(centroid.normal_x, counterfactual.cf_method.normal_x_cf, counterfactual.data)
-        cf_feasibility = verify_feasibility(centroid.normal_x, counterfactual.cf_method.normal_x_cf, counterfactual.data)
-        normal_x_cf_df = pd.DataFrame(data=counterfactual.cf_method.normal_x_cf.reshape(1,-1), index=[0], columns=counterfactual.data.processed_features)
-        x_cf = self.inverse_transform_original(normal_x_cf_df).values
-        cols = ['feature','feat_value','centroid_idx','normal_centroid','centroid',
-                'normal_cf','cf','cf_proximity','cf_feasibility','cf_time']
-        data_list = [centroid.feat, centroid.feat_val, centroid.centroid_idx, centroid.normal_x, centroid.x,
-                counterfactual.cf_method.normal_x_cf, x_cf, cf_proximity, cf_feasibility, counterfactual.cf_method.run_time]
-        data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
-        self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
+        for c_idx in range(len(counterfactual.cluster.centroids)):
+            centroid = counterfactual.cluster.centroids[c_idx]
+            normal_centroid_cf = counterfactual.cf_method.normal_x_cf[c_idx + 1]
+            cf_proximity = distance_calculation(centroid.normal_x, normal_centroid_cf, counterfactual.data, type=counterfactual.type)
+            cf_feasibility = verify_feasibility(centroid.normal_x, normal_centroid_cf, counterfactual.data, type=counterfactual.type)
+            normal_x_cf_df = pd.DataFrame(data=normal_centroid_cf.reshape(1,-1), index=[0], columns=counterfactual.data.processed_features)
+            original_cf = self.inverse_transform_original(normal_x_cf_df).values
+            cols = ['feature','feat_value','centroid_idx','normal_centroid','centroid',
+                    'normal_cf','cf','cf_proximity','cf_feasibility','cf_time']
+            data_list = [centroid.feat, centroid.feat_val, centroid.centroid_idx, centroid.normal_x, centroid.x,
+                    normal_centroid_cf, original_cf, cf_proximity, cf_feasibility, counterfactual.cf_method.run_time]
+            data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
+            self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
     
     def add_cluster_data(self, cluster_obj):
         """
