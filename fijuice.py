@@ -94,7 +94,7 @@ class FIJUICE:
         print(f'Obtained all costs in the graph')
         self.F = self.get_all_feasibility(counterfactual.data)
         print(f'Obtained all feasibility in the graph')
-        self.A = self.get_all_adjacency(counterfactual.data, counterfactual.model)
+        self.A = self.get_all_adjacency(counterfactual.data)
         print(f'Obtained adjacency matrix')
         if len(self.potential_justifiers) > 0:
             normal_x_cf, justifiers, justifier_ratio = self.do_optimize_all(counterfactual)
@@ -227,7 +227,7 @@ class FIJUICE:
         Method that outputs the cost parameters required for optimization
         """
         C = {}
-        for c_idx in range(1, len(self.clusters.centroids) + 1):
+        for c_idx in range(1, len(self.cluster.centroids) + 1):
             normal_centroid = self.cluster.centroids[c_idx - 1].normal_x
             for k in range(1, len(self.all_nodes) + 1):
                 node_k = self.all_nodes[k-1]
@@ -239,7 +239,7 @@ class FIJUICE:
         Outputs the counterfactual feasibility parameter for all graph nodes (including the potential justifiers) 
         """
         F = {}
-        for c_idx in range(1, len(self.clusters.centroids) + 1):
+        for c_idx in range(1, len(self.cluster.centroids) + 1):
             normal_centroid = self.cluster.centroids[c_idx - 1].normal_x
             for k in range(1, len(self.all_nodes) + 1):
                 node_k = self.all_nodes[k-1]
@@ -251,6 +251,7 @@ class FIJUICE:
         Method that outputs the adjacency matrix required for optimization
         """
         toler = 0.00001
+        centroids_array = np.array([self.cluster.centroids[i].normal_x for i in range(len(self.cluster.centroids))])
         justifiers_array = np.array(self.potential_justifiers)
         A = tuplelist()
         for i in range(1, len(self.all_nodes) + 1):
@@ -270,7 +271,7 @@ class FIJUICE:
                         if np.isclose(np.abs(vector_ij[nonzero_index]), data.feat_step[feat_nonzero], atol=toler).any():
                             A.append((i,j))
                     elif any(item in data.continuous for item in feat_nonzero):
-                        max_val, min_val = float(max(self.normal_ioi[nonzero_index], max(justifiers_array[:,nonzero_index]))), float(min(self.normal_ioi[nonzero_index], min(justifiers_array[:,nonzero_index])))
+                        max_val, min_val = float(max(max(centroids_array[:,nonzero_index]), max(justifiers_array[:,nonzero_index]))), float(min(min(centroids_array[:,nonzero_index]), min(justifiers_array[:,nonzero_index])))
                         values = self.continuous_feat_values(nonzero_index, min_val, max_val, data)
                         try:
                             value_node_i_idx = int(np.where(np.isclose(values, node_i[nonzero_index]))[0])

@@ -348,6 +348,8 @@ class Dataset:
         elif self.name == 'law':
             feat_protected['Sex'] = {1.00:'Male', 2.00:'Female'}
             feat_protected['Race'] = {1.00:'White', 2.00:'Non-white'}
+        elif self.name == 'synthetic_athlete':
+            feat_protected['Sex'] = {0.00:'Male', 1.00:'Female'}
         return feat_protected
 
     def define_mutable(self):

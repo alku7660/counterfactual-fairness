@@ -293,7 +293,10 @@ class IJUICE:
             new_node = [j for j in G.successors(node) if edge[node,j].x >= 0.9][0]
             return output_path(new_node, cf_node, path)
 
-        if len(self.A) == 0:
+        def unfeasible_case(self):
+            """
+            Obtains the feasible justified solution when the problem is unfeasible
+            """
             potential_CF = {}
             for i in range(1, len(self.potential_justifiers) + 1):
                 if self.F[i]:
@@ -305,6 +308,10 @@ class IJUICE:
                 sol_x_idx = min(potential_CF, key=potential_CF.get)
                 sol_x = self.all_nodes[sol_x_idx - 1]
             justifiers = [sol_x_idx]
+            return sol_x, justifiers
+
+        if len(self.A) == 0:
+            sol_x, justifiers = unfeasible_case(self)
         else:
             """
             MODEL
@@ -347,17 +354,7 @@ class IJUICE:
             opt_model.optimize()
             time.sleep(0.5)
             if opt_model.status == 3 or len(self.all_nodes) == len(self.potential_justifiers):
-                potential_CF = {}
-                for i in range(1, len(self.potential_justifiers) + 1):
-                    if self.F[i]:
-                        potential_CF[i] = self.C[i]
-                if len(potential_CF) == 0:
-                    sol_x_idx = 0
-                    sol_x = self.find_potential_justifiers(counterfactual, ijuice_search=True)[sol_x_idx]
-                else:
-                    sol_x_idx = min(potential_CF, key=potential_CF.get)
-                    sol_x = self.all_nodes[sol_x_idx - 1]
-                justifiers = [sol_x_idx]
+                sol_x, justifiers = unfeasible_case(self)
             else:
                 for i in self.C.keys():
                     if cf[i].x > 0:

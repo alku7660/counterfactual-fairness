@@ -111,7 +111,7 @@ def distance_calculation(x, y, data, type='euclidean'):
     elif type == 'L_inf':
         distance = Linf(x, y)
     elif type == 'L1_L0':
-        n_con, n_cat = len(data.continuous), len(data.bin_cat_enc_cols)
+        n_con, n_cat = len(data.numerical), len(data.binary + data.categorical)
         n = n_con + n_cat
         L1_distance, L0_distance = L1_L0(x, y, x_original, y_original, data)
         """
