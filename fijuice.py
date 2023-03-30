@@ -64,12 +64,12 @@ class FIJUICE:
         Method that gets the list of training observations labeled as cf-label with respect to the cf, ordered based on graph nodes size
         """
         permutations_potential_justifiers_all = []
-        for c in range(len(self.potential_justifiers)):
-            centroid = self.potential_justifiers.iloc[c]['centroid']
+        for c in range(len(self.cluster.centroids)):
+            centroid = self.cluster.centroids[c]
             c_justifiers_list = self.potential_justifiers.iloc[c]['justifiers']
             permutations_potential_justifiers = []
             for i in range(len(c_justifiers_list)):
-                possible_feat_values_justifier_i = self.get_feat_possible_values(counterfactual.data, obj=centroid, points=[c_justifiers_list[i]])[0]
+                possible_feat_values_justifier_i = self.get_feat_possible_values(counterfactual.data, obj=[centroid], points=[c_justifiers_list[i]])[0][0]
                 len_permutations = len(list(product(*possible_feat_values_justifier_i)))
                 permutations_potential_justifiers.append((c_justifiers_list[i], len_permutations))
                 # print(f'Justifier {i+1}: Length permutations: {len_permutations}')
@@ -135,18 +135,17 @@ class FIJUICE:
         Method that obtains the features possible values
         """
         if obj is None:
-            normal_centroid = self.clusters.centroids
+            normal_centroids = self.cluster.centroids
         else:
-            normal_centroid = obj
+            normal_centroids = obj
         if points is None:
             points = self.potential_justifiers
         else:
             points = points
         pot_justifier_feat_possible_values_all_centroids = {}
-        for c_idx in range(len(self.cluster.centroids)):
+        for c_idx in range(len(normal_centroids)):
             pot_justifier_feat_possible_values = {}
-            # idx = self.cluster.centroids[c_idx].centroid_idx
-            normal_centroid = self.cluster.centroids[c_idx].normal_x
+            normal_centroid = normal_centroids[c_idx].normal_x
             for k in range(len(points)):
                 potential_justifier_k = points[k]
                 v = normal_centroid - potential_justifier_k
@@ -189,7 +188,7 @@ class FIJUICE:
                         feat_possible_values.append(value)
                 pot_justifier_feat_possible_values[k] = feat_possible_values
             pot_justifier_feat_possible_values_all_centroids[c_idx] = pot_justifier_feat_possible_values
-        return pot_justifier_feat_possible_values
+        return pot_justifier_feat_possible_values_all_centroids
 
     def make_array(self, i):
         """
@@ -210,8 +209,9 @@ class FIJUICE:
         """
         graph_nodes = []
         for c_idx in range(len(self.cluster.centroids)):
-            # idx = self.cluster.centroids[c_idx].centroid_idx
+            # print(f'Analyzing centroid {c_idx} for graph nodes...')
             for k in range(len(self.potential_justifiers)):
+                print(f'Analyzing centroid {c_idx} and potential justifier {k} for graph nodes...')
                 feat_possible_values_k = self.pot_justifier_feat_possible_values[c_idx][k]
                 permutations = product(*feat_possible_values_k)
                 for i in permutations:
