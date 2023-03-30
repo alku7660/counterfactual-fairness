@@ -363,12 +363,11 @@ class FIJUICE:
             """
             VARIABLES
             """
+            edge = gp.tupledict()
             for (i,j) in G.edges:
                 edge[i,j] = opt_model.addVar(vtype=GRB.INTEGER, name='Path')
             cf = opt_model.addVars(set_Centroids, G.nodes, vtype=GRB.BINARY, name='Counterfactual')   # Node chosen as destination
-            source = opt_model.addVars(set_Sources, G.nodes, vtype=GRB.INTEGER, name='Justifiers')   # Nodes chosen as sources (justifier points)
-            edge = gp.tupledict()
-            
+            source = opt_model.addVars(set_Sources, G.nodes, vtype=GRB.INTEGER, name='Justifiers')   # Nodes chosen as sources (justifier points)            
             """
             CONSTRAINTS AND OBJECTIVE
             """
