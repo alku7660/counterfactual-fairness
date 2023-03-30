@@ -390,7 +390,17 @@ class FIJUICE:
             
             opt_model.addConstr(gp.quicksum(source[s, i] for s in set_Sources for i in G.nodes) >= len(self.cluster.centroids))
                         
-            opt_model.setObjective(cf.prod(self.C)*self.lagrange + gp.quicksum(np.abs(cf[c, i]*self.C[c, i] - cf[e, j]*self.C[e, j]) for c, e in set_Centroids for i, j in G.nodes if (c, i) != (e, j))*(1-self.lagrange), GRB.MINIMIZE)
+            def fairness_objective(x, C, centroids_idx, nodes_idx):
+                var = 0
+                for c in centroids_idx:
+                    for i in nodes_idx:
+                        for e in centroids_idx:
+                            for j in nodes_idx:
+                                if (c, i) != (e, j):
+                                    var += (x[c, i]*C[c, i] - x[e, j]*C[e, j])**2
+                return var     
+
+            opt_model.setObjective(cf.prod(self.C)*self.lagrange + fairness_objective(cf, self.C, set_Centroids, G.nodes)*(1-self.lagrange), GRB.MINIMIZE)
             
             # list_excluded_nodes = list(np.setdiff1d(set_N, list(G.nodes)))
             # for v in list_excluded_nodes:
