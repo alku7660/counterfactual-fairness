@@ -6,7 +6,7 @@ from fijuice import FIJUICE
 
 class Counterfactual:
 
-    def __init__(self, data, model, method, cluster, type='euclidean', lagrange=0.5, t=100, k=10):
+    def __init__(self, data, model, method, cluster, type='L1_L0', lagrange=0.5, t=100, k=10):
         self.data = data
         self.model = model
         self.method = method

@@ -308,15 +308,15 @@ class FIJUICE:
         Method that finds FiJUICE CF using Gurobi optimization package
         """
 
-        def output_path(node, cf_node, path=[]):
+        def output_path(node, cf_node, c, path=[]):
             """
             Prints the connection paths from a justifier towards the found CF
             """
             path.extend([node])
             if cf_node == node:
                 return path
-            new_node = [j for j in G.successors(node) if edge[node,j].x >= 0.9][0]
-            return output_path(new_node, cf_node, path)
+            new_node = [j for j in G.successors(node) if edge[node, j, c].x >= 0.9][0]
+            return output_path(new_node, cf_node, c, path)
 
         def unfeasible_case(self):
             """
@@ -335,7 +335,7 @@ class FIJUICE:
                 centroids_solved_i = dict([(tup, potential_CF[tup]) for tup in list(potential_CF.keys()) if tup[0] == c_idx])
                 _, sol_x_idx = min(centroids_solved_i, key=centroids_solved_i.get)
                 sol_x[c_idx, sol_x_idx] = self.all_nodes[sol_x_idx - 1]
-                justifiers[c_idx, sol_x_idx] = self.all_nodes[sol_x_idx - 1]
+                justifiers[sol_x_idx, sol_x_idx, c_idx] = self.all_nodes[sol_x_idx - 1]
                 if sol_x_idx not in nodes_solution:
                     nodes_solution.append(sol_x_idx)
             not_centroids_solved = [i for i in range(1, len(self.cluster.centroids) + 1) if i not in centroids_solved]
@@ -344,13 +344,14 @@ class FIJUICE:
                 cf_instance = pot_justifiers.loc[pot_justifiers.index == c_idx - 1]['justifiers'].values[0][0]
                 sol_x_idx = 'close_train_label'
                 sol_x[c_idx, sol_x_idx] = cf_instance
-                justifiers[c_idx, sol_x_idx] = cf_instance
+                justifiers[sol_x_idx, sol_x_idx, c_idx] = cf_instance
                 nodes_solution.append(sol_x_idx)
             return sol_x, justifiers, nodes_solution       
 
         if len(self.A) == 0:
             sol_x, justifiers = unfeasible_case(self)
         else:
+
             """
             MODEL
             """
@@ -369,10 +370,12 @@ class FIJUICE:
             VARIABLES
             """
             edge = gp.tupledict()
-            for (i,j) in G.edges:
-                edge[i,j] = opt_model.addVar(vtype=GRB.INTEGER, name='Path')
+            for c in set_Centroids:
+                for (i, j) in G.edges:
+                    edge[i, j, c] = opt_model.addVar(vtype=GRB.INTEGER, name='Path')
             cf = opt_model.addVars(set_Centroids, G.nodes, vtype=GRB.BINARY, name='Counterfactual')   # Node chosen as destination
-            source = opt_model.addVars(set_Sources, G.nodes, vtype=GRB.BINARY, name='Justifiers')   # Nodes chosen as sources (justifier points)            
+            source = opt_model.addVars(set_Sources, G.nodes, set_Centroids, vtype=GRB.BINARY, name='Justifiers')   # Nodes chosen as sources (justifier points)            
+            
             """
             CONSTRAINTS AND OBJECTIVE
             """
@@ -380,41 +383,32 @@ class FIJUICE:
                 for n in G.nodes:
                     opt_model.addConstr(cf[c, n] <= self.F[c, n])
             
-            for n in G.nodes:
-                if n in set_Sources:
-                    opt_model.addConstr(gp.quicksum(edge[i, n] for i in G.predecessors(n)) - gp.quicksum(edge[n, j] for j in G.successors(n)) == -gp.quicksum(source[n, k] for k in G.nodes)) # Source contraints. A source may justify more than one CF
-            
             for c in set_Centroids:
                 for n in G.nodes:
-                    if n not in set_Sources:
-                        opt_model.addConstr(gp.quicksum(edge[i, n] for i in G.predecessors(n)) - gp.quicksum(edge[n, j] for j in G.successors(n)) == cf[c, n]*gp.quicksum(source[s, n] for s in set_Sources)) # Sink constraints
-                        # opt_model.addConstr(source[n] == 0)
+                    if n in set_Sources:
+                        opt_model.addConstr(gp.quicksum(edge[i, n, c] for i in G.predecessors(n)) - gp.quicksum(edge[n, j, c] for j in G.successors(n)) == -gp.quicksum(source[n, k, c] for k in G.nodes)) # Source contraints. A source may justify more than one CF
+                    else:
+                        opt_model.addConstr(gp.quicksum(edge[i, n, c] for i in G.predecessors(n)) - gp.quicksum(edge[n, j, c] for j in G.successors(n)) == cf[c, n]*gp.quicksum(source[s, n, c] for s in set_Sources)) # Sink constraints
             
             for c in set_Centroids:
                 opt_model.addConstr(gp.quicksum(cf[c, i] for i in G.nodes) == 1)
             
-            # opt_model.addConstr(gp.quicksum(source[s, i] for s in set_Sources for i in G.nodes) >= len(self.cluster.centroids))
-            # opt_model.addConstr(source.sum() >= len(self.cluster.centroids))
+            for c in set_Centroids:
+                opt_model.addConstr(gp.quicksum(source[s, i, c] for s in set_Sources for i in G.nodes) >= 1)
             
-            def fairness_objective(x, C, centroids_idx, nodes_idx):
+            def fairness_objective(cf, C, centroids_idx, nodes_idx):
                 var = 0
-                for c in centroids_idx:
-                    for i in nodes_idx:
-                        for e in centroids_idx:
-                            for j in nodes_idx:
-                                if (c, i) != (e, j):
-                                    var += (x[c, i]*C[c, i] - x[e, j]*C[e, j])**2
+                for c1_idx in range(len(centroids_idx)):
+                    c1 = centroids_idx[c1_idx]
+                    for c2_idx in range(c1_idx + 1, len(centroids_idx)):
+                        c2 = centroids_idx[c2_idx]
+                        c1_sol_dist = gp.quicksum(cf[c1, i]*C[c1, i] for i in nodes_idx)
+                        c2_sol_dist = gp.quicksum(cf[c2, i]*C[c2, i] for i in nodes_idx)
+                        var += (c1_sol_dist - c2_sol_dist)**2
                 return var     
 
-            opt_model.setObjective(cf.prod(self.C)*self.lagrange + fairness_objective(cf, self.C, set_Centroids, G.nodes)*(1-self.lagrange), GRB.MINIMIZE)
+            opt_model.setObjective(cf.prod(self.C)*self.lagrange + fairness_objective(cf, self.C, set_Centroids, G.nodes)*(1 - self.lagrange), GRB.MINIMIZE)
             
-            # list_excluded_nodes = list(np.setdiff1d(set_N, list(G.nodes)))
-            # for v in list_excluded_nodes:
-            #     for s in set_Sources:
-            #         opt_model.addConstr(source[s, v] == 0)
-            #     for c in set_Centroids:
-            #         opt_model.addConstr(cf[c, v] == 0)
-
             """
             OPTIMIZATION AND RESULTS
             """
@@ -436,15 +430,15 @@ class FIJUICE:
                             print(f'Node {i}: {self.all_nodes[i - 1]}')
                             print(f'Centroid: {self.cluster.centroids[c - 1].normal_x}')
                             print(f'Distance: {np.round(self.C[c, i], 3)}')
-                for s in set_Sources:
-                    for i in nodes_solution:
-                        if source[s, i].x > 0.1:
-                            justifiers[s, i] = self.all_nodes[i - 1]
+                for c in set_Centroids:
+                    for s in set_Sources:
+                        for i in nodes_solution:
+                            if source[s, i, c].x > 0.1:
+                                justifiers[s, i, c] = self.potential_justifiers[s - 1]
                 time.sleep(0.25)
-                time.sleep(0.25)
-                for s, i in justifiers.keys():
+                for s, i, c in justifiers.keys():
                     path = []
-                    print(f'Source {s} Path to CF : {output_path(s, i, path=path)}')
+                    print(f'Source {s} Path to CF for centroid {c}: {output_path(s, i, c, path=path)}')
                     time.sleep(0.25)
             justifier_ratio = {}
             for i in nodes_solution:
@@ -458,9 +452,9 @@ class FIJUICE:
         Transforms the justifiers into dataframe
         """
         justifiers_original = {}
-        for s, i in self.justifiers.keys():
-            justifier_instance = self.justifiers[s, i]
+        for s, i, c in self.justifiers.keys():
+            justifier_instance = self.justifiers[s, i, c]
             justifier_original = counterfactual.data.inverse(justifier_instance)
             justifier_original_df = pd.DataFrame(data=justifier_original, columns=counterfactual.data.features)
-            justifiers_original[s, i] = justifier_original_df
+            justifiers_original[s, i, c] = justifier_original_df
         return justifiers_original

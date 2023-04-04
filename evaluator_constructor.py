@@ -693,7 +693,7 @@ class Evaluator():
             centroid = counterfactual.cluster.centroids[c_idx]
             normal_centroid_cf = counterfactual.cf_method.normal_x_cf[c_idx + 1]
             cf_proximity = distance_calculation(centroid.normal_x, normal_centroid_cf, counterfactual.data, type=counterfactual.type)
-            cf_feasibility = verify_feasibility(centroid.normal_x, normal_centroid_cf, counterfactual.data, type=counterfactual.type)
+            cf_feasibility = verify_feasibility(centroid.normal_x, normal_centroid_cf, counterfactual.data)
             normal_x_cf_df = pd.DataFrame(data=normal_centroid_cf.reshape(1,-1), index=[0], columns=counterfactual.data.processed_features)
             original_cf = self.inverse_transform_original(normal_x_cf_df).values
             cols = ['feature','feat_value','centroid_idx','normal_centroid','centroid',
