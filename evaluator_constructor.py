@@ -691,11 +691,15 @@ class Evaluator():
         """
         for c_idx in range(len(counterfactual.cluster.centroids)):
             centroid = counterfactual.cluster.centroids[c_idx]
+            original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[0], columns=counterfactual.data.features)
             normal_centroid_cf = counterfactual.cf_method.normal_x_cf[c_idx + 1]
             cf_proximity = distance_calculation(centroid.normal_x, normal_centroid_cf, counterfactual.data, type=counterfactual.type)
             cf_feasibility = verify_feasibility(centroid.normal_x, normal_centroid_cf, counterfactual.data)
             normal_x_cf_df = pd.DataFrame(data=normal_centroid_cf.reshape(1,-1), index=[0], columns=counterfactual.data.processed_features)
-            original_cf = self.inverse_transform_original(normal_x_cf_df).values
+            original_cf = self.inverse_transform_original(normal_x_cf_df)
+            print(f'Original Centroid ({centroid.feat}: {centroid.feat_val}): {original_centroid}')
+            print(f'      Original CF: {original_cf}')
+            original_cf = original_cf.values
             cols = ['feature','feat_value','centroid_idx','normal_centroid','centroid',
                     'normal_cf','cf','cf_proximity','cf_feasibility','cf_time']
             data_list = [centroid.feat, centroid.feat_val, centroid.centroid_idx, centroid.normal_x, centroid.x,
