@@ -1023,6 +1023,35 @@ def plot_centroids_diff():
                     ax[feat_val_idx].fig.suptitle(f'{data_str.capitalize()} ({feat}: {feat_val}) Centroid difference') 
                     plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{feat}_{feat_val}_instances_diff_centroid.pdf', format='pdf')
 
+def plot_centroids_cf_mean_proximity():
+    """
+    Plots the mean proximity for each of the features and feature value clusters
+    """
+    method_str = 'fijuice'
+    lagrange = 0.0 # May be changed together with ncols to draw several plots, one for each lagrange
+    fig, ax = plt.subplots(nrows=len(datasets), ncols=1, sharex=False, sharey=False, figsize=(7, 4.5))
+    for data_idx in range(len(datasets)):
+        data_str = datasets[data_idx]
+        eval_obj = load_obj(f'{data_str}_{method_str}_{lagrange}_cluster_eval.pkl')
+        cf_df = eval_obj.cf_df
+        cluster_centroid_dict = eval_obj.cluster_obj.centroids_dict
+        cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
+        all_proximity_list = []
+        x_axis_labels = []
+        for feat in cluster_centroid_feat_list:
+            feat_val_list = list(cluster_centroid_dict[feat].keys())
+            for feat_val_idx in range(len(feat_val_list)):
+                feat_val = feat_val_list[feat_val_idx]
+                cf_feat_val_df = cf_df.loc[(cf_df['feature'] == feat) & (cf_df['feat_val'] == feat_val)]
+                cf_feat_val_proximity_list = list(cf_feat_val_df['cf_proximity'].values())
+                all_proximity_list.append(cf_feat_val_proximity_list)
+                x_axis_labels.append([f'{feat.capitalize()}: {feat_val}'])
+        ax[data_idx].boxplot(all_proximity_list, showmeans=True, meanprops=mean_prop, showfliers=False)
+        ax[data_idx].set_xticklabels([x_axis_labels[i] for i in range(len(x_axis_labels))], rotation=30)
+        ax[data_idx].set_ylabel(data_str.upper())
+        ax[data_idx].grid(axis='y', linestyle='--', alpha=0.4)
+    plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{lagrange}_proximity.pdf', format='pdf')
+
 def plot_centroids_cfs_ablation():
     """
     Plots the ablation with respect to the lagrange factor
@@ -1037,7 +1066,6 @@ def plot_centroids_cfs_ablation():
         for lagrange in lagranges:
             eval_obj = load_obj(f'{data_str}_{method_str}_{lagrange}_cluster_eval.pkl')
             clusters = eval_obj.cluster_obj
-            cluster_centroid_dict = clusters.centroids_dict
             cf_df = eval_obj.cf_df
             cf_df_all_proximity = np.sum(cf_df['cf_proximity'].values)
             cf_difference_proximity = 0
@@ -1069,6 +1097,7 @@ colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','N
                'Married':'peru','Divorced':'saddlebrown','isMarried: True':'cyan','isMarried: False':'darkcyan',
                'isMale: True':'lightcoral','isMale: False':'firebrick','Other':'lightgreen','HS':'limegreen',
                'University':'green','Graduate':'darkgreen','African-American':'orangered','Caucasian':'coral'}
+mean_prop = dict(marker='D', markeredgecolor='firebrick', markerfacecolor='firebrick', markersize=2)
 
 # method_box_plot(datasets, methods_to_run, 'proximity', colors_list)
 # fnr_plot(datasets, colors_dict)
