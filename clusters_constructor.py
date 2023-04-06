@@ -16,7 +16,8 @@ class Clusters:
         self.metric = metric
         self.sensitive_feat_idx_dict = self.select_instances_by_sensitive_group()
         self.clusters, self.centroids = self.find_viable_clusters(model)
-        self.centroids = self.define_centroids(data, model)
+        self.centroids_dict = self.centroids
+        self.centroids_list = self.define_centroids(data, model)
 
     def select_instances_by_sensitive_group(self):
         """

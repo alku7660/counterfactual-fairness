@@ -18,7 +18,7 @@ from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
 import seaborn as sns
-from fairness_clusters import datasets, methods_to_run
+from fairness_clusters import datasets, methods_to_run, lagranges
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
     """
@@ -941,9 +941,9 @@ def plot_centroids():
     """
     Plot all centroids of clusters found for each feature and feature_value
     """
-    method_str = 'nn'
+    method_str = 'fijuice'
     for data_str in datasets:
-        eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
+        eval_obj = load_obj(f'{data_str}_{method_str}_cluster_eval.pkl')
         clusters = eval_obj.cluster_obj
         cluster_centroid_dict = clusters.centroids
         cluster_instance_dict = clusters.clusters
@@ -986,16 +986,16 @@ def estimate_difference(eval_obj, centroid, instances, feat_type):
             difference.loc[inst_idx, feat] = np.abs(centroid[feat].values[0] - difference.loc[inst_idx, feat]) 
     return difference
 
-def plot_centroids_cfs():
+def plot_centroids_diff():
     """
-    Plots the centroids with their corresponding counterfactuals
+    Plots the differences of the centroids with their corresponding cluster instances
     """
     for data_str in datasets:
         for method_idx in range(len(methods_to_run)):
             method_str = methods_to_run[method_idx]
-            eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
+            eval_obj = load_obj(f'{data_str}_{method_str}_cluster_eval.pkl')
             clusters = eval_obj.cluster_obj
-            cluster_centroid_dict = clusters.centroids
+            cluster_centroid_dict = clusters.centroids_dict
             cluster_instance_dict = clusters.clusters
             cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
             for feat in cluster_centroid_feat_list:
@@ -1021,55 +1021,47 @@ def plot_centroids_cfs():
                     cluster_colors = cluster_number_series_all.map(map_var)
                     ax[feat_val_idx] = sns.clustermap(difference_all_df, row_colors=cluster_colors, row_cluster=False, col_cluster=False, cbar_pos=(0.05, .4, .01, .2), figsize=(4, 4), standard_scale=1)
                     ax[feat_val_idx].fig.suptitle(f'{data_str.capitalize()} ({feat}: {feat_val}) Centroid difference') 
-                    plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{feat}_{feat_val}_instances.pdf', format='pdf')
-    
-    # for data_str in datasets:
-    #     for method_idx in range(len(methods_to_run)):
-    #         method_str = methods_to_run[method_idx]
-    #         eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
-    #         clusters = eval_obj.cluster_obj
-    #         cluster_centroid_dict = clusters.centroids
-    #         cluster_instance_dict = clusters.clusters
-    #         cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
-    #         features = eval_obj.binary + eval_obj.categorical + eval_obj.numerical
-    #         for feat in cluster_centroid_feat_list:
-    #             feat_val_list = list(cluster_centroid_dict[feat].keys())
-    #             for feat_val_idx in range(len(feat_val_list)):
-    #                 feat_val = feat_val_list[feat_val_idx]
-    #                 centroid_list = cluster_centroid_dict[feat][feat_val]
-    #                 fig, ax = plt.subplots(nrows=1, ncols=len(centroid_list))
-    #                 instance_list = cluster_instance_dict[feat][feat_val]
-    #                 for idx in range(len(centroid_list)):
-    #                     cf = eval_obj.cf_df[(eval_obj.cf_df['feature'] == feat) & (eval_obj.cf_df['feat_value'] == feat_val) & (eval_obj.cf_df['centroid_idx'] == idx)]['normal_cf'].values[0]
-    #                     bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical = eval_obj.bin_enc, eval_obj.cat_enc, eval_obj.bin_enc_cols, eval_obj.cat_enc_cols, eval_obj.binary, eval_obj.categorical, eval_obj.numerical
-    #                     centroid_original = inverse_transform_only(bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical, centroid_list[idx]).values[0]
-    #                     cf_df = pd.DataFrame(cf.reshape(1,-1), index = [0], columns=eval_obj.data_cols)
-    #                     cf_original = inverse_transform_only(bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical, cf_df).values[0]
-    #                     if len(centroid_list) > 1:
-    #                         ax[idx].plot(features, centroid_original, 'r--')
-    #                         ax[idx].plot(features, cf_original, 'b--')
-    #                         ax[idx].set_xlabel('Features')
-    #                         # ax[idx].set_ylabel('Values')
-    #                         # ax[idx].set_title(f'{method_str.upper()}, Cluster {idx+1}')
-    #                         ax[idx].get_xaxis().set_visible(False)
-    #                         ax[idx].set_xticklabels(features, rotation=45, ha='right')
-    #                     else:
-    #                         ax.plot(features, centroid_original, 'r--')
-    #                         ax.plot(features, cf_original, 'b--')
-    #                         ax.set_xlabel('Features')
-    #                         # ax.set_ylabel('Values')
-    #                         # ax.set_title(f'{method_str.upper()}, Cluster {idx+1}')
-    #                         ax.get_xaxis().set_visible(False)
-    #                         ax.set_xticklabels(features, rotation=45, ha='right')
-    #                     # legend_list = [Line2D([0], [0], color=colors_list[feat_val_idx_plot], lw=3) for feat_val_idx_plot in range(len(feat_val_list))]
-    #                     # if len(centroid_list) > 1:
-    #                     #     ax[method_idx, idx].legend(legend_list, feat_val_list)
-    #                     # else:
-    #                     #     ax[method_idx].legend(legend_list, feat_val_list)
-    #                 fig.suptitle(f'{method_str.upper()}')
-    #                 # fig.tight_layout()
-    #                 plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{feat}_{feat_val}_centroids_cfs.pdf', format='pdf')
-        
+                    plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{feat}_{feat_val}_instances_diff_centroid.pdf', format='pdf')
+
+def plot_centroids_cfs_ablation():
+    """
+    Plots the ablation with respect to the lagrange factor
+    """
+    fig, ax = plt.subplots(nrows=1, ncols=len(datasets), sharex=True, sharey=True, figsize=(7,4.5))
+    method_str = 'fijuice'
+    start, end = 0, 1.1
+    for data_idx in range(len(datasets)):
+        data_str = datasets[data_idx]
+        all_proximity = []
+        all_cf_differences = []
+        for lagrange in lagranges:
+            eval_obj = load_obj(f'{data_str}_{method_str}_{lagrange}_cluster_eval.pkl')
+            clusters = eval_obj.cluster_obj
+            cluster_centroid_dict = clusters.centroids_dict
+            cf_df = eval_obj.cf_df
+            cf_df_all_proximity = np.sum(cf_df['cf_proximity'].values)
+            cf_difference_proximity = 0
+            for i in range(len(cf_df.index)):
+                cf_i = cf_df.loc[cf_df.index[i]]
+                for j in (i, range(len(cf_df.index))):
+                    cf_j = cf_df.loc[cf_df.index[j]]
+                    cf_i_proximity = cf_i['cf_proximity']
+                    cf_j_proximity = cf_j['cf_proximity']
+                    cf_difference_proximity += (cf_i_proximity - cf_j_proximity)**2
+            all_proximity.append(cf_df_all_proximity)
+            all_cf_differences.append(cf_difference_proximity)
+        ax[data_idx].plot(lagranges, all_cf_differences, color='#5E81AC', label='Justification')
+        ax[data_idx].grid(axis='both', linestyle='--', alpha=0.4)
+        ax[data_idx].yaxis.set_ticks(np.arange(start, end, 0.2))
+        ax[data_idx].yaxis.set_tick_params(labelcolor='#5E81AC')
+        ax[data_idx].xaxis.set_ticks(ticks=np.arange(start, end, 0.2), labels=['0','0.2','0.4','0.6','0.8','1'])
+        secax = ax[data_idx].twinx()
+        secax.plot(lagranges, all_proximity, color='#BF616A', label='Distance')
+        secax.yaxis.set_tick_params(labelcolor='#BF616A')
+        secax.yaxis.set_ticks(np.arange(min(all_proximity),max(all_proximity),(max(all_proximity)-min(all_proximity))*0.2))
+        ax[data_idx].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        secax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+    plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_lagrange_ablation.pdf', format='pdf')
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
 colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','Non-white':'dimgray',
@@ -1090,6 +1082,6 @@ colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','N
 # nawb_groups_cf(datasets, methods_to_run)
 # nawb_cluster_cf(datasets, methods_to_run)
 # burden_groups_cf_bar(datasets, 'NN')
-# plot_centroids()
-plot_centroids_cfs()
+plot_centroids()
+plot_centroids_diff()
 

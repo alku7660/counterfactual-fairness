@@ -37,8 +37,8 @@ class FIJUICE:
         else:
             potential_justifiers = train_np[train_target != self.ioi_label]
         potential_justifiers_df = pd.DataFrame(columns = ['centroid','feat','feat_val','justifiers'])
-        for idx in range(len(self.cluster.centroids)):
-            c = self.cluster.centroids[idx]
+        for idx in range(len(self.cluster.centroids_list)):
+            c = self.cluster.centroids_list[idx]
             feat = c.feat
             feat_val = c.feat_val
             normal_centroid = c.normal_x
@@ -64,8 +64,8 @@ class FIJUICE:
         Method that gets the list of training observations labeled as cf-label with respect to the cf, ordered based on graph nodes size
         """
         permutations_potential_justifiers_all = []
-        for c in range(len(self.cluster.centroids)):
-            centroid = self.cluster.centroids[c]
+        for c in range(len(self.cluster.centroids_list)):
+            centroid = self.cluster.centroids_list[c]
             c_justifiers_list = self.potential_justifiers.iloc[c]['justifiers']
             permutations_potential_justifiers = []
             for i in range(len(c_justifiers_list)):
@@ -135,7 +135,7 @@ class FIJUICE:
         Method that obtains the features possible values
         """
         if obj is None:
-            normal_centroids = self.cluster.centroids
+            normal_centroids = self.cluster.centroids_list
         else:
             normal_centroids = obj
         if points is None:
@@ -208,7 +208,7 @@ class FIJUICE:
         Generator that contains all the nodes located in the space between the potential justifiers and the normal_ioi (all possible, CF-labeled nodes)
         """
         graph_nodes = []
-        for c_idx in range(len(self.cluster.centroids)):
+        for c_idx in range(len(self.cluster.centroids_list)):
             # print(f'Analyzing centroid {c_idx} for graph nodes...')
             for k in range(len(self.potential_justifiers)):
                 print(f'Analyzing centroid {c_idx} and potential justifier {k} for graph nodes...')
@@ -227,8 +227,8 @@ class FIJUICE:
         Method that outputs the cost parameters required for optimization
         """
         C = {}
-        for c_idx in range(1, len(self.cluster.centroids) + 1):
-            normal_centroid = self.cluster.centroids[c_idx - 1].normal_x
+        for c_idx in range(1, len(self.cluster.centroids_list) + 1):
+            normal_centroid = self.cluster.centroids_list[c_idx - 1].normal_x
             for k in range(1, len(self.all_nodes) + 1):
                 node_k = self.all_nodes[k-1]
                 C[c_idx, k] = distance_calculation(normal_centroid, node_k, data, type)
@@ -239,8 +239,8 @@ class FIJUICE:
         Outputs the counterfactual feasibility parameter for all graph nodes (including the potential justifiers) 
         """
         F = {}
-        for c_idx in range(1, len(self.cluster.centroids) + 1):
-            normal_centroid = self.cluster.centroids[c_idx - 1].normal_x
+        for c_idx in range(1, len(self.cluster.centroids_list) + 1):
+            normal_centroid = self.cluster.centroids_list[c_idx - 1].normal_x
             for k in range(1, len(self.all_nodes) + 1):
                 node_k = self.all_nodes[k-1]
                 F[c_idx, k] = verify_feasibility(normal_centroid, node_k, data)
@@ -251,7 +251,7 @@ class FIJUICE:
         Method that outputs the adjacency matrix required for optimization
         """
         toler = 0.00001
-        centroids_array = np.array([self.cluster.centroids[i].normal_x for i in range(len(self.cluster.centroids))])
+        centroids_array = np.array([self.cluster.centroids_list[i].normal_x for i in range(len(self.cluster.centroids_list))])
         justifiers_array = np.array(self.potential_justifiers)
         A = tuplelist()
         for i in range(1, len(self.all_nodes) + 1):
@@ -323,7 +323,7 @@ class FIJUICE:
             Obtains the feasible justified solution when the problem is unfeasible
             """
             sol_x, justifiers, centroids_solved, nodes_solution = {}, {}, [], []
-            for c_idx in range(1, len(self.cluster.centroids) + 1):
+            for c_idx in range(1, len(self.cluster.centroids_list) + 1):
                 potential_CF = {}
                 for i in range(1, len(self.potential_justifiers) + 1):
                     if self.F[c_idx, i]:
@@ -338,7 +338,7 @@ class FIJUICE:
                 justifiers[sol_x_idx, sol_x_idx, c_idx] = self.all_nodes[sol_x_idx - 1]
                 if sol_x_idx not in nodes_solution:
                     nodes_solution.append(sol_x_idx)
-            not_centroids_solved = [i for i in range(1, len(self.cluster.centroids) + 1) if i not in centroids_solved]
+            not_centroids_solved = [i for i in range(1, len(self.cluster.centroids_list) + 1) if i not in centroids_solved]
             for c_idx in not_centroids_solved:
                 pot_justifiers = self.find_potential_justifiers(counterfactual, ijuice_search=True)
                 cf_instance = pot_justifiers.loc[pot_justifiers.index == c_idx - 1]['justifiers'].values[0][0]
@@ -362,7 +362,7 @@ class FIJUICE:
             """
             SETS
             """
-            set_Centroids = range(1, len(self.cluster.centroids) + 1)
+            set_Centroids = range(1, len(self.cluster.centroids_list) + 1)
             len_justifiers = len(self.potential_justifiers)
             set_Sources = range(1, len_justifiers + 1)
                
@@ -428,7 +428,7 @@ class FIJUICE:
                                 nodes_solution.append(i)
                             print(f'cf{c, i}: {cf[c, i].x}')
                             print(f'Node {i}: {self.all_nodes[i - 1]}')
-                            print(f'Centroid: {self.cluster.centroids[c - 1].normal_x}')
+                            print(f'Centroid: {self.cluster.centroids_list[c - 1].normal_x}')
                             print(f'Distance: {np.round(self.C[c, i], 3)}')
                 for c in set_Centroids:
                     for s in set_Sources:
