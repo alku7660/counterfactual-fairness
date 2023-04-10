@@ -16,7 +16,7 @@ from sklearn.metrics import f1_score
 from support import path_here, save_obj
 import time
 
-datasets = ['german'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
+datasets = ['german','dutch','compass','oulad','synthetic_athlete'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
 methods_to_run = ['fijuice'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -26,7 +26,7 @@ seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 clustering_metric = 'complete' # Clustering metric used
 dist = 'L1_L0'
-lagranges = [0.0]
+lagranges = [1.0]
 np.random.seed(seed_int)
 
 if __name__=='__main__':

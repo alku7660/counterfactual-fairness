@@ -328,14 +328,17 @@ class FIJUICE:
                 for i in range(1, len(self.potential_justifiers) + 1):
                     if self.F[c_idx, i]:
                         potential_CF[c_idx, i] = self.C[c_idx, i]
-                        centroids_solved.append(c_idx)
+                        if c_idx not in centroids_solved:
+                            centroids_solved.append(c_idx)
                         if i not in nodes_solution:
                             nodes_solution.append(i)
             for c_idx in centroids_solved:
                 centroids_solved_i = dict([(tup, potential_CF[tup]) for tup in list(potential_CF.keys()) if tup[0] == c_idx])
                 _, sol_x_idx = min(centroids_solved_i, key=centroids_solved_i.get)
-                sol_x[c_idx, sol_x_idx] = self.all_nodes[sol_x_idx - 1]
-                justifiers[sol_x_idx, sol_x_idx, c_idx] = self.all_nodes[sol_x_idx - 1]
+                sol_x[c_idx] = self.all_nodes[sol_x_idx - 1]
+                for just_tuple in centroids_solved_i:
+                    if just_tuple[0] == c_idx:
+                        justifiers[just_tuple[1], just_tuple[1], c_idx] = self.all_nodes[just_tuple[1] - 1]
                 if sol_x_idx not in nodes_solution:
                     nodes_solution.append(sol_x_idx)
             not_centroids_solved = [i for i in range(1, len(self.cluster.centroids_list) + 1) if i not in centroids_solved]
@@ -343,7 +346,7 @@ class FIJUICE:
                 pot_justifiers = self.find_potential_justifiers(counterfactual, ijuice_search=True)
                 cf_instance = pot_justifiers.loc[pot_justifiers.index == c_idx - 1]['justifiers'].values[0][0]
                 sol_x_idx = 'close_train_label'
-                sol_x[c_idx, sol_x_idx] = cf_instance
+                sol_x[c_idx] = cf_instance
                 justifiers[sol_x_idx, sol_x_idx, c_idx] = cf_instance
                 nodes_solution.append(sol_x_idx)
             return sol_x, justifiers, nodes_solution       
@@ -441,10 +444,10 @@ class FIJUICE:
                     print(f'Source {s} Path to CF for centroid {c}: {output_path(s, i, c, path=path)}')
                     time.sleep(0.25)
             justifier_ratio = {}
-            for i in nodes_solution:
-                list_cf_justifier = np.unique([tup[0] for tup in justifiers.keys() if tup[1] == i])
-                justifier_ratio[i] = len(list_cf_justifier)/len(self.potential_justifiers)    
-                print(f'Justifier Ratio (%) for node {i}: {np.round(justifier_ratio[i]*100, 2)}')
+            for i in sol_x.keys():
+                list_cf_justifier = np.unique([tup[0] for tup in justifiers.keys() if tup[2] == i])
+                justifier_ratio[i] = len(list_cf_justifier)/len(justifiers)    
+                print(f'Justifier Ratio (%) for centroid {i} CF: {np.round(justifier_ratio[i]*100, 2)}')
         return sol_x, justifiers, justifier_ratio
 
     def transform_dataframe(self, counterfactual):
