@@ -229,10 +229,27 @@ class FIJUICE:
         C = {}
         for c_idx in range(1, len(self.cluster.centroids_list) + 1):
             normal_centroid = self.cluster.centroids_list[c_idx - 1].normal_x
+            cluster_instances_list = self.cluster.clusters[c_idx - 1]
             for k in range(1, len(self.all_nodes) + 1):
                 node_k = self.all_nodes[k-1]
-                C[c_idx, k] = distance_calculation(normal_centroid, node_k, data, type)
+                dist_instance_node = 0
+                for instance_idx in cluster_instances_list:
+                    instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values[0]
+                    dist_instance_node += distance_calculation(instance, node_k, data, type)
+                C[c_idx, k] = dist_instance_node
         return C
+    
+    # def get_all_costs(self, data, type):
+    #     """
+    #     Method that outputs the cost parameters required for optimization
+    #     """
+    #     C = {}
+    #     for c_idx in range(1, len(self.cluster.centroids_list) + 1):
+    #         normal_centroid = self.cluster.centroids_list[c_idx - 1].normal_x
+    #         for k in range(1, len(self.all_nodes) + 1):
+    #             node_k = self.all_nodes[k-1]
+    #             C[c_idx, k] = distance_calculation(normal_centroid, node_k, data, type)
+    #     return C
 
     def get_all_feasibility(self, data):
         """

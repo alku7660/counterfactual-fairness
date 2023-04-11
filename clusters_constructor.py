@@ -106,6 +106,29 @@ class Clusters:
             feature_cluster_centroids_dict[feat_name] = sensitive_group_cluster_centroids_dict
         return feature_cluster_instances_dict, feature_cluster_centroids_dict
 
+    def filter_cluster_centroids(self):
+        """
+        Filters out the most important clusters in terms of size
+        """
+        tuples_clusters, tuples_centroids = [], []
+        for i in range(len(self.clusters)):
+            size_i = len(self.clusters[i])
+            tuples_clusters.append((self.clusters[i], size_i))
+            tuples_centroids.append((self.centroids_list[i], size_i))
+        tuples_clusters.sort(key=lambda x: x[1])
+        tuples_centroids.sort(key=lambda x: x[1])
+        instances_limit = int(len(self.transformed_false_undesired_test_df)*0.80)
+        instance_count = 0
+        for i in range(len(self.clusters)):
+            instance_count += tuples_clusters[i][1]
+            if instance_count >= instances_limit:
+                clusters = [j[0] for j in tuples_clusters[:i+1]]
+                centroids = [j[0] for j in tuples_centroids[:i+1]]
+                break
+        return clusters, centroids
+
+
+
     def define_centroids(self, data, model):
         """
         Creates the list of centroid objects
