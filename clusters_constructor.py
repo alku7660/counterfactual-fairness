@@ -16,8 +16,9 @@ class Clusters:
         self.metric = metric
         self.sensitive_feat_idx_dict = self.select_instances_by_sensitive_group()
         self.clusters, self.centroids = self.find_viable_clusters(model)
-        self.centroids_dict = self.centroids
-        self.centroids_list = self.define_centroids(data, model)
+        self.clusters_dict, self.centroids_dict = self.clusters, self.centroids
+        self.filtered_clusters_list, self.filtered_centroids_list = self.filter_clusters_centroids(data, model)
+        # self.clusters_list, self.centroids_list = self.define_clusters_centroids(data, model)
 
     def select_instances_by_sensitive_group(self):
         """
@@ -106,40 +107,41 @@ class Clusters:
             feature_cluster_centroids_dict[feat_name] = sensitive_group_cluster_centroids_dict
         return feature_cluster_instances_dict, feature_cluster_centroids_dict
 
-    def filter_cluster_centroids(self):
-        """
-        Filters out the most important clusters in terms of size
-        """
-        tuples_clusters, tuples_centroids = [], []
-        for i in range(len(self.clusters)):
-            size_i = len(self.clusters[i])
-            tuples_clusters.append((self.clusters[i], size_i))
-            tuples_centroids.append((self.centroids_list[i], size_i))
-        tuples_clusters.sort(key=lambda x: x[1])
-        tuples_centroids.sort(key=lambda x: x[1])
-        instances_limit = int(len(self.transformed_false_undesired_test_df)*0.80)
-        instance_count = 0
-        for i in range(len(self.clusters)):
-            instance_count += tuples_clusters[i][1]
-            if instance_count >= instances_limit:
-                clusters = [j[0] for j in tuples_clusters[:i+1]]
-                centroids = [j[0] for j in tuples_centroids[:i+1]]
-                break
-        return clusters, centroids
-
-
-
-    def define_centroids(self, data, model):
+    def define_clusters_centroids(self, data, model):
         """
         Creates the list of centroid objects
         """
-        centroid_obj_list = []
-        centroids_feat_list = list(self.centroids.keys())
+        clusters_list, centroid_obj_list = [], []
+        centroids_feat_list = list(self.centroids_dict.keys())
         for feat in centroids_feat_list:
-            feat_val_list = list(self.centroids[feat].keys())
+            feat_val_list = list(self.centroids_dict[feat].keys())
             for feat_val in feat_val_list:
-                centroid_list = self.centroids[feat][feat_val]
+                centroid_list = self.centroids_dict[feat][feat_val]
+                cluster_list = self.clusters_dict[feat][feat_val]
                 for centroid_idx in range(len(centroid_list)):
                     centroid = Centroid(centroid_idx, centroid_list, feat_val, feat, data, model, type='euclidean')
                     centroid_obj_list.append(centroid)
-        return centroid_obj_list
+                    clusters_list.append(cluster_list[centroid_idx])
+        return clusters_list, centroid_obj_list
+
+    def filter_clusters_centroids(self, data, model):
+        """
+        Filters out the most important clusters in terms of size
+        """
+        filtered_clusters_list, filtered_centroid_obj_list = [], []
+        centroids_feat_list = list(self.centroids_dict.keys())
+        for feat in centroids_feat_list:
+            feat_val_list = list(self.centroids_dict[feat].keys())
+            for feat_val in feat_val_list:
+                centroid_list = self.centroids_dict[feat][feat_val]
+                cluster_list = self.clusters_dict[feat][feat_val]
+                tuples_centroids = [(centroid_list[i], len(cluster_list[i])) for i in range(len(centroid_list))]
+                tuples_clusters = [(i, len(i)) for i in cluster_list]
+                tuples_centroids.sort(key=lambda x: x[1], reverse=True)
+                tuples_clusters.sort(key=lambda x: x[1], reverse=True)
+                clusters = tuples_clusters[0][0]
+                centroids = tuples_centroids[0][0]
+                centroid = Centroid(0, [centroids], feat_val, feat, data, model)
+                filtered_clusters_list.append(clusters)
+                filtered_centroid_obj_list.append(centroid)
+        return filtered_clusters_list, filtered_centroid_obj_list

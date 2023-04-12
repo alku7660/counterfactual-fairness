@@ -5,18 +5,14 @@ import warnings
 warnings.filterwarnings("ignore")
 from data_constructor import load_dataset
 from model_constructor import Model
-from ioi_constructor import IOI
 from clusters_constructor import Clusters
-from centroid_constructor import Centroid
 from cluster_counterfactual_constructor import Counterfactual
 from evaluator_constructor import Evaluator
 import numpy as np
-import pandas as pd
 from sklearn.metrics import f1_score
-from support import path_here, save_obj
-import time
+from support import save_obj
 
-datasets = ['german','dutch','compass','oulad','synthetic_athlete'] # ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
+datasets = ['bank'] # 'german','dutch','compass','oulad','synthetic_athlete' ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
 methods_to_run = ['fijuice'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -26,7 +22,7 @@ seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 clustering_metric = 'complete' # Clustering metric used
 dist = 'L1_L0'
-lagranges = [1.0]
+lagranges = [0.0]
 np.random.seed(seed_int)
 
 if __name__=='__main__':
@@ -35,12 +31,9 @@ if __name__=='__main__':
         model = Model(data)
         data.undesired_test(model)
         clusters_obj = Clusters(data, model, metric=clustering_metric)
-        
-        cf_evaluator = Evaluator(data, n_feat, methods_to_run[0])
+        cf_evaluator = Evaluator(data, n_feat, methods_to_run[0], clusters_obj)
         cf_evaluator.add_fairness_measures(data, model)
         cf_evaluator.add_fnr_data(data)
-        cf_evaluator.add_cluster_data(clusters_obj)
-        
         for lagrange in lagranges:
             print(f'---------------------------------------')
             print(f'                    Dataset: {data_str}')

@@ -133,7 +133,7 @@ class Evaluator():
     n_feat:             Number of examples to generate synthetically per feature
     method_str:         Name of the method to use to obtain counterfactuals
     """
-    def __init__(self, data_obj, n_feat, method_str):
+    def __init__(self, data_obj, n_feat, method_str, cluster_obj):
         self.data_name = data_obj.name
         self.method_name = method_str
         self.feat_type = data_obj.feat_type
@@ -153,6 +153,7 @@ class Evaluator():
         self.desired_class = 1 - self.undesired_class
         self.n_feat = n_feat
         self.cf_df = pd.DataFrame()
+        self.cluster_obj = cluster_obj
 
     def search_desired_class_penalize(self, x, data):
         """
@@ -706,9 +707,3 @@ class Evaluator():
                     normal_centroid_cf, original_cf, cf_proximity, cf_feasibility, counterfactual.cf_method.run_time]
             data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
             self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
-    
-    def add_cluster_data(self, cluster_obj):
-        """
-        Adds the data from the clusters (cluster object)
-        """
-        self.cluster_obj = cluster_obj
