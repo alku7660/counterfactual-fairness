@@ -340,8 +340,8 @@ class FIJUICE:
             Obtains the feasible justified solution when the problem is unfeasible
             """
             sol_x, justifiers, centroids_solved, nodes_solution = {}, {}, [], []
+            potential_CF = {}
             for c_idx in range(1, len(self.cluster.filtered_centroids_list) + 1):
-                potential_CF = {}
                 for i in range(1, len(self.potential_justifiers) + 1):
                     if self.F[c_idx, i]:
                         potential_CF[c_idx, i] = self.C[c_idx, i]
