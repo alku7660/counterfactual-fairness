@@ -690,8 +690,8 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
-        for c_idx in range(len(counterfactual.cluster.centroids_list)):
-            centroid = counterfactual.cluster.centroids_list[c_idx]
+        for c_idx in range(len(counterfactual.cluster.filtered_centroids_list)):
+            centroid = counterfactual.cluster.filtered_centroids_list[c_idx]
             original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[0], columns=counterfactual.data.features)
             normal_centroid_cf = counterfactual.cf_method.normal_x_cf[c_idx + 1]
             cf_proximity = distance_calculation(centroid.normal_x, normal_centroid_cf, counterfactual.data, type=counterfactual.type)

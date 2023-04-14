@@ -234,7 +234,7 @@ class FIJUICE:
                 node_k = self.all_nodes[k-1]
                 dist_instance_node = 0
                 for instance_idx in cluster_instances_list:
-                    instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values[0]
+                    instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
                     dist_instance_node += distance_calculation(instance, node_k, data, type)
                 C[c_idx, k] = dist_instance_node
         return C
