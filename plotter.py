@@ -17,7 +17,7 @@ from matplotlib.ticker import FormatStrFormatter
 from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
-import seaborn as sns
+# import seaborn as sns
 from fairness_clusters import datasets, methods_to_run, lagranges
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
@@ -1023,15 +1023,17 @@ def plot_centroids_diff():
                     ax[feat_val_idx].fig.suptitle(f'{data_str.capitalize()} ({feat}: {feat_val}) Centroid difference') 
                     plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{feat}_{feat_val}_instances_diff_centroid.pdf', format='pdf')
 
-def plot_centroids_cf_mean_proximity():
+def plot_centroids_cf_proximity():
     """
-    Plots the mean proximity for each of the features and feature value clusters
+    Plots the proximity for each of the features and feature value clusters towards their corresponding cluster counterfactual
     """
     method_str = 'fijuice'
     lagrange = 0.0 # May be changed together with ncols to draw several plots, one for each lagrange
-    fig, ax = plt.subplots(nrows=len(datasets), ncols=1, sharex=False, sharey=False, figsize=(7, 4.5))
+    fig, ax = plt.subplots(nrows=len(datasets), ncols=1, sharex=False, sharey=False, figsize=(6, 4))
+    dataset_names = get_data_names(datasets)
     for data_idx in range(len(datasets)):
         data_str = datasets[data_idx]
+        dataset = dataset_names[data_str]
         eval_obj = load_obj(f'{data_str}_{method_str}_{lagrange}_cluster_eval.pkl')
         cf_df = eval_obj.cf_df
         cluster_centroid_dict = eval_obj.cluster_obj.centroids_dict
@@ -1042,21 +1044,23 @@ def plot_centroids_cf_mean_proximity():
             feat_val_list = list(cluster_centroid_dict[feat].keys())
             for feat_val_idx in range(len(feat_val_list)):
                 feat_val = feat_val_list[feat_val_idx]
-                cf_feat_val_df = cf_df.loc[(cf_df['feature'] == feat) & (cf_df['feat_val'] == feat_val)]
-                cf_feat_val_proximity_list = list(cf_feat_val_df['cf_proximity'].values())
+                cf_feat_val_df = cf_df.loc[(cf_df['feature'] == feat) & (cf_df['feat_value'] == feat_val)]
+                cf_feat_val_proximity_list = list(cf_feat_val_df['cf_proximity'].values)
                 all_proximity_list.append(cf_feat_val_proximity_list)
-                x_axis_labels.append([f'{feat.capitalize()}: {feat_val}'])
+                x_axis_labels.extend([f'{feat.capitalize()}: {eval_obj.feat_protected[feat.capitalize()][feat_val]}'])
         ax[data_idx].boxplot(all_proximity_list, showmeans=True, meanprops=mean_prop, showfliers=False)
-        ax[data_idx].set_xticklabels([x_axis_labels[i] for i in range(len(x_axis_labels))], rotation=30)
-        ax[data_idx].set_ylabel(data_str.upper())
+        ax[data_idx].set_xticklabels([x_axis_labels[i] for i in range(len(x_axis_labels))], rotation=0)
+        ax[data_idx].set_ylabel(dataset.upper())
         ax[data_idx].grid(axis='y', linestyle='--', alpha=0.4)
+    fig.suptitle(f'Distance to CFs')
+    fig.subplots_adjust(left=0.15, bottom=0.1, right=0.9, top=0.9, wspace=0.475, hspace=0.25)
     plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{lagrange}_proximity.pdf', format='pdf')
 
 def plot_centroids_cfs_ablation():
     """
     Plots the ablation with respect to the lagrange factor
     """
-    fig, ax = plt.subplots(nrows=1, ncols=len(datasets), sharex=True, sharey=True, figsize=(7,4.5))
+    fig, ax = plt.subplots(nrows=1, ncols=len(datasets), sharex=True, sharey=True, figsize=(6,4.5))
     method_str = 'fijuice'
     start, end = 0, 1.1
     for data_idx in range(len(datasets)):
@@ -1071,24 +1075,29 @@ def plot_centroids_cfs_ablation():
             cf_difference_proximity = 0
             for i in range(len(cf_df.index)):
                 cf_i = cf_df.loc[cf_df.index[i]]
-                for j in (i, range(len(cf_df.index))):
+                for j in range(i, len(cf_df.index)):
                     cf_j = cf_df.loc[cf_df.index[j]]
                     cf_i_proximity = cf_i['cf_proximity']
                     cf_j_proximity = cf_j['cf_proximity']
                     cf_difference_proximity += (cf_i_proximity - cf_j_proximity)**2
             all_proximity.append(cf_df_all_proximity)
             all_cf_differences.append(cf_difference_proximity)
-        ax[data_idx].plot(lagranges, all_cf_differences, color='#5E81AC', label='Justification')
+        ax[data_idx].plot(lagranges, all_cf_differences, color='#5E81AC', label='Squared Distance Difference')
         ax[data_idx].grid(axis='both', linestyle='--', alpha=0.4)
-        ax[data_idx].yaxis.set_ticks(np.arange(start, end, 0.2))
+        ax[data_idx].yaxis.set_ticks(np.arange(start, end, 0.1))
         ax[data_idx].yaxis.set_tick_params(labelcolor='#5E81AC')
-        ax[data_idx].xaxis.set_ticks(ticks=np.arange(start, end, 0.2), labels=['0','0.2','0.4','0.6','0.8','1'])
+        ax[data_idx].xaxis.set_ticks(ticks=np.arange(start, end, 0.1), labels=['0.0','0.1','0.2','0.3','0.4','0.5','0.6','0.7','0.8','0.9','1.0'])
         secax = ax[data_idx].twinx()
         secax.plot(lagranges, all_proximity, color='#BF616A', label='Distance')
         secax.yaxis.set_tick_params(labelcolor='#BF616A')
-        secax.yaxis.set_ticks(np.arange(min(all_proximity),max(all_proximity),(max(all_proximity)-min(all_proximity))*0.2))
+        secax.yaxis.set_ticks(np.arange(min(all_proximity), max(all_proximity), (max(all_proximity)-min(all_proximity))*0.2))
         ax[data_idx].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
         secax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+    fig.supxlabel('$\lambda$ Weight Parameter')
+    fig.supylabel('Squared Distance Difference', color='#5E81AC')
+    fig.suptitle(f'Average Distance and Average Squared Distance Difference vs. $\lambda$')
+    fig.text(0.965, 0.5, 'Average Distance', color='#BF616A', va='center', rotation='vertical')
+    fig.subplots_adjust(left=0.09, bottom=0.1, right=0.875, top=0.9, wspace=0.475, hspace=0.2)
     plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_lagrange_ablation.pdf', format='pdf')
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
@@ -1111,6 +1120,6 @@ mean_prop = dict(marker='D', markeredgecolor='firebrick', markerfacecolor='fireb
 # nawb_groups_cf(datasets, methods_to_run)
 # nawb_cluster_cf(datasets, methods_to_run)
 # burden_groups_cf_bar(datasets, 'NN')
-plot_centroids()
-plot_centroids_diff()
+plot_centroids_cf_proximity()
+plot_centroids_cfs_ablation()
 

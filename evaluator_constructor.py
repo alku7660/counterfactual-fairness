@@ -694,16 +694,19 @@ class Evaluator():
             centroid = counterfactual.cluster.filtered_centroids_list[c_idx]
             original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[0], columns=counterfactual.data.features)
             normal_centroid_cf = counterfactual.cf_method.normal_x_cf[c_idx + 1]
-            cf_proximity = distance_calculation(centroid.normal_x, normal_centroid_cf, counterfactual.data, type=counterfactual.type)
-            cf_feasibility = verify_feasibility(centroid.normal_x, normal_centroid_cf, counterfactual.data)
-            normal_x_cf_df = pd.DataFrame(data=normal_centroid_cf.reshape(1,-1), index=[0], columns=counterfactual.data.processed_features)
-            original_cf = self.inverse_transform_original(normal_x_cf_df)
+            cluster_instances_list = counterfactual.cluster.filtered_clusters_list[c_idx - 1]
+            cols = ['feature','feat_value','instance_idx','centroid_idx','normal_centroid','centroid',
+                    'normal_cf','cf','cf_proximity','cf_feasibility','cf_time']
             print(f'Original Centroid ({centroid.feat}: {centroid.feat_val}): {original_centroid}')
             print(f'      Original CF: {original_cf}')
+            normal_x_cf_df = pd.DataFrame(data=normal_centroid_cf.reshape(1,-1), index=[0], columns=counterfactual.data.processed_features)
+            original_cf = self.inverse_transform_original(normal_x_cf_df)
             original_cf = original_cf.values
-            cols = ['feature','feat_value','centroid_idx','normal_centroid','centroid',
-                    'normal_cf','cf','cf_proximity','cf_feasibility','cf_time']
-            data_list = [centroid.feat, centroid.feat_val, centroid.centroid_idx, centroid.normal_x, centroid.x,
-                    normal_centroid_cf, original_cf, cf_proximity, cf_feasibility, counterfactual.cf_method.run_time]
-            data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
-            self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
+            for instance_idx in cluster_instances_list:
+                instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
+                cf_proximity = distance_calculation(instance, normal_centroid_cf, counterfactual.data, counterfactual.type)
+                cf_feasibility = verify_feasibility(instance, normal_centroid_cf, counterfactual.data)
+                data_list = [centroid.feat, centroid.feat_val, instance_idx, centroid.centroid_idx, centroid.normal_x, centroid.x,
+                        normal_centroid_cf, original_cf, cf_proximity, cf_feasibility, counterfactual.cf_method.run_time]
+                data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
+                self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
