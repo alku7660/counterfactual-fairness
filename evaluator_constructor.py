@@ -690,20 +690,20 @@ class Evaluator():
 
         OUTPUT: (None: stored as class attributes)
         """
+        cols = ['feature','feat_value','instance_idx','centroid_idx','normal_centroid','centroid',
+                'normal_cf','cf','cf_proximity','cf_feasibility','cf_time']
         for c_idx in range(len(counterfactual.cluster.filtered_centroids_list)):
             centroid = counterfactual.cluster.filtered_centroids_list[c_idx]
             original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[0], columns=counterfactual.data.features)
             normal_centroid_cf = counterfactual.cf_method.normal_x_cf[c_idx + 1]
             cluster_instances_list = counterfactual.cluster.filtered_clusters_list[c_idx - 1]
-            cols = ['feature','feat_value','instance_idx','centroid_idx','normal_centroid','centroid',
-                    'normal_cf','cf','cf_proximity','cf_feasibility','cf_time']
-            print(f'Original Centroid ({centroid.feat}: {centroid.feat_val}): {original_centroid}')
-            print(f'      Original CF: {original_cf}')
             normal_x_cf_df = pd.DataFrame(data=normal_centroid_cf.reshape(1,-1), index=[0], columns=counterfactual.data.processed_features)
             original_cf = self.inverse_transform_original(normal_x_cf_df)
             original_cf = original_cf.values
+            print(f'Original Centroid ({centroid.feat}: {centroid.feat_val}): {original_centroid}')
+            print(f'      Original CF: {original_cf}')
             for instance_idx in cluster_instances_list:
-                instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
+                instance = counterfactual.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
                 cf_proximity = distance_calculation(instance, normal_centroid_cf, counterfactual.data, counterfactual.type)
                 cf_feasibility = verify_feasibility(instance, normal_centroid_cf, counterfactual.data)
                 data_list = [centroid.feat, centroid.feat_val, instance_idx, centroid.centroid_idx, centroid.normal_x, centroid.x,

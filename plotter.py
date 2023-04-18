@@ -1028,8 +1028,8 @@ def plot_centroids_cf_proximity():
     Plots the proximity for each of the features and feature value clusters towards their corresponding cluster counterfactual
     """
     method_str = 'fijuice'
-    lagrange = 0.0 # May be changed together with ncols to draw several plots, one for each lagrange
-    fig, ax = plt.subplots(nrows=len(datasets), ncols=1, sharex=False, sharey=False, figsize=(6, 4))
+    lagrange = 1.0 # May be changed together with ncols to draw several plots, one for each lagrange
+    fig, ax = plt.subplots(nrows=len(datasets), ncols=1, sharex=False, sharey=False, figsize=(6, 8))
     dataset_names = get_data_names(datasets)
     for data_idx in range(len(datasets)):
         data_str = datasets[data_idx]
@@ -1050,17 +1050,17 @@ def plot_centroids_cf_proximity():
                 x_axis_labels.extend([f'{feat.capitalize()}: {eval_obj.feat_protected[feat.capitalize()][feat_val]}'])
         ax[data_idx].boxplot(all_proximity_list, showmeans=True, meanprops=mean_prop, showfliers=False)
         ax[data_idx].set_xticklabels([x_axis_labels[i] for i in range(len(x_axis_labels))], rotation=0)
-        ax[data_idx].set_ylabel(dataset.upper())
+        ax[data_idx].set_ylabel(dataset.capitalize())
         ax[data_idx].grid(axis='y', linestyle='--', alpha=0.4)
     fig.suptitle(f'Distance to CFs')
     fig.subplots_adjust(left=0.15, bottom=0.1, right=0.9, top=0.9, wspace=0.475, hspace=0.25)
-    plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{lagrange}_proximity.pdf', format='pdf')
+    plt.savefig(f'{results_cf_plots_dir}all_datasets_{method_str}_{lagrange}_proximity.pdf', format='pdf')
 
 def plot_centroids_cfs_ablation():
     """
     Plots the ablation with respect to the lagrange factor
     """
-    fig, ax = plt.subplots(nrows=1, ncols=len(datasets), sharex=True, sharey=True, figsize=(6,4.5))
+    fig, ax = plt.subplots(nrows=1, ncols=len(datasets), sharex=True, sharey=True, figsize=(6, 8))
     method_str = 'fijuice'
     start, end = 0, 1.1
     for data_idx in range(len(datasets)):
@@ -1069,9 +1069,12 @@ def plot_centroids_cfs_ablation():
         all_cf_differences = []
         for lagrange in lagranges:
             eval_obj = load_obj(f'{data_str}_{method_str}_{lagrange}_cluster_eval.pkl')
-            clusters = eval_obj.cluster_obj
             cf_df = eval_obj.cf_df
             cf_df_all_proximity = np.sum(cf_df['cf_proximity'].values)
+            unique_centroids_idx = np.unique(cf_df['centroid_idx'].values)
+            for centroid_idx_1 in unique_centroids_idx:
+                centroid_cf_df_1 = cf_df.loc[cf_df['centroid_idx'] == centroid_idx_1]
+                mean_proximity_centroid_cf_df_1 = np.mean(centroid_cf_df_1['cf_proximity'].values)
             cf_difference_proximity = 0
             for i in range(len(cf_df.index)):
                 cf_i = cf_df.loc[cf_df.index[i]]
@@ -1120,6 +1123,6 @@ mean_prop = dict(marker='D', markeredgecolor='firebrick', markerfacecolor='fireb
 # nawb_groups_cf(datasets, methods_to_run)
 # nawb_cluster_cf(datasets, methods_to_run)
 # burden_groups_cf_bar(datasets, 'NN')
-plot_centroids_cf_proximity()
+# plot_centroids_cf_proximity()
 plot_centroids_cfs_ablation()
 

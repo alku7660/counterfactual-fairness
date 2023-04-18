@@ -17,8 +17,9 @@ class FIJUICE:
         self.lagrange = counterfactual.lagrange
         self.t = counterfactual.t
         self.k = counterfactual.k
-        self.potential_justifiers = self.find_potential_justifiers(counterfactual)
-        self.potential_justifiers = self.nn_list(counterfactual)
+        # self.potential_justifiers = self.find_potential_justifiers(counterfactual)
+        # self.potential_justifiers = self.nn_list(counterfactual)
+        self.graph = counterfactual.graph
         start_time = time.time()
         self.normal_x_cf, self.justifiers, self.justifier_ratio = self.Fijuice(counterfactual)
         end_time = time.time()
@@ -59,185 +60,185 @@ class FIJUICE:
             potential_justifiers_df = pd.concat((potential_justifiers_df, centroid_df_data), axis=0)
         return potential_justifiers_df
 
-    def nn_list(self, counterfactual):
-        """
-        Method that gets the list of training observations labeled as cf-label with respect to the cf, ordered based on graph nodes size
-        """
-        permutations_potential_justifiers_all = []
-        for c in range(len(self.cluster.filtered_centroids_list)):
-            centroid = self.cluster.filtered_centroids_list[c]
-            c_justifiers_list = self.potential_justifiers.iloc[c]['justifiers']
-            permutations_potential_justifiers = []
-            for i in range(len(c_justifiers_list)):
-                possible_feat_values_justifier_i = self.get_feat_possible_values(counterfactual.data, obj=[centroid], points=[c_justifiers_list[i]])[0][0]
-                len_permutations = len(list(product(*possible_feat_values_justifier_i)))
-                permutations_potential_justifiers.append((c_justifiers_list[i], len_permutations))
-                # print(f'Justifier {i+1}: Length permutations: {len_permutations}')
-            permutations_potential_justifiers.sort(key=lambda x: x[1])
-            permutations_potential_justifiers = [i[0] for i in permutations_potential_justifiers]
-            if len(permutations_potential_justifiers) > self.k:
-                permutations_potential_justifiers = permutations_potential_justifiers[:self.k]
-            permutations_potential_justifiers_all.extend(permutations_potential_justifiers)
-        return permutations_potential_justifiers_all
+    # def nn_list(self, counterfactual):
+    #     """
+    #     Method that gets the list of training observations labeled as cf-label with respect to the cf, ordered based on graph nodes size
+    #     """
+    #     permutations_potential_justifiers_all = []
+    #     for c in range(len(self.cluster.filtered_centroids_list)):
+    #         centroid = self.cluster.filtered_centroids_list[c]
+    #         c_justifiers_list = self.graph.potential_justifiers.iloc[c]['justifiers']
+    #         permutations_potential_justifiers = []
+    #         for i in range(len(c_justifiers_list)):
+    #             possible_feat_values_justifier_i = self.get_feat_possible_values(counterfactual.data, obj=[centroid], points=[c_justifiers_list[i]])[0][0]
+    #             len_permutations = len(list(product(*possible_feat_values_justifier_i)))
+    #             permutations_potential_justifiers.append((c_justifiers_list[i], len_permutations))
+    #             # print(f'Justifier {i+1}: Length permutations: {len_permutations}')
+    #         permutations_potential_justifiers.sort(key=lambda x: x[1])
+    #         permutations_potential_justifiers = [i[0] for i in permutations_potential_justifiers]
+    #         if len(permutations_potential_justifiers) > self.k:
+    #             permutations_potential_justifiers = permutations_potential_justifiers[:self.k]
+    #         permutations_potential_justifiers_all.extend(permutations_potential_justifiers)
+    #     return permutations_potential_justifiers_all
 
     def Fijuice(self, counterfactual):
         """
         Improved JUICE generation method
         """
-        print(f'Obtained all potential justifiers: {len(self.potential_justifiers)}')
-        self.pot_justifier_feat_possible_values = self.get_feat_possible_values(counterfactual.data)
-        print(f'Obtained all possible feature values from potential justifiers')
-        self.graph_nodes = self.get_graph_nodes(counterfactual.model)
-        self.all_nodes = self.potential_justifiers + self.graph_nodes
-        print(f'Obtained all possible nodes in the graph: {len(self.all_nodes)}')
-        self.C = self.get_all_costs(counterfactual.data, counterfactual.type)
-        print(f'Obtained all costs in the graph')
-        self.F = self.get_all_feasibility(counterfactual.data)
-        print(f'Obtained all feasibility in the graph')
-        self.A = self.get_all_adjacency(counterfactual.data)
-        print(f'Obtained adjacency matrix')
-        if len(self.potential_justifiers) > 0:
+        # print(f'Obtained all potential justifiers: {len(self.potential_justifiers)}')
+        # self.pot_justifier_feat_possible_values = self.get_feat_possible_values(counterfactual.data)
+        # print(f'Obtained all possible feature values from potential justifiers')
+        # self.graph_nodes = self.get_graph_nodes(counterfactual.model)
+        # self.all_nodes = self.potential_justifiers + self.graph_nodes
+        # print(f'Obtained all possible nodes in the graph: {len(self.all_nodes)}')
+        # self.C = self.get_all_costs(counterfactual.data, counterfactual.type)
+        # print(f'Obtained all costs in the graph')
+        # self.F = self.get_all_feasibility(counterfactual.data)
+        # print(f'Obtained all feasibility in the graph')
+        # self.A = self.get_all_adjacency(counterfactual.data)
+        # print(f'Obtained adjacency matrix')
+        if len(self.graph.potential_justifiers) > 0:
             normal_x_cf, justifiers, justifier_ratio = self.do_optimize_all(counterfactual)
         else:
             print(f'CF cannot be justified. Returning NN counterfactual')
             normal_x_cf, _ = nn_for_juice(counterfactual)
             justifiers = normal_x_cf
-            justifier_ratio = 1/len(self.potential_justifiers)
+            justifier_ratio = 1/len(self.graph.potential_justifiers)
         return normal_x_cf, justifiers, justifier_ratio 
 
-    def continuous_feat_values(self, i, min_val, max_val, data):
-        """
-        Method that defines how to discretize the continuous features
-        """
-        sorted_feat_i = list(np.sort(data.transformed_train_np[:,i][(data.transformed_train_np[:,i] >= min_val) & (data.transformed_train_np[:,i] <= max_val)]))
-        value = list(np.unique(sorted_feat_i))
-        if len(value) <= 10:
-            if min_val not in value:
-                value = [min_val] + value
-            if max_val not in value:
-                value = value + [max_val]
-            return value
-        else:
-            mean_val, std_val = np.mean(data.transformed_train_np[:,i]), np.std(data.transformed_train_np[:,i])
-            percentiles_range = list(np.linspace(0, 1, 11))
-            value = []
-            for perc in percentiles_range:
-                value.append(norm.ppf(perc, loc=mean_val, scale=std_val))
-            value = [val for val in value if val >= min_val and val <= max_val]
-            if min_val not in value:
-                value = [min_val] + value
-            if max_val not in value:
-                value = value + [max_val]
-        return value
+    # def continuous_feat_values(self, i, min_val, max_val, data):
+    #     """
+    #     Method that defines how to discretize the continuous features
+    #     """
+    #     sorted_feat_i = list(np.sort(data.transformed_train_np[:,i][(data.transformed_train_np[:,i] >= min_val) & (data.transformed_train_np[:,i] <= max_val)]))
+    #     value = list(np.unique(sorted_feat_i))
+    #     if len(value) <= 10:
+    #         if min_val not in value:
+    #             value = [min_val] + value
+    #         if max_val not in value:
+    #             value = value + [max_val]
+    #         return value
+    #     else:
+    #         mean_val, std_val = np.mean(data.transformed_train_np[:,i]), np.std(data.transformed_train_np[:,i])
+    #         percentiles_range = list(np.linspace(0, 1, 11))
+    #         value = []
+    #         for perc in percentiles_range:
+    #             value.append(norm.ppf(perc, loc=mean_val, scale=std_val))
+    #         value = [val for val in value if val >= min_val and val <= max_val]
+    #         if min_val not in value:
+    #             value = [min_val] + value
+    #         if max_val not in value:
+    #             value = value + [max_val]
+    #     return value
 
-    def get_feat_possible_values(self, data, obj=None, points=None):
-        """
-        Method that obtains the features possible values
-        """
-        if obj is None:
-            normal_centroids = self.cluster.filtered_centroids_list
-        else:
-            normal_centroids = obj
-        if points is None:
-            points = self.potential_justifiers
-        else:
-            points = points
-        pot_justifier_feat_possible_values_all_centroids = {}
-        for c_idx in range(len(normal_centroids)):
-            pot_justifier_feat_possible_values = {}
-            normal_centroid = normal_centroids[c_idx].normal_x
-            for k in range(len(points)):
-                potential_justifier_k = points[k]
-                v = normal_centroid - potential_justifier_k
-                nonzero_index = list(np.nonzero(v)[0])
-                feat_checked = []
-                feat_possible_values = []
-                for i in range(len(normal_centroid)):
-                    if i not in feat_checked:
-                        feat_i = data.processed_features[i]
-                        if feat_i in data.bin_enc_cols:
-                            if i in nonzero_index:
-                                value = [potential_justifier_k[i], normal_centroid[i]]
-                            else:
-                                value = [potential_justifier_k[i]]
-                            feat_checked.extend([i])
-                        elif feat_i in data.cat_enc_cols:
-                            idx_cat_i = data.idx_cat_cols_dict[feat_i[:-4]]
-                            nn_cat_idx = list(potential_justifier_k[idx_cat_i])
-                            if any(item in idx_cat_i for item in nonzero_index):
-                                ioi_cat_idx = list(normal_centroid[idx_cat_i])
-                                value = [nn_cat_idx, ioi_cat_idx]
-                            else:
-                                value = [nn_cat_idx]
-                            feat_checked.extend(idx_cat_i)
-                        elif feat_i in data.ordinal:
-                            if i in nonzero_index:
-                                values_i = list(data.processed_feat_dist[feat_i].keys())
-                                max_val_i, min_val_i = max(normal_centroid[i], potential_justifier_k[i]), min(normal_centroid[i], potential_justifier_k[i])
-                                value = [j for j in values_i if j <= max_val_i and j >= min_val_i]
-                            else:
-                                value = [potential_justifier_k[i]]
-                            feat_checked.extend([i])
-                        elif feat_i in data.continuous:
-                            if i in nonzero_index:
-                                max_val_i, min_val_i = max(normal_centroid[i], potential_justifier_k[i]), min(normal_centroid[i], potential_justifier_k[i])
-                                value = self.continuous_feat_values(i, min_val_i, max_val_i, data)
-                            else:
-                                value = [potential_justifier_k[i]]
-                            feat_checked.extend([i])
-                        feat_possible_values.append(value)
-                pot_justifier_feat_possible_values[k] = feat_possible_values
-            pot_justifier_feat_possible_values_all_centroids[c_idx] = pot_justifier_feat_possible_values
-        return pot_justifier_feat_possible_values_all_centroids
+    # def get_feat_possible_values(self, data, obj=None, points=None):
+    #     """
+    #     Method that obtains the features possible values
+    #     """
+    #     if obj is None:
+    #         normal_centroids = self.cluster.filtered_centroids_list
+    #     else:
+    #         normal_centroids = obj
+    #     if points is None:
+    #         points = self.graph.potential_justifiers
+    #     else:
+    #         points = points
+    #     pot_justifier_feat_possible_values_all_centroids = {}
+    #     for c_idx in range(len(normal_centroids)):
+    #         pot_justifier_feat_possible_values = {}
+    #         normal_centroid = normal_centroids[c_idx].normal_x
+    #         for k in range(len(points)):
+    #             potential_justifier_k = points[k]
+    #             v = normal_centroid - potential_justifier_k
+    #             nonzero_index = list(np.nonzero(v)[0])
+    #             feat_checked = []
+    #             feat_possible_values = []
+    #             for i in range(len(normal_centroid)):
+    #                 if i not in feat_checked:
+    #                     feat_i = data.processed_features[i]
+    #                     if feat_i in data.bin_enc_cols:
+    #                         if i in nonzero_index:
+    #                             value = [potential_justifier_k[i], normal_centroid[i]]
+    #                         else:
+    #                             value = [potential_justifier_k[i]]
+    #                         feat_checked.extend([i])
+    #                     elif feat_i in data.cat_enc_cols:
+    #                         idx_cat_i = data.idx_cat_cols_dict[feat_i[:-4]]
+    #                         nn_cat_idx = list(potential_justifier_k[idx_cat_i])
+    #                         if any(item in idx_cat_i for item in nonzero_index):
+    #                             ioi_cat_idx = list(normal_centroid[idx_cat_i])
+    #                             value = [nn_cat_idx, ioi_cat_idx]
+    #                         else:
+    #                             value = [nn_cat_idx]
+    #                         feat_checked.extend(idx_cat_i)
+    #                     elif feat_i in data.ordinal:
+    #                         if i in nonzero_index:
+    #                             values_i = list(data.processed_feat_dist[feat_i].keys())
+    #                             max_val_i, min_val_i = max(normal_centroid[i], potential_justifier_k[i]), min(normal_centroid[i], potential_justifier_k[i])
+    #                             value = [j for j in values_i if j <= max_val_i and j >= min_val_i]
+    #                         else:
+    #                             value = [potential_justifier_k[i]]
+    #                         feat_checked.extend([i])
+    #                     elif feat_i in data.continuous:
+    #                         if i in nonzero_index:
+    #                             max_val_i, min_val_i = max(normal_centroid[i], potential_justifier_k[i]), min(normal_centroid[i], potential_justifier_k[i])
+    #                             value = self.continuous_feat_values(i, min_val_i, max_val_i, data)
+    #                         else:
+    #                             value = [potential_justifier_k[i]]
+    #                         feat_checked.extend([i])
+    #                     feat_possible_values.append(value)
+    #             pot_justifier_feat_possible_values[k] = feat_possible_values
+    #         pot_justifier_feat_possible_values_all_centroids[c_idx] = pot_justifier_feat_possible_values
+    #     return pot_justifier_feat_possible_values_all_centroids
 
-    def make_array(self, i):
-        """
-        Method that transforms a generator instance into array  
-        """
-        list_i = list(i)
-        new_list = []
-        for j in list_i:
-            if isinstance(j, list):
-                new_list.extend([k for k in j])
-            else:
-                new_list.extend([j])
-        return np.array(new_list)
+    # def make_array(self, i):
+    #     """
+    #     Method that transforms a generator instance into array  
+    #     """
+    #     list_i = list(i)
+    #     new_list = []
+    #     for j in list_i:
+    #         if isinstance(j, list):
+    #             new_list.extend([k for k in j])
+    #         else:
+    #             new_list.extend([j])
+    #     return np.array(new_list)
     
-    def get_graph_nodes(self, model):
-        """
-        Generator that contains all the nodes located in the space between the potential justifiers and the normal_ioi (all possible, CF-labeled nodes)
-        """
-        graph_nodes = []
-        for c_idx in range(len(self.cluster.filtered_centroids_list)):
-            # print(f'Analyzing centroid {c_idx} for graph nodes...')
-            for k in range(len(self.potential_justifiers)):
-                print(f'Analyzing centroid {c_idx} and potential justifier {k} for graph nodes...')
-                feat_possible_values_k = self.pot_justifier_feat_possible_values[c_idx][k]
-                permutations = product(*feat_possible_values_k)
-                for i in permutations:
-                    perm_i = self.make_array(i)
-                    if model.model.predict(perm_i.reshape(1, -1)) != self.ioi_label and \
-                        not any(np.array_equal(perm_i, x) for x in graph_nodes) and \
-                        not any(np.array_equal(perm_i, x) for x in self.potential_justifiers):
-                        graph_nodes.append(perm_i)
-        return graph_nodes
+    # def get_graph_nodes(self, model):
+    #     """
+    #     Generator that contains all the nodes located in the space between the potential justifiers and the normal_ioi (all possible, CF-labeled nodes)
+    #     """
+    #     graph_nodes = []
+    #     for c_idx in range(len(self.cluster.filtered_centroids_list)):
+    #         # print(f'Analyzing centroid {c_idx} for graph nodes...')
+    #         for k in range(len(self.graph.potential_justifiers)):
+    #             print(f'Analyzing centroid {c_idx} and potential justifier {k} for graph nodes...')
+    #             feat_possible_values_k = self.pot_justifier_feat_possible_values[c_idx][k]
+    #             permutations = product(*feat_possible_values_k)
+    #             for i in permutations:
+    #                 perm_i = self.make_array(i)
+    #                 if model.model.predict(perm_i.reshape(1, -1)) != self.ioi_label and \
+    #                     not any(np.array_equal(perm_i, x) for x in graph_nodes) and \
+    #                     not any(np.array_equal(perm_i, x) for x in self.graph.potential_justifiers):
+    #                     graph_nodes.append(perm_i)
+    #     return graph_nodes
 
-    def get_all_costs(self, data, type):
-        """
-        Method that outputs the cost parameters required for optimization
-        """
-        C = {}
-        for c_idx in range(1, len(self.cluster.filtered_centroids_list) + 1):
-            normal_centroid = self.cluster.filtered_centroids_list[c_idx - 1].normal_x
-            cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
-            for k in range(1, len(self.all_nodes) + 1):
-                node_k = self.all_nodes[k-1]
-                dist_instance_node = 0
-                for instance_idx in cluster_instances_list:
-                    instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
-                    dist_instance_node += distance_calculation(instance, node_k, data, type)
-                C[c_idx, k] = dist_instance_node
-        return C
+    # def get_all_costs(self, data, type):
+    #     """
+    #     Method that outputs the cost parameters required for optimization
+    #     """
+    #     C = {}
+    #     for c_idx in range(1, len(self.cluster.filtered_centroids_list) + 1):
+    #         normal_centroid = self.cluster.filtered_centroids_list[c_idx - 1].normal_x
+    #         cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
+    #         for k in range(1, len(self.all_nodes) + 1):
+    #             node_k = self.all_nodes[k-1]
+    #             dist_instance_node = 0
+    #             for instance_idx in cluster_instances_list:
+    #                 instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
+    #                 dist_instance_node += distance_calculation(instance, node_k, data, type)
+    #             C[c_idx, k] = dist_instance_node
+    #     return C
     
     # def get_all_costs(self, data, type):
     #     """
@@ -251,74 +252,74 @@ class FIJUICE:
     #             C[c_idx, k] = distance_calculation(normal_centroid, node_k, data, type)
     #     return C
 
-    def get_all_feasibility(self, data):
-        """
-        Outputs the counterfactual feasibility parameter for all graph nodes (including the potential justifiers) 
-        """
-        F = {}
-        for c_idx in range(1, len(self.cluster.filtered_centroids_list) + 1):
-            normal_centroid = self.cluster.filtered_centroids_list[c_idx - 1].normal_x
-            for k in range(1, len(self.all_nodes) + 1):
-                node_k = self.all_nodes[k-1]
-                F[c_idx, k] = verify_feasibility(normal_centroid, node_k, data)
-        return F
+    # def get_all_feasibility(self, data):
+    #     """
+    #     Outputs the counterfactual feasibility parameter for all graph nodes (including the potential justifiers) 
+    #     """
+    #     F = {}
+    #     for c_idx in range(1, len(self.cluster.filtered_centroids_list) + 1):
+    #         normal_centroid = self.cluster.filtered_centroids_list[c_idx - 1].normal_x
+    #         for k in range(1, len(self.all_nodes) + 1):
+    #             node_k = self.all_nodes[k-1]
+    #             F[c_idx, k] = verify_feasibility(normal_centroid, node_k, data)
+    #     return F
 
-    def get_all_adjacency(self, data):
-        """
-        Method that outputs the adjacency matrix required for optimization
-        """
-        toler = 0.00001
-        centroids_array = np.array([self.cluster.filtered_centroids_list[i].normal_x for i in range(len(self.cluster.filtered_centroids_list))])
-        justifiers_array = np.array(self.potential_justifiers)
-        A = tuplelist()
-        for i in range(1, len(self.all_nodes) + 1):
-            node_i = self.all_nodes[i - 1]
-            for j in range(i + 1, len(self.all_nodes) + 1):
-                node_j = self.all_nodes[j - 1]
-                vector_ij = node_j - node_i
-                nonzero_index = list(np.nonzero(vector_ij)[0])
-                feat_nonzero = [data.processed_features[l] for l in nonzero_index]
-                if len(nonzero_index) > 2:
-                    continue
-                elif len(nonzero_index) == 2:
-                    if any(item in data.cat_enc_cols for item in feat_nonzero):
-                        A.append((i,j))
-                elif len(nonzero_index) == 1:
-                    if any(item in data.ordinal for item in feat_nonzero):
-                        if np.isclose(np.abs(vector_ij[nonzero_index]), data.feat_step[feat_nonzero], atol=toler).any():
-                            A.append((i,j))
-                    elif any(item in data.continuous for item in feat_nonzero):
-                        max_val, min_val = float(max(max(centroids_array[:,nonzero_index]), max(justifiers_array[:,nonzero_index]))), float(min(min(centroids_array[:,nonzero_index]), min(justifiers_array[:,nonzero_index])))
-                        values = self.continuous_feat_values(nonzero_index, min_val, max_val, data)
-                        try:
-                            value_node_i_idx = int(np.where(np.isclose(values, node_i[nonzero_index]))[0])
-                            if value_node_i_idx > 0:
-                                value_node_i_idx_inf = value_node_i_idx - 1
-                                value_node_i_idx_sup = value_node_i_idx
-                            else:
-                                value_node_i_idx_inf = value_node_i_idx
-                                value_node_i_idx_sup = value_node_i_idx + 1
-                            if value_node_i_idx < len(values) - 1:
-                                value_node_i_idx_inf = value_node_i_idx
-                                value_node_i_idx_sup = value_node_i_idx + 1
-                            else:
-                                value_node_i_idx_inf = value_node_i_idx -1
-                                value_node_i_idx_sup = value_node_i_idx
-                        except:
-                            if node_i[nonzero_index] < values[0]:
-                                value_node_i_idx_inf, value_node_i_idx_sup = 0, 0
-                            elif node_i[nonzero_index] > values[-1]:
-                                value_node_i_idx_inf, value_node_i_idx_sup = len(values) - 1, len(values) - 1
-                            for k in range(len(values) - 1):
-                                if node_i[nonzero_index] <= values[k+1] and node_i[nonzero_index] >= values[k]:
-                                    value_node_i_idx_inf, value_node_i_idx_sup = k, k+1  
-                        close_node_j_values = [values[value_node_i_idx_inf], values[value_node_i_idx_sup]]
-                        if any(np.isclose(node_j[nonzero_index], close_node_j_values)):
-                            A.append((i,j))
-                    elif any(item in data.binary for item in feat_nonzero):
-                        if np.isclose(np.abs(vector_ij[nonzero_index]), [0,1], atol=toler).any():
-                            A.append((i,j))
-        return A
+    # def get_all_adjacency(self, data):
+    #     """
+    #     Method that outputs the adjacency matrix required for optimization
+    #     """
+    #     toler = 0.00001
+    #     centroids_array = np.array([self.cluster.filtered_centroids_list[i].normal_x for i in range(len(self.cluster.filtered_centroids_list))])
+    #     justifiers_array = np.array(self.graph.potential_justifiers)
+    #     A = tuplelist()
+    #     for i in range(1, len(self.all_nodes) + 1):
+    #         node_i = self.all_nodes[i - 1]
+    #         for j in range(i + 1, len(self.all_nodes) + 1):
+    #             node_j = self.all_nodes[j - 1]
+    #             vector_ij = node_j - node_i
+    #             nonzero_index = list(np.nonzero(vector_ij)[0])
+    #             feat_nonzero = [data.processed_features[l] for l in nonzero_index]
+    #             if len(nonzero_index) > 2:
+    #                 continue
+    #             elif len(nonzero_index) == 2:
+    #                 if any(item in data.cat_enc_cols for item in feat_nonzero):
+    #                     A.append((i,j))
+    #             elif len(nonzero_index) == 1:
+    #                 if any(item in data.ordinal for item in feat_nonzero):
+    #                     if np.isclose(np.abs(vector_ij[nonzero_index]), data.feat_step[feat_nonzero], atol=toler).any():
+    #                         A.append((i,j))
+    #                 elif any(item in data.continuous for item in feat_nonzero):
+    #                     max_val, min_val = float(max(max(centroids_array[:,nonzero_index]), max(justifiers_array[:,nonzero_index]))), float(min(min(centroids_array[:,nonzero_index]), min(justifiers_array[:,nonzero_index])))
+    #                     values = self.continuous_feat_values(nonzero_index, min_val, max_val, data)
+    #                     try:
+    #                         value_node_i_idx = int(np.where(np.isclose(values, node_i[nonzero_index]))[0])
+    #                         if value_node_i_idx > 0:
+    #                             value_node_i_idx_inf = value_node_i_idx - 1
+    #                             value_node_i_idx_sup = value_node_i_idx
+    #                         else:
+    #                             value_node_i_idx_inf = value_node_i_idx
+    #                             value_node_i_idx_sup = value_node_i_idx + 1
+    #                         if value_node_i_idx < len(values) - 1:
+    #                             value_node_i_idx_inf = value_node_i_idx
+    #                             value_node_i_idx_sup = value_node_i_idx + 1
+    #                         else:
+    #                             value_node_i_idx_inf = value_node_i_idx -1
+    #                             value_node_i_idx_sup = value_node_i_idx
+    #                     except:
+    #                         if node_i[nonzero_index] < values[0]:
+    #                             value_node_i_idx_inf, value_node_i_idx_sup = 0, 0
+    #                         elif node_i[nonzero_index] > values[-1]:
+    #                             value_node_i_idx_inf, value_node_i_idx_sup = len(values) - 1, len(values) - 1
+    #                         for k in range(len(values) - 1):
+    #                             if node_i[nonzero_index] <= values[k+1] and node_i[nonzero_index] >= values[k]:
+    #                                 value_node_i_idx_inf, value_node_i_idx_sup = k, k+1  
+    #                     close_node_j_values = [values[value_node_i_idx_inf], values[value_node_i_idx_sup]]
+    #                     if any(np.isclose(node_j[nonzero_index], close_node_j_values)):
+    #                         A.append((i,j))
+    #                 elif any(item in data.binary for item in feat_nonzero):
+    #                     if np.isclose(np.abs(vector_ij[nonzero_index]), [0,1], atol=toler).any():
+    #                         A.append((i,j))
+    #     return A
 
     def do_optimize_all(self, counterfactual):
         """
@@ -342,9 +343,9 @@ class FIJUICE:
             sol_x, justifiers, centroids_solved, nodes_solution = {}, {}, [], []
             potential_CF = {}
             for c_idx in range(1, len(self.cluster.filtered_centroids_list) + 1):
-                for i in range(1, len(self.potential_justifiers) + 1):
-                    if self.F[c_idx, i]:
-                        potential_CF[c_idx, i] = self.C[c_idx, i]
+                for i in range(1, len(self.graph.potential_justifiers) + 1):
+                    if self.graph.F[c_idx, i]:
+                        potential_CF[c_idx, i] = self.graph.C[c_idx, i]
                         if c_idx not in centroids_solved:
                             centroids_solved.append(c_idx)
                         if i not in nodes_solution:
@@ -352,10 +353,10 @@ class FIJUICE:
             for c_idx in centroids_solved:
                 centroids_solved_i = dict([(tup, potential_CF[tup]) for tup in list(potential_CF.keys()) if tup[0] == c_idx])
                 _, sol_x_idx = min(centroids_solved_i, key=centroids_solved_i.get)
-                sol_x[c_idx] = self.all_nodes[sol_x_idx - 1]
+                sol_x[c_idx] = self.graph.all_nodes[sol_x_idx - 1]
                 for just_tuple in centroids_solved_i:
                     if just_tuple[0] == c_idx:
-                        justifiers[just_tuple[1], just_tuple[1], c_idx] = self.all_nodes[just_tuple[1] - 1]
+                        justifiers[just_tuple[1], just_tuple[1], c_idx] = self.graph.all_nodes[just_tuple[1] - 1]
                 if sol_x_idx not in nodes_solution:
                     nodes_solution.append(sol_x_idx)
             not_centroids_solved = [i for i in range(1, len(self.cluster.filtered_centroids_list) + 1) if i not in centroids_solved]
@@ -368,7 +369,7 @@ class FIJUICE:
                 nodes_solution.append(sol_x_idx)
             return sol_x, justifiers, nodes_solution       
 
-        if len(self.A) == 0:
+        if len(self.graph.A) == 0:
             sol_x, justifiers = unfeasible_case(self)
         else:
 
@@ -377,13 +378,13 @@ class FIJUICE:
             """
             opt_model = gp.Model(name='FiJUICE')
             G = nx.DiGraph()
-            G.add_edges_from(self.A)
+            G.add_edges_from(self.graph.A)
             
             """
             SETS
             """
             set_Centroids = range(1, len(self.cluster.filtered_centroids_list) + 1)
-            len_justifiers = len(self.potential_justifiers)
+            len_justifiers = len(self.graph.potential_justifiers)
             set_Sources = range(1, len_justifiers + 1)
                
             """
@@ -401,7 +402,7 @@ class FIJUICE:
             """
             for c in set_Centroids:
                 for n in G.nodes:
-                    opt_model.addConstr(cf[c, n] <= self.F[c, n])
+                    opt_model.addConstr(cf[c, n] <= self.graph.F[c, n])
             
             for c in set_Centroids:
                 for n in G.nodes:
@@ -427,15 +428,15 @@ class FIJUICE:
                         var += (c1_sol_dist - c2_sol_dist)**2
                 return var     
 
-            opt_model.setObjective(cf.prod(self.C)*self.lagrange + fairness_objective(cf, self.C, set_Centroids, G.nodes)*(1 - self.lagrange), GRB.MINIMIZE)
+            opt_model.setObjective(cf.prod(self.graph.CW)*self.lagrange + fairness_objective(cf, self.graph.C, set_Centroids, G.nodes)*(1 - self.lagrange), GRB.MINIMIZE)
             
             """
             OPTIMIZATION AND RESULTS
             """
             opt_model.optimize()
             time.sleep(0.25)
-            if opt_model.status == 3 or len(self.all_nodes) == len(self.potential_justifiers):
-               sol_x, justifiers, nodes_solution = unfeasible_case(self)
+            if opt_model.status == 3 or len(self.graph.all_nodes) == len(self.graph.potential_justifiers):
+                sol_x, justifiers, nodes_solution = unfeasible_case(self)
             else:
                 print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
                 print(f'Solution:')
@@ -443,18 +444,18 @@ class FIJUICE:
                 for c in set_Centroids:
                     for i in G.nodes:
                         if cf[c, i].x > 0.1:
-                            sol_x[c] = self.all_nodes[i - 1]
+                            sol_x[c] = self.graph.all_nodes[i - 1]
                             if i not in nodes_solution:
                                 nodes_solution.append(i)
                             print(f'cf{c, i}: {cf[c, i].x}')
-                            print(f'Node {i}: {self.all_nodes[i - 1]}')
+                            print(f'Node {i}: {self.graph.all_nodes[i - 1]}')
                             print(f'Centroid: {self.cluster.filtered_centroids_list[c - 1].normal_x}')
-                            print(f'Distance: {np.round(self.C[c, i], 3)}')
+                            print(f'Distance: {np.round(self.graph.C[c, i], 3)}')
                 for c in set_Centroids:
                     for s in set_Sources:
                         for i in nodes_solution:
                             if source[s, i, c].x > 0.1:
-                                justifiers[s, i, c] = self.potential_justifiers[s - 1]
+                                justifiers[s, i, c] = self.graph.potential_justifiers[s - 1]
                 time.sleep(0.25)
                 for s, i, c in justifiers.keys():
                     path = []

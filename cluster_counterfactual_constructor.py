@@ -6,15 +6,16 @@ from fijuice import FIJUICE
 
 class Counterfactual:
 
-    def __init__(self, data, model, method, cluster, lagranges, type='L1_L0', t=100, k=10):
+    def __init__(self, data, model, method, cluster, lagrange, type='L1_L0', t=100, k=10, graph=None):
         self.data = data
         self.model = model
         self.method = method
         self.cluster = cluster
         self.type = type
-        self.lagrange = lagranges
+        self.lagrange = lagrange
         self.t = t
         self.k = k
+        self.graph = graph
         self.cf_method = self.select_cf_method()
 
     def select_cf_method(self):
