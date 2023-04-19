@@ -130,6 +130,7 @@ class Clusters:
         """
         filtered_clusters_list, filtered_centroid_obj_list = [], []
         centroids_feat_list = list(self.centroids_dict.keys())
+        centroid_idx = 0
         for feat in centroids_feat_list:
             feat_val_list = list(self.centroids_dict[feat].keys())
             for feat_val in feat_val_list:
@@ -141,7 +142,8 @@ class Clusters:
                 tuples_clusters.sort(key=lambda x: x[1], reverse=True)
                 clusters = tuples_clusters[0][0]
                 centroids = tuples_centroids[0][0]
-                centroid = Centroid(0, [centroids], feat_val, feat, data, model)
+                centroid = Centroid(centroid_idx, [centroids], feat_val, feat, data, model)
+                centroid_idx += 1
                 filtered_clusters_list.append(clusters)
                 filtered_centroid_obj_list.append(centroid)
         return filtered_clusters_list, filtered_centroid_obj_list

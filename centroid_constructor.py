@@ -35,7 +35,7 @@ class Centroid:
         self.centroid_idx = centroid_idx
         self.feat = feat
         self.feat_val = feat_val
-        self.normal_x_df = centroid_list[centroid_idx]
+        self.normal_x_df = centroid_list[0]
         self.normal_x = self.normal_x_df.values[0]
         self.x = inverse_transform_original(self.normal_x_df, data).values
         self.x_label = model.model.predict(self.normal_x.reshape(1, -1))
