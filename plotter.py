@@ -1072,17 +1072,16 @@ def plot_centroids_cfs_ablation():
             cf_df = eval_obj.cf_df
             cf_df_all_proximity = np.sum(cf_df['cf_proximity'].values)
             unique_centroids_idx = np.unique(cf_df['centroid_idx'].values)
-            for centroid_idx_1 in unique_centroids_idx:
+            cf_difference_proximity = 0
+            for c_idx_1 in range(len(unique_centroids_idx)):
+                centroid_idx_1 = unique_centroids_idx[c_idx_1]
                 centroid_cf_df_1 = cf_df.loc[cf_df['centroid_idx'] == centroid_idx_1]
                 mean_proximity_centroid_cf_df_1 = np.mean(centroid_cf_df_1['cf_proximity'].values)
-            cf_difference_proximity = 0
-            for i in range(len(cf_df.index)):
-                cf_i = cf_df.loc[cf_df.index[i]]
-                for j in range(i, len(cf_df.index)):
-                    cf_j = cf_df.loc[cf_df.index[j]]
-                    cf_i_proximity = cf_i['cf_proximity']
-                    cf_j_proximity = cf_j['cf_proximity']
-                    cf_difference_proximity += (cf_i_proximity - cf_j_proximity)**2
+                for c_idx_2 in range(c_idx_1, len(unique_centroids_idx)):
+                    centroid_idx_2 = unique_centroids_idx[c_idx_2]
+                    centroid_cf_df_2 = cf_df.loc[cf_df['centroid_idx'] == centroid_idx_2]
+                    mean_proximity_centroid_cf_df_2 = np.mean(centroid_cf_df_2['cf_proximity'].values)
+                    cf_difference_proximity += (mean_proximity_centroid_cf_df_1 - mean_proximity_centroid_cf_df_2)**2
             all_proximity.append(cf_df_all_proximity)
             all_cf_differences.append(cf_difference_proximity)
         ax[data_idx].plot(lagranges, all_cf_differences, color='#5E81AC', label='Squared Distance Difference')
