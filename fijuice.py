@@ -60,15 +60,9 @@ class FIJUICE:
 
     def Fijuice(self, counterfactual):
         """
-        Improved JUICE generation method
+        FairJUICE algorithm
         """
-        if len(self.graph.potential_justifiers) > 0:
-            normal_x_cf, justifiers, justifier_ratio = self.do_optimize_all(counterfactual)
-        else:
-            print(f'CF cannot be justified. Returning NN counterfactual')
-            normal_x_cf, _ = nn_for_juice(counterfactual)
-            justifiers = normal_x_cf
-            justifier_ratio = 1/len(self.graph.potential_justifiers)
+        normal_x_cf, justifiers, justifier_ratio = self.do_optimize_all(counterfactual)
         return normal_x_cf, justifiers, justifier_ratio 
 
     def do_optimize_all(self, counterfactual):
@@ -122,7 +116,6 @@ class FIJUICE:
         if len(self.graph.A) == 0:
             sol_x, justifiers = unfeasible_case(self)
         else:
-
             """
             MODEL
             """
@@ -169,13 +162,19 @@ class FIJUICE:
             
             def fairness_objective(cf, C, centroids_idx, nodes_idx):
                 var = 0
-                for c1_idx in range(len(centroids_idx)):
-                    c1 = centroids_idx[c1_idx]
-                    for c2_idx in range(c1_idx + 1, len(centroids_idx)):
-                        c2 = centroids_idx[c2_idx]
-                        c1_sol_dist = gp.quicksum(cf[c1, i]*C[c1, i] for i in nodes_idx)
-                        c2_sol_dist = gp.quicksum(cf[c2, i]*C[c2, i] for i in nodes_idx)
-                        var += (c1_sol_dist - c2_sol_dist)**2
+                mean_value = cf.prod(C)/len(centroids_idx)
+                for c_idx in range(len(centroids_idx)):
+                    c = centroids_idx[c_idx]
+                    c_sol_dist = gp.quicksum(cf[c, i]*C[c, i] for i in nodes_idx)
+                    var += (c_sol_dist - mean_value)**2
+                # for c1_idx in range(len(centroids_idx)):
+                #     c1 = centroids_idx[c1_idx]
+                #     for c2_idx in range(c1_idx + 1, len(centroids_idx)):
+                #         c2 = centroids_idx[c2_idx]
+                #         c1_sol_dist = gp.quicksum(cf[c1, i]*C[c1, i] for i in nodes_idx)
+                #         c2_sol_dist = gp.quicksum(cf[c2, i]*C[c2, i] for i in nodes_idx)
+                #         var += (c1_sol_dist - c2_sol_dist)**2
+                var = var/len(centroids_idx)
                 return var     
 
             opt_model.setObjective(cf.prod(self.graph.CW)*self.lagrange + fairness_objective(cf, self.graph.C, set_Centroids, G.nodes)*(1 - self.lagrange), GRB.MINIMIZE)
@@ -200,7 +199,7 @@ class FIJUICE:
                             print(f'cf{c, i}: {cf[c, i].x}')
                             print(f'Node {i}: {self.graph.all_nodes[i - 1]}')
                             print(f'Centroid: {self.cluster.filtered_centroids_list[c - 1].normal_x}')
-                            print(f'Distance: {np.round(self.graph.C[c, i], 3)}')
+                            print(f'Distance: {np.round(self.graph.C[c, i], 5)}')
                 for c in set_Centroids:
                     for s in set_Sources:
                         for i in nodes_solution:
