@@ -204,8 +204,8 @@ class Graph:
                 for instance_idx in cluster_instances_list:
                     instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
                     dist_instance_node += distance_calculation(instance, node_k, data, type)
-                C[c_idx, k] = dist_instance_node/len(cluster_instances_list)
-                CW[c_idx, k] = C[c_idx, k]*W[c_idx]
+                C[c_idx, k] = np.round(dist_instance_node/len(cluster_instances_list), 3)
+                CW[c_idx, k] = np.round(C[c_idx, k]*W[c_idx], 3)
         return C, W, CW
     
     def get_all_feasibility(self, data, all_nodes):

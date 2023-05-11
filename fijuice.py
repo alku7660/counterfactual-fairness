@@ -191,6 +191,7 @@ class FIJUICE:
                 print(f'Solution:')
                 sol_x, justifiers, nodes_solution = {}, {}, []
                 for c in set_Centroids:
+                    time.sleep(0.25)
                     for i in G.nodes:
                         if cf[c, i].x > 0.1:
                             sol_x[c] = self.graph.all_nodes[i - 1]
