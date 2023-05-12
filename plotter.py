@@ -1072,16 +1072,21 @@ def plot_centroids_cfs_ablation():
             eval_obj = load_obj(f'{data_str}_{method_str}_cluster_eval.pkl')
             cf_df = eval_obj.cf_df
             cf_df_lagrange = cf_df.loc[cf_df['lagrange'] == lagrange]
-            cf_df_mean_proximity = np.mean(cf_df_lagrange['cf_proximity'].values)
+            len_cf_df_lagrange = len(cf_df_lagrange)
+            cf_df_mean_all = np.mean(cf_df_lagrange['cf_proximity'].values)
             unique_centroids_idx = np.unique(cf_df_lagrange['centroid_idx'].values)
             cf_difference_proximity = 0
-            var = 0
+            cf_mean_proximity = 0
             for c_idx in range(len(unique_centroids_idx)):
                 centroid_idx = unique_centroids_idx[c_idx]
                 centroid_cf_df = cf_df_lagrange.loc[cf_df_lagrange['centroid_idx'] == centroid_idx]
+                len_centroid_cf_df = len(centroid_cf_df)
+                weight_centroid = len_centroid_cf_df/len_cf_df_lagrange
                 mean_proximity_centroid_cf_df = np.mean(centroid_cf_df['cf_proximity'].values)
-                var += (mean_proximity_centroid_cf_df - cf_df_mean_proximity)**2
-            var = var/len(unique_centroids_idx)
+                weighted_mean_proximity_centroid_cf_df = mean_proximity_centroid_cf_df*weight_centroid
+                cf_mean_proximity += weighted_mean_proximity_centroid_cf_df
+                cf_difference_proximity += weight_centroid*(mean_proximity_centroid_cf_df - cf_df_mean_all)**2
+            cf_difference_proximity = cf_difference_proximity/len(unique_centroids_idx)
             # for c_idx_1 in range(len(unique_centroids_idx)):
             #     centroid_idx_1 = unique_centroids_idx[c_idx_1]
             #     centroid_cf_df_1 = cf_df.loc[cf_df['centroid_idx'] == centroid_idx_1]
@@ -1091,7 +1096,7 @@ def plot_centroids_cfs_ablation():
             #         centroid_cf_df_2 = cf_df.loc[cf_df['centroid_idx'] == centroid_idx_2]
             #         mean_proximity_centroid_cf_df_2 = np.mean(centroid_cf_df_2['cf_proximity'].values)
             #         cf_difference_proximity += (mean_proximity_centroid_cf_df_1 - mean_proximity_centroid_cf_df_2)**2
-            mean_proximity.append(cf_df_mean_proximity)
+            mean_proximity.append(cf_df_mean_all)
             all_cf_differences.append(cf_difference_proximity)
         ax[data_idx].plot(lagranges, all_cf_differences, color='#5E81AC', label='Variance of Distance')
         ax[data_idx].grid(axis='both', linestyle='--', alpha=0.4)
@@ -1103,7 +1108,7 @@ def plot_centroids_cfs_ablation():
         secax.plot(lagranges, mean_proximity, color='#BF616A', label='Mean Distance')
         secax.yaxis.set_tick_params(labelcolor='#BF616A')
         # secax.yaxis.set_ticks(np.arange(min(mean_proximity), max(mean_proximity), (max(mean_proximity)-min(mean_proximity))*0.2))
-        ax[data_idx].yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+        ax[data_idx].yaxis.set_major_formatter(FormatStrFormatter('%.5f'))
         secax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
     fig.supxlabel('$\lambda$ Weight Parameter')
     fig.supylabel('Variance of Distance', color='#5E81AC')

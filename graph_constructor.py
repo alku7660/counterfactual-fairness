@@ -204,8 +204,8 @@ class Graph:
                 for instance_idx in cluster_instances_list:
                     instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
                     dist_instance_node += distance_calculation(instance, node_k, data, type)
-                C[c_idx, k] = np.round(dist_instance_node/len(cluster_instances_list), 3)
-                CW[c_idx, k] = np.round(C[c_idx, k]*W[c_idx], 3)
+                C[c_idx, k] = dist_instance_node/len(cluster_instances_list)
+                CW[c_idx, k] = C[c_idx, k]*W[c_idx]
         return C, W, CW
     
     def get_all_feasibility(self, data, all_nodes):
@@ -283,7 +283,7 @@ class Graph:
         """
         sorted_feat_i = list(np.sort(data.transformed_train_np[:,i][(data.transformed_train_np[:,i] >= min_val) & (data.transformed_train_np[:,i] <= max_val)]))
         value = list(np.unique(sorted_feat_i))
-        if len(value) <= 20:
+        if len(value) <= 50:
             if min_val not in value:
                 value = [min_val] + value
             if max_val not in value:
@@ -291,7 +291,7 @@ class Graph:
             return value
         else:
             mean_val, std_val = np.mean(data.transformed_train_np[:,i]), np.std(data.transformed_train_np[:,i])
-            percentiles_range = list(np.linspace(0, 1, 21))
+            percentiles_range = list(np.linspace(0, 1, 51))
             value = []
             for perc in percentiles_range:
                 value.append(norm.ppf(perc, loc=mean_val, scale=std_val))

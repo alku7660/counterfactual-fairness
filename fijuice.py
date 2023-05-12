@@ -160,24 +160,16 @@ class FIJUICE:
             for c in set_Centroids:
                 opt_model.addConstr(gp.quicksum(source[s, i, c] for s in set_Sources for i in G.nodes) >= 1)
             
-            def fairness_objective(cf, C, centroids_idx, nodes_idx):
+            def fairness_objective(cf, C, W, CW, centroids_idx, nodes_idx):
                 var = 0
-                mean_value = cf.prod(C)/len(centroids_idx)
+                mean_value = cf.prod(CW)
                 for c_idx in range(len(centroids_idx)):
                     c = centroids_idx[c_idx]
-                    c_sol_dist = gp.quicksum(cf[c, i]*C[c, i] for i in nodes_idx)
-                    var += (c_sol_dist - mean_value)**2
-                # for c1_idx in range(len(centroids_idx)):
-                #     c1 = centroids_idx[c1_idx]
-                #     for c2_idx in range(c1_idx + 1, len(centroids_idx)):
-                #         c2 = centroids_idx[c2_idx]
-                #         c1_sol_dist = gp.quicksum(cf[c1, i]*C[c1, i] for i in nodes_idx)
-                #         c2_sol_dist = gp.quicksum(cf[c2, i]*C[c2, i] for i in nodes_idx)
-                #         var += (c1_sol_dist - c2_sol_dist)**2
-                var = var/len(centroids_idx)
+                    c_dist = gp.quicksum(cf[c, i]*C[c, i] for i in nodes_idx)
+                    var += W[c]*(c_dist - mean_value)**2
                 return var     
 
-            opt_model.setObjective(cf.prod(self.graph.CW)*self.lagrange + fairness_objective(cf, self.graph.C, set_Centroids, G.nodes)*(1 - self.lagrange), GRB.MINIMIZE)
+            opt_model.setObjective(cf.prod(self.graph.CW)*self.lagrange + fairness_objective(cf, self.graph.C, self.graph.W, self.graph.CW, set_Centroids, G.nodes)*(1 - self.lagrange), GRB.MINIMIZE)
             
             """
             OPTIMIZATION AND RESULTS
