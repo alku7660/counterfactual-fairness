@@ -13,7 +13,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['german','synthetic_athlete'] # 'german','dutch','compass','oulad','synthetic_athlete' ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
+datasets = ['german','dutch','compass','oulad','synthetic_athlete'] # 'german','dutch','compass','oulad','synthetic_athlete' ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
 methods_to_run = ['fijuice'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -23,7 +23,7 @@ seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 clustering_metric = 'complete' # Clustering metric used
 dist = 'L1_L0'
-lagranges = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0] # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+lagranges = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 np.random.seed(seed_int)
 
 if __name__=='__main__':

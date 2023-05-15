@@ -203,7 +203,7 @@ def attainable_cf_plot(datasets, methods_to_run):
     """
     DESCRIPTION:        Plots the percentage of attainable CFs given feasibility constraints and whether or not to consider feature mutability
 
-    INPUT:              
+    INPUT:
     datasets:           Datasets names
     methods_to_run:     Methods names
 
@@ -264,9 +264,9 @@ def method_box_plot(datasets, methods, metric, colors):
             protected_feat = eval_obj.feat_protected
             protected_feat_keys = list(protected_feat.keys())
             original_x_df = pd.concat(eval_obj.original_x.values(), axis=0)
-            metrics_cf_df = pd.concat((pd.DataFrame.from_dict(eval_obj.cf_proximity, orient='index', columns=['proximity']), 
-                                      pd.DataFrame.from_dict(eval_obj.cf_sparsity, orient='index', columns=['sparsity']), 
-                                      pd.DataFrame.from_dict(eval_obj.cf_feasibility, orient='index', columns=['feasibility']), 
+            metrics_cf_df = pd.concat((pd.DataFrame.from_dict(eval_obj.cf_proximity, orient='index', columns=['proximity']),
+                                      pd.DataFrame.from_dict(eval_obj.cf_sparsity, orient='index', columns=['sparsity']),
+                                      pd.DataFrame.from_dict(eval_obj.cf_feasibility, orient='index', columns=['feasibility']),
                                       pd.DataFrame.from_dict(eval_obj.cf_time, orient='index', columns=['time'])), axis=1)
             sum_feat_unique_val = 0
             feat_val_labels = []
@@ -343,10 +343,10 @@ def fnr_plot(datasets, colors_dict):
     fig.suptitle('False Negative Rate per Sensitive Group ($FNR_s$)')
     fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.00), ncol=6, fancybox=True, shadow=True, handles=legend_handles, prop={'size': 10})
     plt.subplots_adjust(left=0.05,
-                    bottom=0.2, 
-                    right=0.975, 
-                    top=0.91, 
-                    wspace=0.25, 
+                    bottom=0.2,
+                    right=0.975,
+                    top=0.91,
+                    wspace=0.25,
                     hspace=0.22)
     flat_ax[-1].axis('off')
     plt.savefig(results_cf_plots_dir+'fnr.pdf',format='pdf',dpi=400)
@@ -377,7 +377,7 @@ def burden_plot(datasets, methods, colors_dict):
             awb_list = []
             feat_list = []
             colors_list = []
-            for feat_idx in range(len(protected_feat_keys)):   
+            for feat_idx in range(len(protected_feat_keys)):
                 feat = protected_feat_keys[feat_idx]
                 feat_unique_val = eval_obj.desired_ground_truth_test_df[feat].unique()
                 len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
@@ -404,10 +404,10 @@ def burden_plot(datasets, methods, colors_dict):
     fig.suptitle('$Burden_s$')
     fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.00), ncol=6, fancybox=True, shadow=True, handles=legend_handles, prop={'size': 10})
     plt.subplots_adjust(left=0.075,
-                    bottom=0.08, 
-                    right=0.975, 
-                    top=0.94, 
-                    wspace=0.25, 
+                    bottom=0.08,
+                    right=0.975,
+                    top=0.94,
+                    wspace=0.25,
                     hspace=0.05)
     plt.savefig(results_cf_plots_dir+'burden.pdf',format='pdf')
 
@@ -420,7 +420,7 @@ def fnr_burden_plot(datasets, methods, colors):
     methods:            Names of the methods
     colors_dict:        Dictionary of colors to be used per feature
 
-    OUTPUT: (None: plot stored) 
+    OUTPUT: (None: plot stored)
     """
     methods_names = get_methods_names(methods)
     dataset_names = get_data_names(datasets)
@@ -467,10 +467,10 @@ def fnr_burden_plot(datasets, methods, colors):
         ax[-1,j].axes.xaxis.set_visible(True)
     fig.suptitle('$Burden_s$ vs. $FNR_s$')
     plt.subplots_adjust(left=0.11,
-                    bottom=0.1, 
-                    right=0.95, 
-                    top=0.88, 
-                    wspace=0.24, 
+                    bottom=0.1,
+                    right=0.95,
+                    top=0.88,
+                    wspace=0.24,
                     hspace=0.27)
     plt.savefig(results_cf_plots_dir+'fnr_burden.pdf',format='pdf',dpi=400)
 
@@ -531,10 +531,10 @@ def nawb_plot(datasets, methods, colors_dict):
     fig.suptitle('Normalized Accuracy Weighted Burden ($NAWB_s$) (%)')
     fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.00), ncol=6, fancybox=True, shadow=True, handles=legend_handles, prop={'size': 10})
     plt.subplots_adjust(left=0.09,
-                    bottom=0.08, 
-                    right=0.975, 
-                    top=0.94, 
-                    wspace=0.25, 
+                    bottom=0.08,
+                    right=0.975,
+                    top=0.94,
+                    wspace=0.25,
                     hspace=0.1)
     plt.savefig(results_cf_plots_dir+'normal_awb.pdf',format='pdf',dpi=400)
 
@@ -567,10 +567,10 @@ def validity_groups_cf(datasets, methods):
         ax[i].set_ylabel(dataset_names[datasets[i]])
     fig.suptitle('Group Counterfactual Validity')
     plt.subplots_adjust(left=0.3,
-                    bottom=0.05, 
-                    right=0.8, 
-                    top=0.95, 
-                    wspace=0.1, 
+                    bottom=0.05,
+                    right=0.8,
+                    top=0.95,
+                    wspace=0.1,
                     hspace=0.2)
     plt.savefig(results_cf_plots_dir+'group_cf_validity.pdf',format='pdf')
 
@@ -603,10 +603,10 @@ def validity_clusters(datasets, methods):
         ax[i].set_ylabel(dataset_names[datasets[i]])
     fig.suptitle('Cluster Validity')
     plt.subplots_adjust(left=0.3,
-                    bottom=0.05, 
-                    right=0.8, 
-                    top=0.95, 
-                    wspace=0.1, 
+                    bottom=0.05,
+                    right=0.8,
+                    top=0.95,
+                    wspace=0.1,
                     hspace=0.2)
     plt.savefig(results_cf_plots_dir+'cluster_validity.pdf',format='pdf')
 
@@ -635,7 +635,7 @@ def burden_groups_cf(datasets, methods):
                 groups_names = group_cf_proximity.columns
                 burden = pd.DataFrame(index=groups_names, columns=groups_names)
                 feat_list = []
-                for feat_idx in range(len(protected_feat_keys)):   
+                for feat_idx in range(len(protected_feat_keys)):
                     feat = protected_feat_keys[feat_idx]
                     feat_unique_val = original_x_df[feat].unique()
                     len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
@@ -659,10 +659,10 @@ def burden_groups_cf(datasets, methods):
             ax[0,j].set_title(methods_names[methods[j]])
         fig.suptitle('$Burden_{s}$ for Group Counterfactuals')
         plt.subplots_adjust(left=0.075,
-                        bottom=0.08, 
-                        right=0.975, 
-                        top=0.94, 
-                        wspace=0.2, 
+                        bottom=0.08,
+                        right=0.975,
+                        top=0.94,
+                        wspace=0.2,
                         hspace=0.2)
         plt.savefig(results_cf_plots_dir+'group_cf_burden_instances.pdf',format='pdf')
 
@@ -692,7 +692,7 @@ def burden_groups_cf_bar(datasets, method_str):
             burden_mean = pd.DataFrame(index=groups_names, columns=groups_names)
             burden_std = pd.DataFrame(index=groups_names, columns=groups_names)
             feat_list = []
-            for feat_idx in range(len(protected_feat_keys)):   
+            for feat_idx in range(len(protected_feat_keys)):
                 feat = protected_feat_keys[feat_idx]
                 feat_unique_val = original_x_df[feat].unique()
                 _, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
@@ -728,10 +728,10 @@ def burden_groups_cf_bar(datasets, method_str):
         fig.supxlabel(f'Sensitive Group Instances')
         fig.supylabel(f'Avg. Burden')
         plt.subplots_adjust(left=0.125,
-                        bottom=0.1, 
-                        right=0.975, 
-                        top=0.94, 
-                        wspace=0.2, 
+                        bottom=0.1,
+                        right=0.975,
+                        top=0.94,
+                        wspace=0.2,
                         hspace=0.2)
         plt.savefig(f'{results_cf_plots_dir}{method_str.upper()}_group_cf_burden_instances_bar.pdf',format='pdf')
 
@@ -760,7 +760,7 @@ def burden_cluster_cf(datasets, methods):
                 groups_names = cluster_cf_proximity.columns
                 burden = pd.DataFrame(index=groups_names, columns=groups_names)
                 feat_list = []
-                for feat_idx in range(len(protected_feat_keys)):   
+                for feat_idx in range(len(protected_feat_keys)):
                     feat = protected_feat_keys[feat_idx]
                     feat_unique_val = original_x_df[feat].unique()
                     len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
@@ -784,10 +784,10 @@ def burden_cluster_cf(datasets, methods):
             ax[0,j].set_title(methods_names[methods[j]])
         fig.suptitle('$Burden_s$ for Cluster Counterfactuals')
         plt.subplots_adjust(left=0.075,
-                        bottom=0.08, 
-                        right=0.975, 
-                        top=0.94, 
-                        wspace=0.2, 
+                        bottom=0.08,
+                        right=0.975,
+                        top=0.94,
+                        wspace=0.2,
                         hspace=0.2)
         plt.savefig(results_cf_plots_dir+'cluster_cf_burden_instances.pdf',format='pdf')
 
@@ -816,7 +816,7 @@ def nawb_groups_cf(datasets, methods):
                 groups_names = group_cf_proximity.columns
                 nawb = pd.DataFrame(index=groups_names, columns=groups_names)
                 feat_list = []
-                for feat_idx in range(len(protected_feat_keys)):   
+                for feat_idx in range(len(protected_feat_keys)):
                     feat = protected_feat_keys[feat_idx]
                     feat_unique_val = original_x_df[feat].unique()
                     len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
@@ -844,10 +844,10 @@ def nawb_groups_cf(datasets, methods):
             ax[0,j].set_title(methods_names[methods[j]])
         fig.suptitle('$NAWB_s$ for Group Counterfactuals')
         plt.subplots_adjust(left=0.075,
-                        bottom=0.08, 
-                        right=0.975, 
-                        top=0.94, 
-                        wspace=0.2, 
+                        bottom=0.08,
+                        right=0.975,
+                        top=0.94,
+                        wspace=0.2,
                         hspace=0.2)
         plt.savefig(results_cf_plots_dir+'group_cf_nawb_instances.pdf',format='pdf')
 
@@ -876,7 +876,7 @@ def nawb_cluster_cf(datasets, methods):
                 groups_names = cluster_cf_proximity.columns
                 nawb = pd.DataFrame(index=groups_names, columns=groups_names)
                 feat_list = []
-                for feat_idx in range(len(protected_feat_keys)):   
+                for feat_idx in range(len(protected_feat_keys)):
                     feat = protected_feat_keys[feat_idx]
                     feat_unique_val = original_x_df[feat].unique()
                     len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
@@ -904,17 +904,17 @@ def nawb_cluster_cf(datasets, methods):
             ax[0,j].set_title(methods_names[methods[j]])
         fig.suptitle('$NAWB_s$ for Cluster Counterfactuals')
         plt.subplots_adjust(left=0.075,
-                        bottom=0.08, 
-                        right=0.975, 
-                        top=0.94, 
-                        wspace=0.2, 
+                        bottom=0.08,
+                        right=0.975,
+                        top=0.94,
+                        wspace=0.2,
                         hspace=0.2)
         plt.savefig(results_cf_plots_dir+'cluster_cf_nawb_instances.pdf',format='pdf')
 
 def inverse_transform_only(bin_enc, cat_enc, bin_enc_cols, cat_enc_cols, binary, categorical, numerical, instance):
     """
     DESCRIPTION:            Transforms an instance to the original features
-    
+
     INPUT:
     instance:               Instance of interest
 
@@ -968,7 +968,7 @@ def plot_centroids():
                 map_var = dict(zip(cluster_number_series_all.unique(), cm.rainbow(np.linspace(0, 1, len_clusters))))
                 cluster_colors = cluster_number_series_all.map(map_var)
                 ax = sns.clustermap(instances_all_df, row_colors=cluster_colors, row_cluster=False, col_cluster=False, cbar_pos=(0.05, .4, .01, .2), figsize=(4, 4), standard_scale=1)
-                ax.fig.suptitle(f'{data_str.capitalize()} ({feat}: {feat_val})') 
+                ax.fig.suptitle(f'{data_str.capitalize()} ({feat}: {feat_val})')
                 plt.savefig(f'{results_cf_plots_dir}{data_str}_{feat}_{feat_val}_instances.pdf', format='pdf')
 
 def estimate_difference(eval_obj, centroid, instances, feat_type):
@@ -982,8 +982,8 @@ def estimate_difference(eval_obj, centroid, instances, feat_type):
         inst_idx = instances.iloc[idx].name
         for feat in cat_bin_features:
             difference.loc[inst_idx, feat] = 1 if difference.loc[inst_idx, feat] != centroid[feat].values[0] else 0
-        for feat in num_features:    
-            difference.loc[inst_idx, feat] = np.abs(centroid[feat].values[0] - difference.loc[inst_idx, feat]) 
+        for feat in num_features:
+            difference.loc[inst_idx, feat] = np.abs(centroid[feat].values[0] - difference.loc[inst_idx, feat])
     return difference
 
 def plot_centroids_diff():
@@ -1020,7 +1020,7 @@ def plot_centroids_diff():
                     map_var = dict(zip(cluster_number_series_all.unique(), cm.rainbow(np.linspace(0, 1, len_clusters))))
                     cluster_colors = cluster_number_series_all.map(map_var)
                     ax[feat_val_idx] = sns.clustermap(difference_all_df, row_colors=cluster_colors, row_cluster=False, col_cluster=False, cbar_pos=(0.05, .4, .01, .2), figsize=(4, 4), standard_scale=1)
-                    ax[feat_val_idx].fig.suptitle(f'{data_str.capitalize()} ({feat}: {feat_val}) Centroid difference') 
+                    ax[feat_val_idx].fig.suptitle(f'{data_str.capitalize()} ({feat}: {feat_val}) Centroid difference')
                     plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_{feat}_{feat_val}_instances_diff_centroid.pdf', format='pdf')
 
 def plot_centroids_cf_proximity():
@@ -1086,28 +1086,16 @@ def plot_centroids_cfs_ablation():
                 weighted_mean_proximity_centroid_cf_df = mean_proximity_centroid_cf_df*weight_centroid
                 cf_mean_proximity += weighted_mean_proximity_centroid_cf_df
                 cf_difference_proximity += weight_centroid*(mean_proximity_centroid_cf_df - cf_df_mean_all)**2
-            cf_difference_proximity = cf_difference_proximity/len(unique_centroids_idx)
-            # for c_idx_1 in range(len(unique_centroids_idx)):
-            #     centroid_idx_1 = unique_centroids_idx[c_idx_1]
-            #     centroid_cf_df_1 = cf_df.loc[cf_df['centroid_idx'] == centroid_idx_1]
-            #     mean_proximity_centroid_cf_df_1 = np.mean(centroid_cf_df_1['cf_proximity'].values)
-            #     for c_idx_2 in range(c_idx_1 + 1, len(unique_centroids_idx)):
-            #         centroid_idx_2 = unique_centroids_idx[c_idx_2]
-            #         centroid_cf_df_2 = cf_df.loc[cf_df['centroid_idx'] == centroid_idx_2]
-            #         mean_proximity_centroid_cf_df_2 = np.mean(centroid_cf_df_2['cf_proximity'].values)
-            #         cf_difference_proximity += (mean_proximity_centroid_cf_df_1 - mean_proximity_centroid_cf_df_2)**2
             mean_proximity.append(cf_df_mean_all)
             all_cf_differences.append(cf_difference_proximity)
         ax[data_idx].plot(lagranges, all_cf_differences, color='#5E81AC', label='Variance of Distance')
         ax[data_idx].grid(axis='both', linestyle='--', alpha=0.4)
-        # ax[data_idx].yaxis.set_ticks(np.arange(start, end, 0.1))
         ax[data_idx].yaxis.set_tick_params(labelcolor='#5E81AC')
         ax[data_idx].xaxis.set_ticks(ticks=np.arange(start, end, 0.1), labels=['0.0','','','','','0.5','','','','','1.0'])
         ax[data_idx].set_title(f'{dataset.capitalize()}')
         secax = ax[data_idx].twinx()
         secax.plot(lagranges, mean_proximity, color='#BF616A', label='Mean Distance')
         secax.yaxis.set_tick_params(labelcolor='#BF616A')
-        # secax.yaxis.set_ticks(np.arange(min(mean_proximity), max(mean_proximity), (max(mean_proximity)-min(mean_proximity))*0.2))
         ax[data_idx].yaxis.set_major_formatter(FormatStrFormatter('%.5f'))
         secax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
     fig.supxlabel('$\lambda$ Weight Parameter')
@@ -1115,7 +1103,7 @@ def plot_centroids_cfs_ablation():
     fig.suptitle(f'Mean Distance and Variance of Distance vs. $\lambda$')
     fig.text(0.965, 0.5, 'Mean Distance', color='#BF616A', va='center', rotation='vertical')
     fig.subplots_adjust(left=0.1, bottom=0.1, right=0.925, top=0.9, wspace=0.4, hspace=0.2)
-    plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_lagrange_ablation.pdf', format='pdf')
+    plt.savefig(f'{results_cf_plots_dir}{method_str}_lagrange_ablation.pdf', format='pdf')
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
 colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','Non-white':'dimgray',
