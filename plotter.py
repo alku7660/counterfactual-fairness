@@ -1028,14 +1028,16 @@ def plot_centroids_cf_proximity():
     Plots the proximity for each of the features and feature value clusters towards their corresponding cluster counterfactual
     """
     method_str = 'fijuice'
+    lagrange = 1.0
     lagrange = 1.0 # May be changed together with ncols to draw several plots, one for each lagrange
     fig, ax = plt.subplots(nrows=len(datasets), ncols=1, sharex=False, sharey=False, figsize=(6, 8))
     dataset_names = get_data_names(datasets)
     for data_idx in range(len(datasets)):
         data_str = datasets[data_idx]
         dataset = dataset_names[data_str]
-        eval_obj = load_obj(f'{data_str}_{method_str}_{lagrange}_cluster_eval.pkl')
+        eval_obj = load_obj(f'{data_str}_{method_str}_cluster_eval.pkl')
         cf_df = eval_obj.cf_df
+        cf_df_lagrange = cf_df.loc[cf_df['lagrange'] == lagrange]
         cluster_centroid_dict = eval_obj.cluster_obj.centroids_dict
         cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
         all_proximity_list = []
@@ -1044,7 +1046,7 @@ def plot_centroids_cf_proximity():
             feat_val_list = list(cluster_centroid_dict[feat].keys())
             for feat_val_idx in range(len(feat_val_list)):
                 feat_val = feat_val_list[feat_val_idx]
-                cf_feat_val_df = cf_df.loc[(cf_df['feature'] == feat) & (cf_df['feat_value'] == feat_val)]
+                cf_feat_val_df = cf_df_lagrange.loc[(cf_df_lagrange['feature'] == feat) & (cf_df_lagrange['feat_value'] == feat_val)]
                 cf_feat_val_proximity_list = list(cf_feat_val_df['cf_proximity'].values)
                 all_proximity_list.append(cf_feat_val_proximity_list)
                 x_axis_labels.extend([f'{feat.capitalize()}: {eval_obj.feat_protected[feat.capitalize()][feat_val]}'])

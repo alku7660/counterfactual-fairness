@@ -32,7 +32,7 @@ def distance_calculation(x, y, data, type='euclidean'):
         """
         Calculates a simple matching distance between the features of the instances (pass only categortical features, inputs must be Numpy arrays)
         """
-        return len(list(np.where(x != y)))
+        return len(np.where(x != y)[0])
 
     def Linf(x, y):
         """

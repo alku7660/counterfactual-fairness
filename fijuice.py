@@ -114,7 +114,7 @@ class FIJUICE:
             return sol_x, justifiers, nodes_solution       
 
         if len(self.graph.A) == 0:
-            sol_x, justifiers = unfeasible_case(self)
+            sol_x, justifiers, nodes_solution = unfeasible_case(self)
         else:
             """
             MODEL
