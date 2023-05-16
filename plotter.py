@@ -1028,35 +1028,36 @@ def plot_centroids_cf_proximity():
     Plots the proximity for each of the features and feature value clusters towards their corresponding cluster counterfactual
     """
     method_str = 'fijuice'
-    lagrange = 1.0
-    lagrange = 1.0 # May be changed together with ncols to draw several plots, one for each lagrange
-    fig, ax = plt.subplots(nrows=len(datasets), ncols=1, sharex=False, sharey=False, figsize=(6, 8))
+    lagranges = [0.0, 1.0]
+    # lagrange = 1.0 # May be changed together with ncols to draw several plots, one for each lagrange
     dataset_names = get_data_names(datasets)
-    for data_idx in range(len(datasets)):
-        data_str = datasets[data_idx]
-        dataset = dataset_names[data_str]
-        eval_obj = load_obj(f'{data_str}_{method_str}_cluster_eval.pkl')
-        cf_df = eval_obj.cf_df
-        cf_df_lagrange = cf_df.loc[cf_df['lagrange'] == lagrange]
-        cluster_centroid_dict = eval_obj.cluster_obj.centroids_dict
-        cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
-        all_proximity_list = []
-        x_axis_labels = []
-        for feat in cluster_centroid_feat_list:
-            feat_val_list = list(cluster_centroid_dict[feat].keys())
-            for feat_val_idx in range(len(feat_val_list)):
-                feat_val = feat_val_list[feat_val_idx]
-                cf_feat_val_df = cf_df_lagrange.loc[(cf_df_lagrange['feature'] == feat) & (cf_df_lagrange['feat_value'] == feat_val)]
-                cf_feat_val_proximity_list = list(cf_feat_val_df['cf_proximity'].values)
-                all_proximity_list.append(cf_feat_val_proximity_list)
-                x_axis_labels.extend([f'{feat.capitalize()}: {eval_obj.feat_protected[feat.capitalize()][feat_val]}'])
-        ax[data_idx].boxplot(all_proximity_list, showmeans=True, meanprops=mean_prop, showfliers=False)
-        ax[data_idx].set_xticklabels([x_axis_labels[i] for i in range(len(x_axis_labels))], rotation=0)
-        ax[data_idx].set_ylabel(dataset.capitalize())
-        ax[data_idx].grid(axis='y', linestyle='--', alpha=0.4)
-    fig.suptitle(f'Distance to CFs')
-    fig.subplots_adjust(left=0.15, bottom=0.1, right=0.9, top=0.9, wspace=0.475, hspace=0.25)
-    plt.savefig(f'{results_cf_plots_dir}all_datasets_{method_str}_{lagrange}_proximity.pdf', format='pdf')
+    for lagrange in lagranges:
+        fig, ax = plt.subplots(nrows=len(datasets), ncols=1, sharex=False, sharey=False, figsize=(6, 8))
+        for data_idx in range(len(datasets)):
+            data_str = datasets[data_idx]
+            dataset = dataset_names[data_str]
+            eval_obj = load_obj(f'{data_str}_{method_str}_cluster_eval.pkl')
+            cf_df = eval_obj.cf_df
+            cf_df_lagrange = cf_df.loc[cf_df['lagrange'] == lagrange]
+            cluster_centroid_dict = eval_obj.cluster_obj.centroids_dict
+            cluster_centroid_feat_list = list(cluster_centroid_dict.keys())
+            all_proximity_list = []
+            x_axis_labels = []
+            for feat in cluster_centroid_feat_list:
+                feat_val_list = list(cluster_centroid_dict[feat].keys())
+                for feat_val_idx in range(len(feat_val_list)):
+                    feat_val = feat_val_list[feat_val_idx]
+                    cf_feat_val_df = cf_df_lagrange.loc[(cf_df_lagrange['feature'] == feat) & (cf_df_lagrange['feat_value'] == feat_val)]
+                    cf_feat_val_proximity_list = list(cf_feat_val_df['cf_proximity'].values)
+                    all_proximity_list.append(cf_feat_val_proximity_list)
+                    x_axis_labels.extend([f'{feat.capitalize()}: {eval_obj.feat_protected[feat.capitalize()][feat_val]}'])
+            ax[data_idx].boxplot(all_proximity_list, showmeans=True, meanprops=mean_prop, showfliers=False)
+            ax[data_idx].set_xticklabels([x_axis_labels[i] for i in range(len(x_axis_labels))], rotation=0)
+            ax[data_idx].set_ylabel(dataset.capitalize())
+            ax[data_idx].grid(axis='y', linestyle='--', alpha=0.4)
+        fig.suptitle(f'Distance to CFs')
+        fig.subplots_adjust(left=0.15, bottom=0.1, right=0.9, top=0.9, wspace=0.475, hspace=0.25)
+        plt.savefig(f'{results_cf_plots_dir}all_datasets_{method_str}_{lagrange}_proximity.pdf', format='pdf')
 
 def plot_centroids_cfs_ablation():
     """
@@ -1098,7 +1099,7 @@ def plot_centroids_cfs_ablation():
         secax = ax[data_idx].twinx()
         secax.plot(lagranges, mean_proximity, color='#BF616A', label='Mean Distance')
         secax.yaxis.set_tick_params(labelcolor='#BF616A')
-        ax[data_idx].yaxis.set_major_formatter(FormatStrFormatter('%.5f'))
+        ax[data_idx].yaxis.set_major_formatter(FormatStrFormatter('%.4f'))
         secax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
     fig.supxlabel('$\lambda$ Weight Parameter')
     fig.supylabel('Variance of Distance', color='#5E81AC')

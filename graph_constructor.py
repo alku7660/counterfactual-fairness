@@ -5,6 +5,7 @@ import networkx as nx
 import gurobipy as gp
 from gurobipy import GRB, tuplelist
 from evaluator_constructor import distance_calculation, verify_feasibility
+from centroid_constructor import inverse_transform_original
 from nnt import nn_for_juice
 import time
 from scipy.stats import norm

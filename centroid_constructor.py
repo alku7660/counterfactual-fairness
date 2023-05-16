@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import time
-from evaluator_constructor import distance_calculation
 
 def inverse_transform_original(centroid, data):
     """
