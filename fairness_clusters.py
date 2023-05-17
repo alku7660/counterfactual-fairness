@@ -13,7 +13,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['german','dutch','synthetic_athlete'] # 'german','dutch','compass','oulad','synthetic_athlete' ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
+datasets = ['adult'] # 'german','dutch','compass','oulad','synthetic_athlete' ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
 methods_to_run = ['fijuice'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training

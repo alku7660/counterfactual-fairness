@@ -24,6 +24,40 @@ class FIJUICE:
         self.run_time = end_time - start_time
         self.justifiers = self.transform_dataframe(counterfactual)
 
+    def find_potential_justifiers(self, counterfactual, ijuice_search=False):
+        """
+        Finds the set of training observations belonging to, and predicted as, the counterfactual class
+        """
+        train_np = counterfactual.data.transformed_train_np
+        train_target = counterfactual.data.train_target
+        train_pred = counterfactual.model.model.predict(train_np)
+        if not ijuice_search:
+            potential_justifiers = train_np[(train_target != self.ioi_label) & (train_pred != self.ioi_label)]
+        else:
+            potential_justifiers = train_np[train_target != self.ioi_label]
+        potential_justifiers_df = pd.DataFrame(columns = ['centroid','feat','feat_val','justifiers'])
+        for idx in range(len(self.cluster.filtered_centroids_list)):
+            c = self.cluster.filtered_centroids_list[idx]
+            feat = c.feat
+            feat_val = c.feat_val
+            normal_centroid = c.normal_x
+            sort_potential_justifiers_centroid = []
+            for i in range(potential_justifiers.shape[0]):
+                if ijuice_search: 
+                    if verify_feasibility(normal_centroid, potential_justifiers[i], counterfactual.data):
+                        dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=type)
+                        sort_potential_justifiers_centroid.append((potential_justifiers[i], dist))
+                else:
+                    dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=type)
+                    sort_potential_justifiers_centroid.append((potential_justifiers[i], dist))
+            sort_potential_justifiers_centroid.sort(key=lambda x: x[1])
+            sort_potential_justifiers_centroid = [i[0] for i in sort_potential_justifiers_centroid]
+            if len(sort_potential_justifiers_centroid) > self.t:
+                sort_potential_justifiers_centroid = sort_potential_justifiers_centroid[:self.t]
+            centroid_df_data = pd.DataFrame([[normal_centroid, feat, feat_val, sort_potential_justifiers_centroid]], index=[idx], columns=potential_justifiers_df.columns)
+            potential_justifiers_df = pd.concat((potential_justifiers_df, centroid_df_data), axis=0)
+        return potential_justifiers_df
+
     def Fijuice(self, counterfactual):
         """
         FairJUICE algorithm
@@ -129,10 +163,24 @@ class FIJUICE:
             def fairness_objective(cf, C, W, CW, centroids_idx, nodes_idx):
                 var = 0
                 mean_value = cf.prod(CW)
+                c_idx_checked = []
+                c_dist_all = []
                 for c_idx in range(len(centroids_idx)):
                     c = centroids_idx[c_idx]
-                    c_dist = gp.quicksum(cf[c, i]*C[c, i] for i in nodes_idx)
-                    var += W[c]*(c_dist - mean_value)**2
+                    if c in c_idx_checked:
+                        continue
+                    else:
+                        sensitive_group = self.cluster.group_dict[c]
+                        c_idx_sensitive_group_list = [key for key,val in self.cluster.group_dict.items() if val == sensitive_group]
+                        sensitive_group_weight = 0
+                        for c_idx_feat_val in c_idx_sensitive_group_list:
+                            sensitive_group_weight += W[c_idx_feat_val]
+                        c_dist_sensitive_group = 0 
+                        for c_idx_feat_val in c_idx_sensitive_group_list:
+                            c_dist_cluster = gp.quicksum(cf[c_idx_feat_val, i]*C[c_idx_feat_val, i] for i in nodes_idx)
+                            c_dist_sensitive_group += (W[c_idx_feat_val]/sensitive_group_weight)*c_dist_cluster
+                        var += sensitive_group_weight*(c_dist_sensitive_group - mean_value)**2
+                        c_idx_checked.extend(c_idx_sensitive_group_list)
                 return var     
 
             opt_model.setObjective(cf.prod(self.graph.CW)*self.lagrange + fairness_objective(cf, self.graph.C, self.graph.W, self.graph.CW, set_Centroids, G.nodes)*(1 - self.lagrange), GRB.MINIMIZE)
