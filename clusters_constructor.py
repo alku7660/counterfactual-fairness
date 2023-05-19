@@ -141,9 +141,10 @@ class Clusters:
                 length_list = [len(i) for i in cluster_list]
                 tuples_centroids.sort(key=lambda x: x[1], reverse=True)
                 tuples_clusters.sort(key=lambda x: x[1], reverse=True)
-                length_list_80_perc = 0.80*np.sum(length_list)
+                # length_list_80_perc = 0.80*np.sum(length_list)
+                length_list_80_perc = 0*np.sum(length_list)
                 length_list_cum_sum = np.cumsum(length_list)
-                if len(length_list_cum_sum) == 1:
+                if len(length_list_cum_sum) == 1 or length_list_80_perc == 0:
                     idx_list_80_perc = [0]
                 else:
                     idx_list_80_perc = [idx for idx in range(len(length_list_cum_sum)) if length_list_cum_sum[idx] <= length_list_80_perc]
