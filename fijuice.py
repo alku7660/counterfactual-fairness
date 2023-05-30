@@ -19,7 +19,7 @@ class FIJUICE:
         self.k = counterfactual.k
         self.graph = counterfactual.graph
         start_time = time.time()
-        self.normal_x_cf, self.justifiers, self.justifier_ratio = self.Fijuice(counterfactual)
+        self.normal_x_cf, self.justifiers = self.Fijuice(counterfactual)
         end_time = time.time()
         self.run_time = end_time - start_time
         self.justifiers = self.transform_dataframe(counterfactual)
@@ -45,10 +45,10 @@ class FIJUICE:
             for i in range(potential_justifiers.shape[0]):
                 if ijuice_search: 
                     if verify_feasibility(normal_centroid, potential_justifiers[i], counterfactual.data):
-                        dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=type)
+                        dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=counterfactual.type)
                         sort_potential_justifiers_centroid.append((potential_justifiers[i], dist))
                 else:
-                    dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=type)
+                    dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=counterfactual.type)
                     sort_potential_justifiers_centroid.append((potential_justifiers[i], dist))
             sort_potential_justifiers_centroid.sort(key=lambda x: x[1])
             sort_potential_justifiers_centroid = [i[0] for i in sort_potential_justifiers_centroid]
@@ -62,8 +62,8 @@ class FIJUICE:
         """
         FairJUICE algorithm
         """
-        normal_x_cf, justifiers, justifier_ratio = self.do_optimize_all(counterfactual)
-        return normal_x_cf, justifiers, justifier_ratio 
+        normal_x_cf, justifiers = self.do_optimize_all(counterfactual)
+        return normal_x_cf, justifiers 
 
     def do_optimize_all(self, counterfactual):
         """
@@ -222,7 +222,7 @@ class FIJUICE:
                 list_cf_justifier = np.unique([tup[0] for tup in justifiers.keys() if tup[2] == i])
                 justifier_ratio[i] = len(list_cf_justifier)/len(justifiers)    
                 print(f'Justifier Ratio (%) for centroid {i} CF: {np.round(justifier_ratio[i]*100, 2)}')
-        return sol_x, justifiers, justifier_ratio
+        return sol_x, justifiers
 
     def transform_dataframe(self, counterfactual):
         """
