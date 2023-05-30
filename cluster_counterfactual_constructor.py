@@ -6,17 +6,23 @@ from fijuice import FIJUICE
 
 class Counterfactual:
 
-    def __init__(self, data, model, method, cluster, lagrange, type='L1_L0', t=100, k=10, graph=None):
+    def __init__(self, data, model, method, cluster, lagrange, likelihood_factor, type='L1_L0', t=100, k=10, graph=None):
         self.data = data
         self.model = model
         self.method = method
         self.cluster = cluster
         self.type = type
         self.lagrange = lagrange
+        self.likelihood_factor = likelihood_factor
         self.t = t
         self.k = k
         self.graph = graph
+        self.rho_min = self.calculate_rho_min()
         self.cf_method = self.select_cf_method()
+
+    def calculate_rho_min(self):
+        rho_min = (max(self.graph.rho) - min(self.graph.rho))*self.likelihood_factor + min(self.graph.rho)
+        return rho_min
 
     def select_cf_method(self):
         """

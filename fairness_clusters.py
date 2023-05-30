@@ -24,6 +24,7 @@ only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class 
 clustering_metric = 'complete' # Clustering metric used
 dist = 'L1_L0'
 lagranges = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+likelihood_factors = [0.2, 0.4, 0.6, 0.8]
 np.random.seed(seed_int)
 
 if __name__=='__main__':
@@ -37,15 +38,17 @@ if __name__=='__main__':
         cf_evaluator.add_fnr_data(data)
         graph_obj = Graph(data, model, clusters_obj, dist, t=100, k=1)
         for lagrange in lagranges:
-            print(f'---------------------------------------')
-            print(f'                    Dataset: {data_str}')
-            print(f'        Train dataset shape: {data.train_df.shape}')
-            print(f'         Test dataset shape: {data.false_undesired_test_df.shape}')
-            print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
-            print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
-            print(f'                   lagrange: {lagrange}')
-            print(f'---------------------------------------')
-            counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagrange, type=dist, t=100, k=1, graph=graph_obj)
+            for likelihood_factor in likelihood_factors:
+                print(f'---------------------------------------')
+                print(f'                    Dataset: {data_str}')
+                print(f'        Train dataset shape: {data.train_df.shape}')
+                print(f'         Test dataset shape: {data.false_undesired_test_df.shape}')
+                print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
+                print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
+                print(f'                   lagrange: {lagrange}')
+                print(f'                 Likelihood: {likelihood_factor}')
+                print(f'---------------------------------------')
+            counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagrange, likelihood_factor, type=dist, t=100, k=1, graph=graph_obj)
             cf_evaluator.add_cf_data(counterfactual, lagrange)
             print(f'---------------------------')
             print(f'  DONE: {data_str}, {lagrange} CF Evaluation')
