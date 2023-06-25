@@ -74,7 +74,7 @@ class FIJUICE_LIKE_CONSTRAINT:
         """
         opt_model = gp.Model(name='FiJUICE')
         G = nx.DiGraph()
-        G.add_nodes_from(self.graph.all_nodes)
+        G.add_nodes_from(self.graph.rho)
 
         def unfeasible_case(self):
             """
