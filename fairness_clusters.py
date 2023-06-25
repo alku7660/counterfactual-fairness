@@ -25,9 +25,9 @@ clustering_metric = 'complete' # Clustering metric used
 dist = 'L1_L0'
 lagranges = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0] # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 likelihood_factors = [0.2, 0.4, 0.6, 0.8]
-alphas = list(np.round(np.linspace(0,1,num=11),2))
-betas = list(np.round(np.linspace(0,1,num=11),2))
-gammas = list(np.round(np.linspace(0,1,num=11),2))
+alphas = [1] # list(np.round(np.linspace(0,1,num=11),2))
+betas = [1] #list(np.round(np.linspace(0,1,num=11),2))
+gammas = [1] #list(np.round(np.linspace(0,1,num=11),2))
 np.random.seed(seed_int)
 
 if __name__=='__main__':
@@ -42,32 +42,32 @@ if __name__=='__main__':
         graph_obj = Graph(data, model, clusters_obj, dist, t=100, k=1)
         for lagrange in lagranges:
             for likelihood_factor in likelihood_factors:
-        # for alpha in alphas:
-        #     for beta in betas:
-        #         for gamma in gammas:
-                print(f'---------------------------------------')
-                print(f'                    Dataset: {data_str}')
-                print(f'        Train dataset shape: {data.train_df.shape}')
-                print(f'         Test dataset shape: {data.false_undesired_test_df.shape}')
-                print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
-                print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
-                print(f'                   lagrange: {lagrange}')
-                # print(f'                      alpha: {alpha}')
-                # print(f'                       beta: {beta}')
-                # print(f'                      gamma: {gamma}')
-                print(f'---------------------------------------')
-                counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagrange, likelihood_factor, type=dist, t=100, k=1, graph=graph_obj)
-                cf_evaluator.add_cf_data(counterfactual, lagrange)
-                # counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagrange, alpha, beta, gamma, type=dist, t=100, k=1, graph=graph_obj)
-                # cf_evaluator.add_cf_data(counterfactual, alpha, beta, gamma)
-                print(f'---------------------------')
-                print(f'  DONE: {data_str}, lagrange: {lagrange}')
-                # print(f'  DONE: {data_str}, alpha: {alpha}, beta: {beta}, gamma: {gamma} CF Evaluation')
+                for alpha in alphas:
+                    for beta in betas:
+                        for gamma in gammas:
+                            print(f'---------------------------------------')
+                            print(f'                    Dataset: {data_str}')
+                            print(f'        Train dataset shape: {data.train_df.shape}')
+                            print(f'         Test dataset shape: {data.false_undesired_test_df.shape}')
+                            print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
+                            print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
+                            print(f'                   lagrange: {lagrange}')
+                            # print(f'                      alpha: {alpha}')
+                            # print(f'                       beta: {beta}')
+                            # print(f'                      gamma: {gamma}')
+                            print(f'---------------------------------------')
+                            counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagrange, likelihood_factor, type=dist, t=100, k=1, graph=graph_obj)
+                            cf_evaluator.add_cf_data(counterfactual, lagrange)
+                            # counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagrange, alpha, beta, gamma, type=dist, t=100, k=1, graph=graph_obj)
+                            # cf_evaluator.add_cf_data(counterfactual, alpha, beta, gamma)
+                            print(f'---------------------------')
+                            print(f'  DONE: {data_str}, lagrange: {lagrange}')
+                            # print(f'  DONE: {data_str}, alpha: {alpha}, beta: {beta}, gamma: {gamma} CF Evaluation')
                 print(f'---------------------------')
         print(f'---------------------------')
         print(f'  DONE: {data_str}')
         print(f'---------------------------')
-        save_obj(cf_evaluator, f'{data_str}_{methods_to_run[0]}_cluster_eval.pkl')
+        save_obj(cf_evaluator, f'{data_str}_{methods_to_run[0]}_lagrange_{lagrange}_lfactor_{likelihood_factor}_cluster_eval.pkl')
     print(f'---------------------------')
     print(f'  DONE: All CFs and Datasets')
     print(f'---------------------------')

@@ -4,6 +4,7 @@ from itertools import product
 import networkx as nx
 import gurobipy as gp
 from gurobipy import GRB, tuplelist
+from scipy.spatial import distance_matrix
 from evaluator_constructor import distance_calculation, verify_feasibility
 from centroid_constructor import inverse_transform_original
 from nnt import nn_for_juice
@@ -20,7 +21,7 @@ class Graph:
         self.potential_justifiers = self.find_potential_justifiers(data, model, type)
         self.potential_justifiers = self.nn_list(data)
         self.epsilon = self.get_epsilon(data, dist=type)
-        self.pot_justifier_feat_possible_values, self.all_nodes, self.C, self.W, self.CW, self.F, self.A = self.construct_graph(data, model, type)
+        self.pot_justifier_feat_possible_values, self.all_nodes, self.C, self.W, self.CW, self.F, self.A, self.rho = self.construct_graph(data, model, type)
     
     def find_potential_justifiers(self, data, model, type, ijuice_search=False):
         """
@@ -91,11 +92,12 @@ class Graph:
         print(f'Obtained all costs in the graph')
         F = self.get_all_feasibility(data, all_nodes)
         print(f'Obtained all feasibility in the graph')
-        A = self.get_all_adjacency(data, all_nodes)
+        # A = self.get_all_adjacency(data, all_nodes)
+        A = 1
         print(f'Obtained adjacency matrix')
-        L = self.get_all_likelihood(data, all_nodes, dist=type)
-        print(f'Obtained')
-        return pot_justifier_feat_possible_values, all_nodes, C, W, CW, F, A
+        rho = self.get_all_likelihood(data, all_nodes, dist=type)
+        print(f'Obtained all Likelihood parameter')
+        return pot_justifier_feat_possible_values, all_nodes, C, W, CW, F, A, rho
     
     def get_feat_possible_values(self, data, obj=None, points=None):
         """
@@ -310,26 +312,31 @@ class Graph:
         """
         Calculates the distance 
         """
-        distances_list = []
-        for xi_index in range(len(data.transformed_train_np)-1):
-            for xj_index in range(xi_index+1, len(data.transformed_train_np)):
-                xi = data.transformed_train_np[xi_index]
-                xj = data.transformed_train_np[xj_index]
-                distances_list.extend([distance_calculation(xi, xj, data, type=dist)])
-        return np.std(distances_list, ddof=1) 
+        # distances_list = []
+        # for xi_index in range(len(data.transformed_train_np)-1):
+        #     for xj_index in range(xi_index+1, len(data.transformed_train_np)):
+        #         xi = data.transformed_train_np[xi_index]
+        #         xj = data.transformed_train_np[xj_index]
+        #         distances_list.extend([distance_calculation(xi, xj, data, type=dist)])
+        distance = distance_matrix(data.transformed_train_np, data.transformed_train_np, p=1)
+        upper_tri_distance = distance[np.triu_indices(len(data.transformed_train_np), k = 1)]
+        return np.std(upper_tri_distance, ddof=1) 
 
     def get_all_likelihood(self, data, all_nodes, dist='euclidean'):
         """
         Extracts the likelihood of all the nodes obtained
         """
-        L = {}
+        rho = {}
+        # for i in range(1, len(all_nodes) + 1):
+        #     node_i = all_nodes[i - 1]
+        #     sum_gaussian_kernel_node_i = 0
+        #     for x in data.transformed_train_np:
+        #         sum_gaussian_kernel_node_i += np.exp(-((distance_calculation(node_i, x, data, dist)/self.epsilon)**2))
+        distance = distance_matrix(all_nodes, data.transformed_train_np, p=1)
+        gaussian_kernel = np.exp(-distance/self.epsilon)**2 
         for i in range(1, len(all_nodes) + 1):
-            node_i = all_nodes[i - 1]
-            sum_gaussian_kernel_node_i = 0
-            for x in data.transformed_train_np:
-                sum_gaussian_kernel_node_i += np.exp(-((distance_calculation(node_i, x, data, dist)/self.epsilon)**2))
-            L[i] = sum_gaussian_kernel_node_i
-        return L
+            rho[i] = np.sum(gaussian_kernel, axis=1)[i-1]
+        return rho
             
 
             
