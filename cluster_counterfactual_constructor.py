@@ -3,16 +3,18 @@ from mo import MO
 from cchvae import CCHVAE
 from ijuice import IJUICE
 from fijuice import FIJUICE
+from fijuice_likelihood_constraint import FIJUICE_LIKE_CONSTRAINT
 
 class Counterfactual:
 
-    def __init__(self, data, model, method, cluster, lagrange, likelihood_factor, type='L1_L0', t=100, k=10, graph=None):
+    def __init__(self, data, model, method, cluster, lagrange, alpha, beta, gamma, likelihood_factor=0.2, type='L1_L0', t=100, k=10, graph=None):
         self.data = data
         self.model = model
         self.method = method
         self.cluster = cluster
         self.type = type
         self.lagrange = lagrange
+        self.alpha, self.beta, self.gamma = alpha, beta, gamma
         self.likelihood_factor = likelihood_factor
         self.t = t
         self.k = k
@@ -31,6 +33,8 @@ class Counterfactual:
         """
         if self.method == 'fijuice':
             cf_method = FIJUICE(self)
+        if self.method == 'fijuice_like_constraint':
+            cf_method = FIJUICE_LIKE_CONSTRAINT(self)
         # elif self.method == 'nn':
         #     cf_method = NN(self)
         # elif self.method == 'mo':

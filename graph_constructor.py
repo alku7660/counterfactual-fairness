@@ -19,6 +19,7 @@ class Graph:
         self.k = k
         self.potential_justifiers = self.find_potential_justifiers(data, model, type)
         self.potential_justifiers = self.nn_list(data)
+        self.epsilon = self.get_epsilon(data, dist=type)
         self.pot_justifier_feat_possible_values, self.all_nodes, self.C, self.W, self.CW, self.F, self.A = self.construct_graph(data, model, type)
     
     def find_potential_justifiers(self, data, model, type, ijuice_search=False):
@@ -92,6 +93,8 @@ class Graph:
         print(f'Obtained all feasibility in the graph')
         A = self.get_all_adjacency(data, all_nodes)
         print(f'Obtained adjacency matrix')
+        L = self.get_all_likelihood(data, all_nodes, dist=type)
+        print(f'Obtained')
         return pot_justifier_feat_possible_values, all_nodes, C, W, CW, F, A
     
     def get_feat_possible_values(self, data, obj=None, points=None):
@@ -302,3 +305,32 @@ class Graph:
             if max_val not in value:
                 value = value + [max_val]
         return value
+    
+    def get_epsilon(self, data, dist='euclidean'):
+        """
+        Calculates the distance 
+        """
+        distances_list = []
+        for xi_index in range(len(data.transformed_train_np)-1):
+            for xj_index in range(xi_index+1, len(data.transformed_train_np)):
+                xi = data.transformed_train_np[xi_index]
+                xj = data.transformed_train_np[xj_index]
+                distances_list.extend([distance_calculation(xi, xj, data, type=dist)])
+        return np.std(distances_list, ddof=1) 
+
+    def get_all_likelihood(self, data, all_nodes, dist='euclidean'):
+        """
+        Extracts the likelihood of all the nodes obtained
+        """
+        L = {}
+        for i in range(1, len(all_nodes) + 1):
+            node_i = all_nodes[i - 1]
+            sum_gaussian_kernel_node_i = 0
+            for x in data.transformed_train_np:
+                sum_gaussian_kernel_node_i += np.exp(-((distance_calculation(node_i, x, data, dist)/self.epsilon)**2))
+            L[i] = sum_gaussian_kernel_node_i
+        return L
+            
+
+            
+            

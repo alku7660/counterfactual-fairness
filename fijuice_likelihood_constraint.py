@@ -9,12 +9,13 @@ from nnt import nn_for_juice
 import time
 from scipy.stats import norm
 
-class FIJUICE:
+class FIJUICE_LIKE_CONSTRAINT:
 
     def __init__(self, counterfactual):
         self.cluster = counterfactual.cluster
         self.ioi_label = self.cluster.undesired_class
         self.lagrange = counterfactual.lagrange
+        self.alpha, self.beta, self.gamma = counterfactual.alpha, counterfactual.beta, counterfactual.gamma
         self.t = counterfactual.t
         self.k = counterfactual.k
         self.graph = counterfactual.graph
@@ -22,7 +23,6 @@ class FIJUICE:
         self.normal_x_cf, self.justifiers, self.justifier_ratio = self.Fijuice(counterfactual)
         end_time = time.time()
         self.run_time = end_time - start_time
-        self.justifiers = self.transform_dataframe(counterfactual)
 
     def find_potential_justifiers(self, counterfactual, ijuice_search=False):
         """
@@ -75,7 +75,29 @@ class FIJUICE:
         opt_model = gp.Model(name='FiJUICE')
         G = nx.DiGraph()
         G.add_nodes_from(self.graph.all_nodes)
-            
+
+        def unfeasible_case(self):
+            """
+            Obtains the feasible justified solution when the problem is unfeasible
+            """
+            sol_x, centroids_solved, nodes_solution = {}, {}, [], []
+            potential_CF = {}
+            for c_idx in range(1, len(self.cluster.filtered_centroids_list) + 1):
+                for i in range(1, len(self.graph.all_nodes) + 1):
+                    if self.graph.F[c_idx, i]:
+                        potential_CF[c_idx, i] = self.graph.C[c_idx, i]
+                        if c_idx not in centroids_solved:
+                            centroids_solved.append(c_idx)
+                        if i not in nodes_solution:
+                            nodes_solution.append(i)
+            for c_idx in centroids_solved:
+                centroids_solved_i = dict([(tup, potential_CF[tup]) for tup in list(potential_CF.keys()) if tup[0] == c_idx])
+                _, sol_x_idx = min(centroids_solved_i, key=centroids_solved_i.get)
+                sol_x[c_idx] = self.graph.all_nodes[sol_x_idx - 1]
+                if sol_x_idx not in nodes_solution:
+                    nodes_solution.append(sol_x_idx)
+            return sol_x, nodes_solution
+
         """
         SETS
         """
@@ -131,11 +153,11 @@ class FIJUICE:
             opt_model.optimize()
             time.sleep(0.25)
             if opt_model.status == 3 or len(self.graph.all_nodes) == len(self.graph.potential_justifiers):
-                sol_x, justifiers, nodes_solution = unfeasible_case(self)
+                sol_x, nodes_solution = unfeasible_case(self)
             else:
                 print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
                 print(f'Solution:')
-                sol_x, justifiers, nodes_solution = {}, {}, []
+                sol_x, nodes_solution = {}, []
                 for c in set_Centroids:
                     time.sleep(0.25)
                     for i in G.nodes:
@@ -147,31 +169,4 @@ class FIJUICE:
                             print(f'Node {i}: {self.graph.all_nodes[i - 1]}')
                             print(f'Centroid: {self.cluster.filtered_centroids_list[c - 1].normal_x}')
                             print(f'Distance: {np.round(self.graph.C[c, i], 5)}')
-                for c in set_Centroids:
-                    for s in set_Sources:
-                        for i in nodes_solution:
-                            if source[s, i, c].x > 0.1:
-                                justifiers[s, i, c] = self.graph.potential_justifiers[s - 1]
-                time.sleep(0.25)
-                for s, i, c in justifiers.keys():
-                    path = []
-                    print(f'Source {s} Path to CF for centroid {c}: {output_path(s, i, c, path=path)}')
-                    time.sleep(0.25)
-            justifier_ratio = {}
-            for i in sol_x.keys():
-                list_cf_justifier = np.unique([tup[0] for tup in justifiers.keys() if tup[2] == i])
-                justifier_ratio[i] = len(list_cf_justifier)/len(justifiers)    
-                print(f'Justifier Ratio (%) for centroid {i} CF: {np.round(justifier_ratio[i]*100, 2)}')
-        return sol_x, justifiers, justifier_ratio
-
-    def transform_dataframe(self, counterfactual):
-        """
-        Transforms the justifiers into dataframe
-        """
-        justifiers_original = {}
-        for s, i, c in self.justifiers.keys():
-            justifier_instance = self.justifiers[s, i, c]
-            justifier_original = counterfactual.data.inverse(justifier_instance)
-            justifier_original_df = pd.DataFrame(data=justifier_original, columns=counterfactual.data.features)
-            justifiers_original[s, i, c] = justifier_original_df
-        return justifiers_original
+        return sol_x, nodes_solution

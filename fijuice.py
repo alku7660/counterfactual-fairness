@@ -15,6 +15,7 @@ class FIJUICE:
         self.cluster = counterfactual.cluster
         self.ioi_label = self.cluster.undesired_class
         self.lagrange = counterfactual.lagrange
+        self.alpha, self.beta, self.gamma = counterfactual.alpha, counterfactual.beta, counterfactual.gamma
         self.t = counterfactual.t
         self.k = counterfactual.k
         self.graph = counterfactual.graph
