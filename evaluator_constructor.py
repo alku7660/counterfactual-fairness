@@ -683,7 +683,7 @@ class Evaluator():
         DESCRIPTION:            Stores the cluster CF and obtains all the performance measures for the cluster counterfactual 
         OUTPUT: (None: stored as class attributes)
         """
-        cols = ['lagrange','feature','feat_value','instance_idx','centroid_idx','normal_centroid','centroid',
+        cols = ['lagrange','likelihood','alpha','beta','gamma','feature','feat_value','instance_idx','centroid_idx','normal_centroid','centroid',
                 'normal_cf','cf','cf_proximity','cf_feasibility','cf_time']
         for c_idx in range(len(counterfactual.cluster.filtered_centroids_list)):
             centroid = counterfactual.cluster.filtered_centroids_list[c_idx]
@@ -699,7 +699,8 @@ class Evaluator():
                 instance = counterfactual.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
                 cf_proximity = distance_calculation(instance, normal_centroid_cf, counterfactual.data, counterfactual.type)
                 cf_feasibility = verify_feasibility(instance, normal_centroid_cf, counterfactual.data)
-                data_list = [lagrange, centroid.feat, centroid.feat_val, instance_idx, centroid.centroid_idx, centroid.normal_x, centroid.x,
-                        normal_centroid_cf, original_cf, cf_proximity, cf_feasibility, counterfactual.cf_method.run_time]
+                data_list = [lagrange, counterfactual.likelihood_factor, counterfactual.alpha, counterfactual.beta, counterfactual.gamma,
+                             centroid.feat, centroid.feat_val, instance_idx, centroid.centroid_idx, centroid.normal_x, centroid.x,
+                             normal_centroid_cf, original_cf, cf_proximity, cf_feasibility, counterfactual.cf_method.run_time]
                 data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
                 self.cf_df = pd.concat((self.cf_df, data_df),axis=0)

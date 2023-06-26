@@ -1072,7 +1072,7 @@ def plot_centroids_cfs_ablation():
         mean_proximity = []
         all_cf_differences = []
         for lagrange in lagranges:
-            eval_obj = load_obj(f'{data_str}_{method_str}_lagrange_{lagrange}_lfactor_{}_cluster_eval.pkl')
+            eval_obj = load_obj(f'{data_str}_{method_str}_cluster_eval.pkl')
             cf_df = eval_obj.cf_df
             cf_df_lagrange = cf_df.loc[cf_df['lagrange'] == lagrange]
             len_cf_df_lagrange = len(cf_df_lagrange)

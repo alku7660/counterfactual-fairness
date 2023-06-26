@@ -14,8 +14,8 @@ class Counterfactual:
         self.cluster = cluster
         self.type = type
         self.lagrange = lagrange
-        self.alpha, self.beta, self.gamma = alpha, beta, gamma
         self.likelihood_factor = likelihood_factor
+        self.alpha, self.beta, self.gamma = alpha, beta, gamma
         self.t = t
         self.k = k
         self.graph = graph
