@@ -24,7 +24,7 @@ only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class 
 clustering_metric = 'complete' # Clustering metric used
 dist = 'L1_L0'
 lagranges = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0] # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-likelihood_factors = [0.2, 0.4, 0.6, 0.8]
+likelihood_factors = [0.0, 0.2, 0.4, 0.6, 0.8]
 alphas = [1] # list(np.round(np.linspace(0,1,num=11),2))
 betas = [1] #list(np.round(np.linspace(0,1,num=11),2))
 gammas = [1] #list(np.round(np.linspace(0,1,num=11),2))

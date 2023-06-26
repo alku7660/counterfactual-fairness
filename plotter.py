@@ -18,7 +18,7 @@ from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
 # import seaborn as sns
-from fairness_clusters import datasets, methods_to_run, lagranges
+from fairness_clusters import datasets, methods_to_run, lagranges, likelihood_factors
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
     """
@@ -1108,6 +1108,56 @@ def plot_centroids_cfs_ablation():
     fig.subplots_adjust(left=0.1, bottom=0.1, right=0.925, top=0.9, wspace=0.4, hspace=0.2)
     plt.savefig(f'{results_cf_plots_dir}{method_str}_lagrange_ablation.pdf', format='pdf')
 
+def plot_centroids_cfs_ablation_lagrange_likelihood():
+    """
+    Plots the ablation with respect to the lagrange factor
+    """
+    fig, ax = plt.subplots(nrows=len(likelihood_factors), ncols=len(datasets), sharex=True, sharey=True, figsize=(8, 5))
+    method_str = 'fijuice_like_constraint'
+    start, end = 0, 1.1
+    for data_idx in range(len(datasets)):
+        data_str = datasets[data_idx]
+        dataset = get_data_names(datasets)[data_str]
+        for likelihood_idx in range(len(likelihood_factors)):
+            likelihood_factor = likelihood_factors[likelihood_idx]
+            mean_proximity = []
+            all_cf_differences = []
+            for lagrange in lagranges:
+                eval_obj = load_obj(f'{data_str}_{method_str}_cluster_eval.pkl')
+                cf_df_lagrange_likelihood = eval_obj.cf_df.loc[(eval_obj.cf_df['lagrange'] == lagrange) & (eval_obj.cf_df['likelihood'] == likelihood_factor)]
+                len_cf_df_lagrange = len(cf_df_lagrange_likelihood)
+                cf_df_mean_all = np.mean(cf_df_lagrange_likelihood['cf_proximity'].values)
+                unique_centroids_idx = np.unique(cf_df_lagrange_likelihood['centroid_idx'].values)
+                cf_difference_proximity = 0
+                cf_mean_proximity = 0
+                for c_idx in range(len(unique_centroids_idx)):
+                    centroid_idx = unique_centroids_idx[c_idx]
+                    centroid_cf_df = cf_df_lagrange_likelihood.loc[cf_df_lagrange_likelihood['centroid_idx'] == centroid_idx]
+                    weight_centroid = len(centroid_cf_df)/len_cf_df_lagrange
+                    mean_proximity_centroid_cf_df = np.mean(centroid_cf_df['cf_proximity'].values)
+                    weighted_mean_proximity_centroid_cf_df = mean_proximity_centroid_cf_df*weight_centroid
+                    cf_mean_proximity += weighted_mean_proximity_centroid_cf_df
+                    cf_difference_proximity += weight_centroid*(mean_proximity_centroid_cf_df - cf_df_mean_all)**2
+                mean_proximity.append(cf_df_mean_all)
+                all_cf_differences.append(cf_difference_proximity)
+            ax[likelihood_idx, data_idx].plot(lagranges, all_cf_differences, color='#5E81AC', label='Variance of Distance')
+            ax[likelihood_idx, data_idx].grid(axis='both', linestyle='--', alpha=0.4)
+            ax[likelihood_idx, data_idx].yaxis.set_tick_params(labelcolor='#5E81AC')
+            ax[likelihood_idx, data_idx].xaxis.set_ticks(ticks=np.arange(start, end, 0.1), labels=['0.0','','','','','0.5','','','','','1.0'])
+            ax[likelihood_idx, data_idx].set_title(f'{dataset.capitalize()}')
+            secax = ax[likelihood_idx, data_idx].twinx()
+            secax.plot(lagranges, mean_proximity, color='#BF616A', label='Mean Distance')
+            secax.yaxis.set_tick_params(labelcolor='#BF616A')
+            ax[likelihood_idx, data_idx].yaxis.set_major_formatter(FormatStrFormatter('%.4f'))
+            secax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+    fig.supxlabel('$\lambda$ Weight Parameter')
+    fig.supylabel('Variance of Distance', color='#5E81AC')
+    fig.suptitle(f'Mean Distance and Variance of Distance vs. $\lambda$')
+    fig.text(0.965, 0.5, 'Mean Distance', color='#BF616A', va='center', rotation='vertical')
+    fig.subplots_adjust(left=0.1, bottom=0.1, right=0.925, top=0.9, wspace=0.4, hspace=0.2)
+    plt.savefig(f'{results_cf_plots_dir}{method_str}_lagrange_likelihood_ablation.pdf', format='pdf')
+
+
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
 colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','Non-white':'dimgray',
                '<25':'thistle','25-60':'violet','>60':'purple','<18':'green','>=18':'yellow','Single':'peachpuff',
@@ -1128,6 +1178,6 @@ mean_prop = dict(marker='D', markeredgecolor='firebrick', markerfacecolor='fireb
 # nawb_groups_cf(datasets, methods_to_run)
 # nawb_cluster_cf(datasets, methods_to_run)
 # burden_groups_cf_bar(datasets, 'NN')
-plot_centroids_cf_proximity()
-plot_centroids_cfs_ablation()
+# plot_centroids_cf_proximity()
+plot_centroids_cfs_ablation_lagrange_likelihood()
 
