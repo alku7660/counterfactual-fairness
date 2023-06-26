@@ -1112,7 +1112,7 @@ def plot_centroids_cfs_ablation_lagrange_likelihood():
     """
     Plots the ablation with respect to the lagrange factor
     """
-    fig, ax = plt.subplots(nrows=len(likelihood_factors), ncols=len(datasets), sharex=True, sharey=True, figsize=(8, 5))
+    fig, ax = plt.subplots(nrows=len(datasets), ncols=len(likelihood_factors), sharex=True, sharey=True, figsize=(8, 11))
     method_str = 'fijuice_like_constraint'
     start, end = 0, 1.1
     for data_idx in range(len(datasets)):
@@ -1140,15 +1140,15 @@ def plot_centroids_cfs_ablation_lagrange_likelihood():
                     cf_difference_proximity += weight_centroid*(mean_proximity_centroid_cf_df - cf_df_mean_all)**2
                 mean_proximity.append(cf_df_mean_all)
                 all_cf_differences.append(cf_difference_proximity)
-            ax[likelihood_idx, data_idx].plot(lagranges, all_cf_differences, color='#5E81AC', label='Variance of Distance')
-            ax[likelihood_idx, data_idx].grid(axis='both', linestyle='--', alpha=0.4)
-            ax[likelihood_idx, data_idx].yaxis.set_tick_params(labelcolor='#5E81AC')
-            ax[likelihood_idx, data_idx].xaxis.set_ticks(ticks=np.arange(start, end, 0.1), labels=['0.0','','','','','0.5','','','','','1.0'])
-            ax[likelihood_idx, data_idx].set_title(f'{dataset.capitalize()}')
-            secax = ax[likelihood_idx, data_idx].twinx()
+            ax[data_idx, likelihood_idx].plot(lagranges, all_cf_differences, color='#5E81AC', label='Variance of Distance')
+            ax[data_idx, likelihood_idx].grid(axis='both', linestyle='--', alpha=0.4)
+            ax[data_idx, likelihood_idx].yaxis.set_tick_params(labelcolor='#5E81AC')
+            ax[data_idx, likelihood_idx].xaxis.set_ticks(ticks=np.arange(start, end, 0.1), labels=['0.0','','','','','0.5','','','','','1.0'])
+            ax[data_idx, likelihood_idx].set_title(f'{dataset.capitalize()}')
+            secax = ax[data_idx, likelihood_idx].twinx()
             secax.plot(lagranges, mean_proximity, color='#BF616A', label='Mean Distance')
             secax.yaxis.set_tick_params(labelcolor='#BF616A')
-            ax[likelihood_idx, data_idx].yaxis.set_major_formatter(FormatStrFormatter('%.4f'))
+            ax[data_idx, likelihood_idx].yaxis.set_major_formatter(FormatStrFormatter('%.4f'))
             secax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
     fig.supxlabel('$\lambda$ Weight Parameter')
     fig.supylabel('Variance of Distance', color='#5E81AC')

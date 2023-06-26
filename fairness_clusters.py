@@ -13,7 +13,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['german','compass','synthetic_athlete'] # 'german','dutch','compass','oulad','synthetic_athlete' ['adult','kdd_census','german','dutch','bank','credit','compass','diabetes','student','oulad','law']
+datasets = ['dutch','compass','oulad','synthetic_athlete'] # 
 methods_to_run = ['fijuice_like_constraint'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice','fijuice_like_constraint']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -65,7 +65,7 @@ if __name__=='__main__':
         print(f'---------------------------')
         print(f'  DONE: {data_str}')
         print(f'---------------------------')
-        save_obj(cf_evaluator, f'{data_str}_{methods_to_run[0]}_lagrange_{lagrange}_lfactor_{likelihood_factor}_cluster_eval.pkl')
+        save_obj(cf_evaluator, f'{data_str}_{methods_to_run[0]}_cluster_eval.pkl')
     print(f'---------------------------')
     print(f'  DONE: All CFs and Datasets')
     print(f'---------------------------')
