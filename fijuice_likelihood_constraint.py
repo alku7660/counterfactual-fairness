@@ -20,7 +20,7 @@ class FIJUICE_LIKE_CONSTRAINT:
         self.k = counterfactual.k
         self.graph = counterfactual.graph
         start_time = time.time()
-        self.normal_x_cf, self.justifiers, self.justifier_ratio = self.Fijuice(counterfactual)
+        self.normal_x_cf, self.nodes_solution = self.Fijuice(counterfactual)
         end_time = time.time()
         self.run_time = end_time - start_time
 
@@ -62,8 +62,8 @@ class FIJUICE_LIKE_CONSTRAINT:
         """
         FairJUICE algorithm
         """
-        normal_x_cf, justifiers, justifier_ratio = self.do_optimize_all(counterfactual)
-        return normal_x_cf, justifiers, justifier_ratio 
+        normal_x_cf, nodes_solution = self.do_optimize_all(counterfactual)
+        return normal_x_cf, nodes_solution 
 
     def do_optimize_all(self, counterfactual):
         """
@@ -80,7 +80,7 @@ class FIJUICE_LIKE_CONSTRAINT:
             """
             Obtains the feasible justified solution when the problem is unfeasible
             """
-            sol_x, centroids_solved, nodes_solution = {}, {}, [], []
+            sol_x, centroids_solved, nodes_solution = {}, [], []
             potential_CF = {}
             for c_idx in range(1, len(self.cluster.filtered_centroids_list) + 1):
                 for i in range(1, len(self.graph.all_nodes) + 1):

@@ -1064,7 +1064,7 @@ def plot_centroids_cfs_ablation():
     Plots the ablation with respect to the lagrange factor
     """
     fig, ax = plt.subplots(nrows=1, ncols=len(datasets), sharex=True, sharey=True, figsize=(8, 5))
-    method_str = 'fijuice'
+    method_str = 'fijuice_like_constraint'
     start, end = 0, 1.1
     for data_idx in range(len(datasets)):
         data_str = datasets[data_idx]
@@ -1072,7 +1072,7 @@ def plot_centroids_cfs_ablation():
         mean_proximity = []
         all_cf_differences = []
         for lagrange in lagranges:
-            eval_obj = load_obj(f'{data_str}_{method_str}_cluster_eval.pkl')
+            eval_obj = load_obj(f'{data_str}_{method_str}_lagrange_{lagrange}_lfactor_{}_cluster_eval.pkl')
             cf_df = eval_obj.cf_df
             cf_df_lagrange = cf_df.loc[cf_df['lagrange'] == lagrange]
             len_cf_df_lagrange = len(cf_df_lagrange)
