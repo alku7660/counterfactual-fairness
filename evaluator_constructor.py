@@ -684,7 +684,7 @@ class Evaluator():
         OUTPUT: (None: stored as class attributes)
         """
         cols = ['lagrange','likelihood','alpha','beta','gamma','feature','feat_value','instance_idx','centroid_idx','normal_centroid','centroid',
-                'normal_cf','cf','cf_proximity','cf_feasibility','cf_time']
+                'normal_cf','cf','cf_proximity','cf_feasibility','cf_time','model_status']
         for c_idx in range(len(counterfactual.cluster.filtered_centroids_list)):
             centroid = counterfactual.cluster.filtered_centroids_list[c_idx]
             original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[0], columns=counterfactual.data.features)
@@ -701,6 +701,6 @@ class Evaluator():
                 cf_feasibility = verify_feasibility(instance, normal_centroid_cf, counterfactual.data)
                 data_list = [lagrange, counterfactual.likelihood_factor, counterfactual.alpha, counterfactual.beta, counterfactual.gamma,
                              centroid.feat, centroid.feat_val, instance_idx, centroid.centroid_idx, centroid.normal_x, centroid.x,
-                             normal_centroid_cf, original_cf, cf_proximity, cf_feasibility, counterfactual.cf_method.run_time]
+                             normal_centroid_cf, original_cf, cf_proximity, cf_feasibility, counterfactual.cf_method.run_time, counterfactual.cf_method.model_status]
                 data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
                 self.cf_df = pd.concat((self.cf_df, data_df),axis=0)

@@ -20,7 +20,7 @@ class FIJUICE_LIKE_CONSTRAINT:
         self.k = counterfactual.k
         self.graph = counterfactual.graph
         start_time = time.time()
-        self.normal_x_cf, self.nodes_solution = self.Fijuice(counterfactual)
+        self.normal_x_cf, self.nodes_solution, self.model_status = self.Fijuice(counterfactual)
         end_time = time.time()
         self.run_time = end_time - start_time
 
@@ -62,8 +62,8 @@ class FIJUICE_LIKE_CONSTRAINT:
         """
         FairJUICE algorithm
         """
-        normal_x_cf, nodes_solution = self.do_optimize_all(counterfactual)
-        return normal_x_cf, nodes_solution 
+        normal_x_cf, nodes_solution, model_status = self.do_optimize_all(counterfactual)
+        return normal_x_cf, nodes_solution, model_status 
 
     def do_optimize_all(self, counterfactual):
         """
@@ -175,4 +175,4 @@ class FIJUICE_LIKE_CONSTRAINT:
                         print(f'Node {i}: {self.graph.all_nodes[i - 1]}')
                         print(f'Centroid: {self.cluster.filtered_centroids_list[c - 1].normal_x}')
                         print(f'Distance: {np.round(self.graph.C[c, i], 5)}')
-        return sol_x, nodes_solution
+        return sol_x, nodes_solution, opt_model.status
