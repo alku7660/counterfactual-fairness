@@ -45,10 +45,10 @@ class FIJUICE_LIKE_CONSTRAINT:
             for i in range(potential_justifiers.shape[0]):
                 if ijuice_search: 
                     if verify_feasibility(normal_centroid, potential_justifiers[i], counterfactual.data):
-                        dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=type)
+                        dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=counterfactual.type)
                         sort_potential_justifiers_centroid.append((potential_justifiers[i], dist))
                 else:
-                    dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=type)
+                    dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=counterfactual.type)
                     sort_potential_justifiers_centroid.append((potential_justifiers[i], dist))
             sort_potential_justifiers_centroid.sort(key=lambda x: x[1])
             sort_potential_justifiers_centroid = [i[0] for i in sort_potential_justifiers_centroid]
@@ -96,6 +96,12 @@ class FIJUICE_LIKE_CONSTRAINT:
                 sol_x[c_idx] = self.graph.all_nodes[sol_x_idx - 1]
                 if sol_x_idx not in nodes_solution:
                     nodes_solution.append(sol_x_idx)
+            not_centroids_solved = [i for i in range(1, len(self.cluster.filtered_centroids_list) + 1) if i not in centroids_solved]
+            for c_idx in not_centroids_solved:
+                pot_justifiers = self.find_potential_justifiers(counterfactual, ijuice_search=True)
+                cf_instance = pot_justifiers.loc[pot_justifiers.index == c_idx - 1]['justifiers'].values[0][0]
+                sol_x[c_idx] = cf_instance
+                nodes_solution.append(sol_x_idx)
             return sol_x, nodes_solution
 
         """
@@ -122,51 +128,51 @@ class FIJUICE_LIKE_CONSTRAINT:
         for c in set_Centroids:
             opt_model.addConstr(gp.quicksum(self.graph.rho[i]*cf[c, i] for i in G.nodes) >= counterfactual.rho_min)
             
-            def fairness_objective(cf, C, W, CW, centroids_idx, nodes_idx):
-                var = 0
-                mean_value = cf.prod(CW)
-                c_idx_checked = []
-                c_dist_all = []
-                for c_idx in range(len(centroids_idx)):
-                    c = centroids_idx[c_idx]
-                    if c in c_idx_checked:
-                        continue
-                    else:
-                        sensitive_group = self.cluster.group_dict[c]
-                        c_idx_sensitive_group_list = [key for key,val in self.cluster.group_dict.items() if val == sensitive_group]
-                        sensitive_group_weight = 0
-                        for c_idx_feat_val in c_idx_sensitive_group_list:
-                            sensitive_group_weight += W[c_idx_feat_val]
-                        c_dist_sensitive_group = 0 
-                        for c_idx_feat_val in c_idx_sensitive_group_list:
-                            c_dist_cluster = gp.quicksum(cf[c_idx_feat_val, i]*C[c_idx_feat_val, i] for i in nodes_idx)
-                            c_dist_sensitive_group += (W[c_idx_feat_val]/sensitive_group_weight)*c_dist_cluster
-                        var += sensitive_group_weight*(c_dist_sensitive_group - mean_value)**2
-                        c_idx_checked.extend(c_idx_sensitive_group_list)
-                return var     
+        def fairness_objective(cf, C, W, CW, centroids_idx, nodes_idx):
+            var = 0
+            mean_value = cf.prod(CW)
+            c_idx_checked = []
+            c_dist_all = []
+            for c_idx in range(len(centroids_idx)):
+                c = centroids_idx[c_idx]
+                if c in c_idx_checked:
+                    continue
+                else:
+                    sensitive_group = self.cluster.group_dict[c]
+                    c_idx_sensitive_group_list = [key for key,val in self.cluster.group_dict.items() if val == sensitive_group]
+                    sensitive_group_weight = 0
+                    for c_idx_feat_val in c_idx_sensitive_group_list:
+                        sensitive_group_weight += W[c_idx_feat_val]
+                    c_dist_sensitive_group = 0 
+                    for c_idx_feat_val in c_idx_sensitive_group_list:
+                        c_dist_cluster = gp.quicksum(cf[c_idx_feat_val, i]*C[c_idx_feat_val, i] for i in nodes_idx)
+                        c_dist_sensitive_group += (W[c_idx_feat_val]/sensitive_group_weight)*c_dist_cluster
+                    var += sensitive_group_weight*(c_dist_sensitive_group - mean_value)**2
+                    c_idx_checked.extend(c_idx_sensitive_group_list)
+            return var     
 
-            opt_model.setObjective(cf.prod(self.graph.CW)*self.lagrange + fairness_objective(cf, self.graph.C, self.graph.W, self.graph.CW, set_Centroids, G.nodes)*(1 - self.lagrange), GRB.MINIMIZE)
+        opt_model.setObjective(cf.prod(self.graph.CW)*self.lagrange + fairness_objective(cf, self.graph.C, self.graph.W, self.graph.CW, set_Centroids, G.nodes)*(1 - self.lagrange), GRB.MINIMIZE)
             
-            """
-            OPTIMIZATION AND RESULTS
-            """
-            opt_model.optimize()
-            time.sleep(0.25)
-            if opt_model.status == 3 or len(self.graph.all_nodes) == len(self.graph.potential_justifiers):
-                sol_x, nodes_solution = unfeasible_case(self)
-            else:
-                print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
-                print(f'Solution:')
-                sol_x, nodes_solution = {}, []
-                for c in set_Centroids:
-                    time.sleep(0.25)
-                    for i in G.nodes:
-                        if cf[c, i].x > 0.1:
-                            sol_x[c] = self.graph.all_nodes[i - 1]
-                            if i not in nodes_solution:
-                                nodes_solution.append(i)
-                            print(f'cf{c, i}: {cf[c, i].x}')
-                            print(f'Node {i}: {self.graph.all_nodes[i - 1]}')
-                            print(f'Centroid: {self.cluster.filtered_centroids_list[c - 1].normal_x}')
-                            print(f'Distance: {np.round(self.graph.C[c, i], 5)}')
+        """
+        OPTIMIZATION AND RESULTS
+        """
+        opt_model.optimize()
+        time.sleep(0.25)
+        if opt_model.status == 3 or len(self.graph.all_nodes) == len(self.graph.potential_justifiers):
+            sol_x, nodes_solution = unfeasible_case(self)
+        else:
+            print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
+            print(f'Solution:')
+            sol_x, nodes_solution = {}, []
+            for c in set_Centroids:
+                time.sleep(0.25)
+                for i in G.nodes:
+                    if cf[c, i].x > 0.1:
+                        sol_x[c] = self.graph.all_nodes[i - 1]
+                        if i not in nodes_solution:
+                            nodes_solution.append(i)
+                        print(f'cf{c, i}: {cf[c, i].x}')
+                        print(f'Node {i}: {self.graph.all_nodes[i - 1]}')
+                        print(f'Centroid: {self.cluster.filtered_centroids_list[c - 1].normal_x}')
+                        print(f'Distance: {np.round(self.graph.C[c, i], 5)}')
         return sol_x, nodes_solution
