@@ -1108,16 +1108,49 @@ def plot_centroids_cfs_ablation():
     fig.subplots_adjust(left=0.1, bottom=0.1, right=0.925, top=0.9, wspace=0.4, hspace=0.2)
     plt.savefig(f'{results_cf_plots_dir}{method_str}_lagrange_ablation.pdf', format='pdf')
 
+def get_all_mean_variance_values(data_str):
+    method_str = 'fijuice_like_constraint'
+    dataset_mean_proximity = []
+    dataset_all_cf_differences = []
+    for likelihood_idx in range(len(likelihood_factors)):
+        likelihood_factor = likelihood_factors[likelihood_idx]
+        mean_proximity = []
+        all_cf_differences = []
+        for lagrange in lagranges:
+            eval_obj = load_obj(f'{data_str}_{method_str}_cluster_eval.pkl')
+            cf_df_lagrange_likelihood = eval_obj.cf_df.loc[(eval_obj.cf_df['lagrange'] == lagrange) & (eval_obj.cf_df['likelihood'] == likelihood_factor)]
+            len_cf_df_lagrange = len(cf_df_lagrange_likelihood)
+            cf_df_mean_all = np.mean(cf_df_lagrange_likelihood['cf_proximity'].values)
+            unique_centroids_idx = np.unique(cf_df_lagrange_likelihood['centroid_idx'].values)
+            cf_difference_proximity = 0
+            cf_mean_proximity = 0
+            for c_idx in range(len(unique_centroids_idx)):
+                centroid_idx = unique_centroids_idx[c_idx]
+                centroid_cf_df = cf_df_lagrange_likelihood.loc[cf_df_lagrange_likelihood['centroid_idx'] == centroid_idx]
+                weight_centroid = len(centroid_cf_df)/len_cf_df_lagrange
+                mean_proximity_centroid_cf_df = np.mean(centroid_cf_df['cf_proximity'].values)
+                weighted_mean_proximity_centroid_cf_df = mean_proximity_centroid_cf_df*weight_centroid
+                cf_mean_proximity += weighted_mean_proximity_centroid_cf_df
+                cf_difference_proximity += weight_centroid*(mean_proximity_centroid_cf_df - cf_df_mean_all)**2
+            mean_proximity.append(cf_df_mean_all)
+            all_cf_differences.append(cf_difference_proximity)
+        dataset_mean_proximity.extend(mean_proximity)
+        dataset_all_cf_differences.extend(all_cf_differences)
+    min_dataset_mean_proximity, max_dataset_mean_proximity = min(dataset_mean_proximity)-0.01, max(dataset_mean_proximity)+0.01
+    min_dataset_cf_differences, max_dataset_cf_differences = min(dataset_all_cf_differences)-0.01, max(dataset_all_cf_differences)+0.01
+    return min_dataset_mean_proximity, max_dataset_mean_proximity, min_dataset_cf_differences, max_dataset_cf_differences
+        
 def plot_centroids_cfs_ablation_lagrange_likelihood():
     """
     Plots the ablation with respect to the lagrange factor
     """
-    fig, ax = plt.subplots(nrows=len(datasets), ncols=len(likelihood_factors), sharex=True, sharey=True, figsize=(8, 11))
+    fig, ax = plt.subplots(nrows=len(datasets), ncols=len(likelihood_factors), sharex=True, sharey=False, figsize=(8, 11))
     method_str = 'fijuice_like_constraint'
     start, end = 0, 1.1
     for data_idx in range(len(datasets)):
         data_str = datasets[data_idx]
         dataset = get_data_names(datasets)[data_str]
+        min_mean, max_mean, min_var, max_var = get_all_mean_variance_values(data_str)
         for likelihood_idx in range(len(likelihood_factors)):
             likelihood_factor = likelihood_factors[likelihood_idx]
             mean_proximity = []
@@ -1140,21 +1173,34 @@ def plot_centroids_cfs_ablation_lagrange_likelihood():
                     cf_difference_proximity += weight_centroid*(mean_proximity_centroid_cf_df - cf_df_mean_all)**2
                 mean_proximity.append(cf_df_mean_all)
                 all_cf_differences.append(cf_difference_proximity)
-            ax[data_idx, likelihood_idx].plot(lagranges, all_cf_differences, color='#5E81AC', label='Variance of Distance')
-            ax[data_idx, likelihood_idx].grid(axis='both', linestyle='--', alpha=0.4)
+                if 3 in list(cf_df_lagrange_likelihood['model_status'].values):
+                    ax[data_idx, likelihood_idx].text(x=0.05, y=max_var-0.005, s='*', fontsize=12)
+            ax[data_idx, likelihood_idx].plot(lagranges, all_cf_differences, color='#5E81AC', label='Distance Variance')
+            ax[data_idx, likelihood_idx].grid(axis='x', linestyle='--', alpha=0.4)
             ax[data_idx, likelihood_idx].yaxis.set_tick_params(labelcolor='#5E81AC')
+            if likelihood_idx > 0:
+                ax[data_idx, likelihood_idx].yaxis.set_visible(False)
             ax[data_idx, likelihood_idx].xaxis.set_ticks(ticks=np.arange(start, end, 0.1), labels=['0.0','','','','','0.5','','','','','1.0'])
-            ax[data_idx, likelihood_idx].set_title(f'{dataset.capitalize()}')
+            if data_idx == 0:
+                ax[data_idx, likelihood_idx].set_title(r'$\rho_{min}=$'+str(likelihood_factor), fontsize=10)
             secax = ax[data_idx, likelihood_idx].twinx()
             secax.plot(lagranges, mean_proximity, color='#BF616A', label='Mean Distance')
             secax.yaxis.set_tick_params(labelcolor='#BF616A')
-            ax[data_idx, likelihood_idx].yaxis.set_major_formatter(FormatStrFormatter('%.4f'))
+            if likelihood_idx < len(likelihood_factors) - 1:
+                secax.yaxis.set_visible(False)
+            ax[data_idx, likelihood_idx].set_ylim(min_var, max_var)
+            secax.set_ylim(min_mean, max_mean)
+            ax[data_idx, likelihood_idx].yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
             secax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+    for data_idx in range(len(datasets)):
+        data_str = datasets[data_idx]
+        dataset = get_data_names(datasets)[data_str]
+        ax[data_idx, 0].set_ylabel(f'{dataset.capitalize()}')
     fig.supxlabel('$\lambda$ Weight Parameter')
-    fig.supylabel('Variance of Distance', color='#5E81AC')
-    fig.suptitle(f'Mean Distance and Variance of Distance vs. $\lambda$')
+    fig.supylabel('Distance Variance', color='#5E81AC')
+    fig.suptitle(f'Mean Distance and Variance of Distance vs. $\lambda$ and $\rho$')
     fig.text(0.965, 0.5, 'Mean Distance', color='#BF616A', va='center', rotation='vertical')
-    fig.subplots_adjust(left=0.1, bottom=0.1, right=0.925, top=0.9, wspace=0.4, hspace=0.2)
+    fig.subplots_adjust(left=0.125, bottom=0.1, right=0.9, top=0.9, wspace=0.25, hspace=0.1)
     plt.savefig(f'{results_cf_plots_dir}{method_str}_lagrange_likelihood_ablation.pdf', format='pdf')
 
 

@@ -149,9 +149,9 @@ class FIJUICE_LIKE_OPTIMIZE:
                         c_dist_sensitive_group += (W[c_idx_feat_val]/sensitive_group_weight)*c_dist_cluster
                     var += sensitive_group_weight*(c_dist_sensitive_group - mean_value)**2
                     c_idx_checked.extend(c_idx_sensitive_group_list)
-            return var     
+            return var
 
-        opt_model.setObjective(cf.prod(self.graph.CW)*self.alpha - cf.prod + fairness_objective(cf, self.graph.C, self.graph.W, self.graph.CW, set_Centroids, G.nodes)*self.gamma, GRB.MINIMIZE)
+        opt_model.setObjective(cf.prod(self.graph.CW)*self.alpha - gp.quicksum(cf[c, i]*self.graph.rho[i] for i in G.nodes for c in set_Centroids)*self.beta + fairness_objective(cf, self.graph.C, self.graph.W, self.graph.CW, set_Centroids, G.nodes)*self.gamma, GRB.MINIMIZE)
             
         """
         OPTIMIZATION AND RESULTS

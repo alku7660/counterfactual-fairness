@@ -13,7 +13,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['german','dutch','compass','oulad','synthetic_athlete'] # 
+datasets = ['dutch'] # 'german','dutch','compass','oulad','synthetic_athlete'
 methods_to_run = ['fijuice_like_constraint'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice','fijuice_like_constraint']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -24,9 +24,9 @@ only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class 
 clustering_metric = 'complete' # Clustering metric used
 dist = 'L1_L0'
 lagranges = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0] # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-likelihood_factors = [0.0, 0.2, 0.4, 0.6, 0.8]
+likelihood_factors = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
 t = 100 # Number of preselected close NN Training Counterfactuals
-k = 5
+k = 20
 alphas = [1] # list(np.round(np.linspace(0,1,num=11),2))
 betas = [1] #list(np.round(np.linspace(0,1,num=11),2))
 gammas = [1] #list(np.round(np.linspace(0,1,num=11),2))
