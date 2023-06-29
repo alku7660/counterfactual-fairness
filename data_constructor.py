@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import KBinsDiscretizer
+from mlxtend.preprocessing import TransactionEncoder
 import time
 
 def euclidean(x1,x2):
@@ -46,6 +47,7 @@ class Dataset:
         self.train_df, self.test_df, self.train_target, self.test_target = train_test_split(self.df, self.df[self.label_name], train_size=self.train_fraction, random_state=self.seed)
         self.train_df, self.train_target = self.balance_train_data()
         self.discretized_train_df = self.all_one_hot_encode(self.train_df)
+        self.transaction_train_df = self.encode_for_apriori(self.train_df)
         self.bin_enc, self.cat_enc, self.bin_cat_enc, self.scaler = self.encoder_scaler_fit()
         self.bin_enc_cols, self.cat_enc_cols, self.bin_cat_enc_cols = self.encoder_scaler_cols()
         self.processed_features = list(self.bin_enc_cols) + list(self.cat_enc_cols) + self.ordinal + self.continuous
@@ -105,6 +107,15 @@ class Dataset:
         discretized_bin_cat_ord_df = pd.DataFrame(data=discretized_bin_cat_ord_np.toarray(), columns=bin_cat_ord_cols)
         all_df = pd.concat((discretized_bin_cat_ord_df, discretized_cont_df), axis=1)
         return all_df
+
+    def encode_for_apriori(self, df):
+        """
+        Performs a transaction encoding in order to apply the apriori algorithm on it
+        """
+        enc = TransactionEncoder()
+        transaction_np = enc.fit(df).transform(df)
+        transaction_df = pd.DataFrame(data=transaction_np, columns=enc.columns_)
+        return transaction_df
 
     def add_sorted_train_data(self, instance):
         """
