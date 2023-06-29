@@ -13,8 +13,8 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['dutch'] # 'german','dutch','compass','oulad','synthetic_athlete'
-methods_to_run = ['fijuice_like_constraint'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice','fijuice_like_constraint']
+datasets = ['synthetic_athlete'] # 'german','dutch','compass','oulad','synthetic_athlete'
+methods_to_run = ['fijuice_like_optimize'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice','fijuice_like_constraint','fijuice_like_optimize']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -23,13 +23,13 @@ seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 clustering_metric = 'complete' # Clustering metric used
 dist = 'L1_L0'
-lagranges = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0] # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-likelihood_factors = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+likelihood_factors = [0.0] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
 t = 100 # Number of preselected close NN Training Counterfactuals
 k = 10
-alphas = [1] # list(np.round(np.linspace(0,1,num=11),2))
-betas = [1] #list(np.round(np.linspace(0,1,num=11),2))
-gammas = [1] #list(np.round(np.linspace(0,1,num=11),2))
+alphas =  list(np.round(np.linspace(0,1,num=11),2))
+betas = list(np.round(np.linspace(0,1,num=11),2))
+gammas = list(np.round(np.linspace(0,1,num=11),2))
 np.random.seed(seed_int)
 
 if __name__=='__main__':

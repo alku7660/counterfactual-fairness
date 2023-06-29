@@ -160,9 +160,11 @@ class FIJUICE_LIKE_OPTIMIZE:
         time.sleep(0.25)
         if opt_model.status == 3 or len(self.graph.all_nodes) == len(self.graph.potential_justifiers):
             sol_x, nodes_solution = unfeasible_case(self)
+            obj_val = 1000
         else:
             print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
             print(f'Solution:')
+            obj_val = opt_model.ObjVal
             sol_x, nodes_solution = {}, []
             for c in set_Centroids:
                 time.sleep(0.25)
@@ -175,4 +177,4 @@ class FIJUICE_LIKE_OPTIMIZE:
                         print(f'Node {i}: {self.graph.all_nodes[i - 1]}')
                         print(f'Centroid: {self.cluster.filtered_centroids_list[c - 1].normal_x}')
                         print(f'Distance: {np.round(self.graph.C[c, i], 5)}')
-        return sol_x, nodes_solution, opt_model.status
+        return sol_x, nodes_solution, opt_model.status, obj_val

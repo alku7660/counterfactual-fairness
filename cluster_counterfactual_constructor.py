@@ -4,6 +4,7 @@ from cchvae import CCHVAE
 from ijuice import IJUICE
 from fijuice import FIJUICE
 from fijuice_likelihood_constraint import FIJUICE_LIKE_CONSTRAINT
+from fijuice_likelihood_optimize import FIJUICE_LIKE_OPTIMIZE
 
 class Counterfactual:
 
@@ -35,6 +36,8 @@ class Counterfactual:
             cf_method = FIJUICE(self)
         if self.method == 'fijuice_like_constraint':
             cf_method = FIJUICE_LIKE_CONSTRAINT(self)
+        if self.method == 'fijuice_like_optimize':
+            cf_method = FIJUICE_LIKE_OPTIMIZE(self)
         # elif self.method == 'nn':
         #     cf_method = NN(self)
         # elif self.method == 'mo':
