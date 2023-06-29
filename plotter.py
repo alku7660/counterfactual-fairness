@@ -1203,7 +1203,7 @@ def plot_centroids_cfs_ablation_lagrange_likelihood():
         ax[data_idx, 0].set_ylabel(f'{dataset.capitalize()}')
     fig.supxlabel('$\lambda$ Weight Parameter')
     fig.supylabel('Distance Variance', color='#5E81AC')
-    fig.suptitle(f'Mean Distance and Variance of Distance vs. $\lambda$ and $\rho$')
+    fig.suptitle(f'Mean Distance and Variance of Distance vs. $\lambda$ and'+r'$\rho$')
     fig.text(0.965, 0.5, 'Mean Distance', color='#BF616A', va='center', rotation='vertical')
     fig.subplots_adjust(left=0.125, bottom=0.1, right=0.9, top=0.9, wspace=0.25, hspace=0.1)
     plt.savefig(f'{results_cf_plots_dir}{method_str}_lagrange_likelihood_ablation.pdf', format='pdf')

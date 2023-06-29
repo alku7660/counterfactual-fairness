@@ -5,33 +5,19 @@ from address import dataset_dir
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import KBinsDiscretizer
 import time
 
 def euclidean(x1,x2):
     """
-    DESCRIPTION:    Calculates the euclidean distance between two different instances
-    
-    INPUT:
-    x1:             Instance 1
-    x2:             Instance 2
-    
-    OUTPUT:
-    distance:       Euclidean distance between x1 and x2
+    Calculates the euclidean distance between two different instances
     """
     distance = np.sqrt(np.sum((x1-x2)**2))
     return distance
 
 def sort_data_distance(x, data, data_label):
     """
-    DESCRIPTION:    Organize dataset with respect to distance to instance x
-    
-    INPUT:
-    x:              Instance (can be the instance of interest or a synthetic instance)
-    data:           Training dataset (Numpy array format)
-    data_label:     Training dataset label (Numpy array format)
-    
-    OUTPUT:
-    data_sorted_distance: Training dataset sorted by distance w.r.t. the instance of interest x
+    Organize dataset with respect to distance to instance x
     """
     sort_data_distance = []
     for i in range(len(data)):
@@ -59,6 +45,7 @@ class Dataset:
         self.step = step
         self.train_df, self.test_df, self.train_target, self.test_target = train_test_split(self.df, self.df[self.label_name], train_size=self.train_fraction, random_state=self.seed)
         self.train_df, self.train_target = self.balance_train_data()
+        self.discretized_train_df = self.all_one_hot_encode(self.train_df)
         self.bin_enc, self.cat_enc, self.bin_cat_enc, self.scaler = self.encoder_scaler_fit()
         self.bin_enc_cols, self.cat_enc_cols, self.bin_cat_enc_cols = self.encoder_scaler_cols()
         self.processed_features = list(self.bin_enc_cols) + list(self.cat_enc_cols) + self.ordinal + self.continuous
@@ -94,6 +81,31 @@ class Dataset:
             del balanced_train_df[self.label_name[0]]
         return balanced_train_df, balanced_train_df_label
     
+    def discretize_continuous_feat(self, cont_df):
+        """
+        Makes all continuous features categorical
+        """
+        bins = 21
+        discretizer = KBinsDiscretizer(n_bins=bins)
+        discretized_np = discretizer.fit_transform(cont_df)
+        discretized_cols = discretizer.get_feature_names_out(cont_df.columns)
+        discretized_df = pd.DataFrame(data=discretized_np.toarray(), columns=discretized_cols)
+        return discretized_df
+
+    def all_one_hot_encode(self, df):
+        """
+        Obtains a fully-one-hot-encoded version of the input df (DataFrame) for the apriori algorithm
+        """
+        cont_df = df[self.continuous]
+        discretized_cont_df = self.discretize_continuous_feat(cont_df)
+        bin_cat_ord_enc = OneHotEncoder(drop='if_binary', dtype=np.uint8, handle_unknown='ignore')
+        bin_cat_ord_df = df[self.binary + self.categorical + self.ordinal]
+        discretized_bin_cat_ord_np = bin_cat_ord_enc.fit_transform(bin_cat_ord_df)
+        bin_cat_ord_cols = bin_cat_ord_enc.get_feature_names_out(self.binary + self.categorical + self.ordinal)
+        discretized_bin_cat_ord_df = pd.DataFrame(data=discretized_bin_cat_ord_np.toarray(), columns=bin_cat_ord_cols)
+        all_df = pd.concat((discretized_bin_cat_ord_df, discretized_cont_df), axis=1)
+        return all_df
+
     def add_sorted_train_data(self, instance):
         """
         DESCRIPTION:    Add/change a sorted array of the training dataset according to distance from an instance
