@@ -63,7 +63,7 @@ class FIJUICE_LIKE_CONSTRAINT:
         FairJUICE algorithm
         """
         normal_x_cf, nodes_solution, model_status, obj_val = self.do_optimize_all(counterfactual)
-        return normal_x_cf, nodes_solution, model_status 
+        return normal_x_cf, nodes_solution, model_status, obj_val 
 
     def do_optimize_all(self, counterfactual):
         """

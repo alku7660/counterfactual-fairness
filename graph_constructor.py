@@ -289,7 +289,7 @@ class Graph:
         """
         sorted_feat_i = list(np.sort(data.transformed_train_np[:,i][(data.transformed_train_np[:,i] >= min_val) & (data.transformed_train_np[:,i] <= max_val)]))
         value = list(np.unique(sorted_feat_i))
-        if len(value) <= 100:
+        if len(value) <= 10:
             if min_val not in value:
                 value = [min_val] + value
             if max_val not in value:
@@ -297,7 +297,7 @@ class Graph:
             return value
         else:
             mean_val, std_val = np.mean(data.transformed_train_np[:,i]), np.std(data.transformed_train_np[:,i])
-            percentiles_range = list(np.linspace(0, 1, 101))
+            percentiles_range = list(np.linspace(0, 1, 11))
             value = []
             for perc in percentiles_range:
                 value.append(norm.ppf(perc, loc=mean_val, scale=std_val))

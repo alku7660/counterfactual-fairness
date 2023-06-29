@@ -1155,6 +1155,7 @@ def plot_centroids_cfs_ablation_lagrange_likelihood():
             likelihood_factor = likelihood_factors[likelihood_idx]
             mean_proximity = []
             all_cf_differences = []
+            all_Z = []
             for lagrange in lagranges:
                 eval_obj = load_obj(f'{data_str}_{method_str}_cluster_eval.pkl')
                 cf_df_lagrange_likelihood = eval_obj.cf_df.loc[(eval_obj.cf_df['lagrange'] == lagrange) & (eval_obj.cf_df['likelihood'] == likelihood_factor)]
@@ -1163,6 +1164,8 @@ def plot_centroids_cfs_ablation_lagrange_likelihood():
                 unique_centroids_idx = np.unique(cf_df_lagrange_likelihood['centroid_idx'].values)
                 cf_difference_proximity = 0
                 cf_mean_proximity = 0
+                Z_list = list(cf_df_lagrange_likelihood['obj_val'].values)
+                all_Z.append(Z_list)
                 for c_idx in range(len(unique_centroids_idx)):
                     centroid_idx = unique_centroids_idx[c_idx]
                     centroid_cf_df = cf_df_lagrange_likelihood.loc[cf_df_lagrange_likelihood['centroid_idx'] == centroid_idx]
@@ -1175,6 +1178,8 @@ def plot_centroids_cfs_ablation_lagrange_likelihood():
                 all_cf_differences.append(cf_difference_proximity)
                 if 3 in list(cf_df_lagrange_likelihood['model_status'].values):
                     ax[data_idx, likelihood_idx].text(x=0.05, y=max_var-0.005, s='*', fontsize=12)
+            if 3 not in list(cf_df_lagrange_likelihood['model_status'].values):
+                ax[data_idx, likelihood_idx].text(x=0.05, y=max_var-0.005, s=r'$\hat{Z}$'+f': {np.round_(np.mean(all_Z),3)}', fontsize=10)
             ax[data_idx, likelihood_idx].plot(lagranges, all_cf_differences, color='#5E81AC', label='Distance Variance')
             ax[data_idx, likelihood_idx].grid(axis='x', linestyle='--', alpha=0.4)
             ax[data_idx, likelihood_idx].yaxis.set_tick_params(labelcolor='#5E81AC')
