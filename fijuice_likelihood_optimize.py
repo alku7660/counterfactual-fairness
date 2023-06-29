@@ -20,7 +20,7 @@ class FIJUICE_LIKE_OPTIMIZE:
         self.k = counterfactual.k
         self.graph = counterfactual.graph
         start_time = time.time()
-        self.normal_x_cf, self.nodes_solution, self.model_status = self.Fijuice(counterfactual)
+        self.normal_x_cf, self.nodes_solution, self.model_status, self.obj_val = self.Fijuice(counterfactual)
         end_time = time.time()
         self.run_time = end_time - start_time
 
@@ -62,8 +62,8 @@ class FIJUICE_LIKE_OPTIMIZE:
         """
         FairJUICE algorithm
         """
-        normal_x_cf, nodes_solution, model_status = self.do_optimize_all(counterfactual)
-        return normal_x_cf, nodes_solution, model_status 
+        normal_x_cf, nodes_solution, model_status, obj_val = self.do_optimize_all(counterfactual)
+        return normal_x_cf, nodes_solution, model_status, obj_val 
 
     def do_optimize_all(self, counterfactual):
         """
