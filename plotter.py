@@ -12,13 +12,13 @@ import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 12})
 from matplotlib.lines import Line2D
 from matplotlib import colors
-from matplotlib.pyplot import cm
+from matplotlib import cm
 from matplotlib.ticker import FormatStrFormatter
 from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
 # import seaborn as sns
-from fairness_clusters import datasets, methods_to_run, lagranges, likelihood_factors
+from fairness_clusters import datasets, methods_to_run, lagranges, likelihood_factors, alphas, betas, gammas
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
     """
@@ -1208,6 +1208,41 @@ def plot_centroids_cfs_ablation_lagrange_likelihood():
     fig.subplots_adjust(left=0.125, bottom=0.1, right=0.9, top=0.9, wspace=0.25, hspace=0.1)
     plt.savefig(f'{results_cf_plots_dir}{method_str}_lagrange_likelihood_ablation.pdf', format='pdf')
 
+def plot_centroids_cfs_ablation_alpha_beta_gamma(data_str):
+    """
+    Plots the ablation on the 3 parameters alpha, beta, gamma
+    """
+    method_str = 'fijuice_like_optimize'
+    X, Y = np.meshgrid(alphas, gammas)
+    fig=plt.figure()   
+    cf_df = load_obj(f'{data_str}_fijuice_like_optimize_cluster_eval.pkl').cf_df
+    for beta_idx, beta in enumerate(betas):
+        cf_difference_proximity = np.zeros((len(alphas),len(gammas)))
+        cf_mean_proximity = np.zeros((len(alphas),len(gammas)))
+        cf_likelihood = np.zeros((len(alphas),len(gammas)))
+        for alpha_idx, alpha in enumerate(alphas):
+            for gamma_idx, gamma in enumerate(gammas):
+                cf_df_alpha_beta_gamma = cf_df.loc[(cf_df['alpha'] == alpha) & (cf_df['beta'] == beta) & (cf_df['gamma'] == gamma)]
+                len_cf_df_alpha_beta_gamma = len(cf_df_alpha_beta_gamma)
+                cf_df_mean_all = np.mean(cf_df_alpha_beta_gamma['cf_proximity'].values)
+                unique_centroids_idx = np.unique(cf_df_alpha_beta_gamma['centroid_idx'].values)
+                likelihood = cf_df_alpha_beta_gamma['mean_likelihood'].values[0]
+                mean_Z = np.mean(cf_df_alpha_beta_gamma['obj_val'].values)
+                cf_difference_proximity_val = 0
+                for c_idx in range(len(unique_centroids_idx)):
+                    centroid_idx = unique_centroids_idx[c_idx]
+                    centroid_cf_df = cf_df_alpha_beta_gamma.loc[cf_df_alpha_beta_gamma['centroid_idx'] == centroid_idx]
+                    weight_centroid = len(centroid_cf_df)/len_cf_df_alpha_beta_gamma
+                    mean_proximity_centroid_cf_df = np.mean(centroid_cf_df['cf_proximity'].values)
+                    cf_difference_proximity_val += weight_centroid*(mean_proximity_centroid_cf_df - cf_df_mean_all)**2
+                cf_mean_proximity[alpha_idx, gamma_idx] = cf_df_mean_all
+                cf_difference_proximity[alpha_idx, gamma_idx] = cf_difference_proximity_val
+                cf_likelihood[alpha_idx, gamma_idx] = likelihood
+        measures = [cf_mean_proximity, cf_difference_proximity, cf_likelihood]
+        for measure_idx, measure in enumerate(measures):
+            ax_plane = fig.add_subplot(len(betas),len(measures),beta_idx*2+measure_idx+1,projection='3d',frame_on=True)
+            ax_plane.plot_surface(X, Y, measure, cmap=cm.coolwarm)
+    plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_alpha_beta_gamma_ablation.pdf', format='pdf')
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
 colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','Non-white':'dimgray',
@@ -1230,5 +1265,7 @@ mean_prop = dict(marker='D', markeredgecolor='firebrick', markerfacecolor='fireb
 # nawb_cluster_cf(datasets, methods_to_run)
 # burden_groups_cf_bar(datasets, 'NN')
 # plot_centroids_cf_proximity()
-plot_centroids_cfs_ablation_lagrange_likelihood()
+# plot_centroids_cfs_ablation_lagrange_likelihood()
+plot_centroids_cfs_ablation_alpha_beta_gamma('synthetic_athlete')
+
 

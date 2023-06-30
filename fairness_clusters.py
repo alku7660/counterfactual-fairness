@@ -27,9 +27,9 @@ lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 likelihood_factors = [0.0] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
 t = 100 # Number of preselected close NN Training Counterfactuals
 k = 10
-alphas =  list(np.round(np.linspace(0,1,num=11),2))
-betas = list(np.round(np.linspace(0,1,num=11),2))
-gammas = list(np.round(np.linspace(0,1,num=11),2))
+alphas =  [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+betas = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+gammas = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 np.random.seed(seed_int)
 
 if __name__=='__main__':
