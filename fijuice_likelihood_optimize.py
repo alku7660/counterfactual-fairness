@@ -125,8 +125,8 @@ class FIJUICE_LIKE_OPTIMIZE:
         for c in set_Centroids:
             opt_model.addConstr(gp.quicksum(cf[c, i] for i in G.nodes) == 1)
 
-        for c in set_Centroids:
-            opt_model.addConstr(gp.quicksum(self.graph.rho[i]*cf[c, i] for i in G.nodes) >= counterfactual.rho_min)
+        # for c in set_Centroids:
+        #     opt_model.addConstr(gp.quicksum(self.graph.rho[i]*cf[c, i] for i in G.nodes) >= counterfactual.rho_min)
             
         def fairness_objective(cf, C, W, CW, centroids_idx, nodes_idx):
             var = 0
