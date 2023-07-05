@@ -46,8 +46,8 @@ class Dataset:
         self.step = step
         self.train_df, self.test_df, self.train_target, self.test_target = train_test_split(self.df, self.df[self.label_name], train_size=self.train_fraction, random_state=self.seed)
         self.train_df, self.train_target = self.balance_train_data()
-        self.discretized_train_df = self.all_one_hot_encode(self.train_df)
-        self.transaction_train_df = self.encode_for_apriori(self.train_df)
+        # self.discretized_train_df = self.all_one_hot_encode(self.train_df)
+        # self.transaction_train_df = self.encode_for_apriori(self.train_df)
         self.bin_enc, self.cat_enc, self.bin_cat_enc, self.scaler = self.encoder_scaler_fit()
         self.bin_enc_cols, self.cat_enc_cols, self.bin_cat_enc_cols = self.encoder_scaler_cols()
         self.processed_features = list(self.bin_enc_cols) + list(self.cat_enc_cols) + self.ordinal + self.continuous
