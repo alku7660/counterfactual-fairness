@@ -1212,7 +1212,9 @@ def plot_centroids_cfs_ablation_alpha_beta_gamma(data_str):
     """
     Plots the ablation on the 3 parameters alpha, beta, gamma
     """
+    betas = [0.0, 0.2, 0.4, 0.6]
     method_str = 'fijuice_like_optimize'
+    dataset = get_data_names(datasets)[data_str]
     X, Y = np.meshgrid(alphas, gammas)
     fig=plt.figure()   
     cf_df = load_obj(f'{data_str}_fijuice_like_optimize_cluster_eval.pkl').cf_df
@@ -1240,8 +1242,19 @@ def plot_centroids_cfs_ablation_alpha_beta_gamma(data_str):
                 cf_likelihood[alpha_idx, gamma_idx] = likelihood
         measures = [cf_mean_proximity, cf_difference_proximity, cf_likelihood]
         for measure_idx, measure in enumerate(measures):
-            ax_plane = fig.add_subplot(len(betas),len(measures),beta_idx*2+measure_idx+1,projection='3d',frame_on=True)
+            ax_plane = fig.add_subplot(len(betas),len(measures),beta_idx*3+measure_idx+1,projection='3d',frame_on=True)
             ax_plane.plot_surface(X, Y, measure, cmap=cm.coolwarm)
+            ax_plane.text(x=0.8, y=0.2, z=np.min(measure), s=r'$\bar{Z}$'+f': {np.round_(np.mean(mean_Z),3)}', fontsize=6)
+            if beta_idx < len(betas) - 1:
+                ax_plane.xaxis.set_ticklabels([])
+                ax_plane.yaxis.set_ticklabels([])
+            else:
+                ax_plane.set(xlabel=r'$\alpha$'+r' ($\mu$)', ylabel=r'$\gamma$'+r' ($\sigma^2$)')      
+    fig.text(0.01, 0.47, s=r'$\beta$'+r' ($\rho$)', rotation=90)
+    fig.text(0.05, 0.2, s=f'0.6                  0.4                   0.2                    0.0', rotation=90)
+    fig.supxlabel(f'  Distance Mean               Distance Variance               CF Likelihood', position=(0.5, 0.9))
+    fig.subplots_adjust(left=0.01, bottom=0.1, right=0.99, top=0.9, wspace=0.0, hspace=0.0)
+    fig.suptitle(dataset)
     plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_alpha_beta_gamma_ablation.pdf', format='pdf')
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
@@ -1266,6 +1279,6 @@ mean_prop = dict(marker='D', markeredgecolor='firebrick', markerfacecolor='fireb
 # burden_groups_cf_bar(datasets, 'NN')
 # plot_centroids_cf_proximity()
 # plot_centroids_cfs_ablation_lagrange_likelihood()
-plot_centroids_cfs_ablation_alpha_beta_gamma('synthetic_athlete')
+plot_centroids_cfs_ablation_alpha_beta_gamma('oulad')
 
 
