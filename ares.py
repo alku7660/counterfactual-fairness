@@ -19,7 +19,7 @@ Rawal, Kaivalya, and Himabindu Lakkaraju. "Beyond individualized recourse: Inter
 class ARES:
 
     def __init__(self, data) -> None:
-        self.transaction_train_df = data.transaction_train_df
+        self.discretized_train_df = data.discretized_train_df
         self.apriori_df = self.get_apriori_df()
     
     def get_apriori_df(self):
@@ -27,7 +27,7 @@ class ARES:
         Obtains the apriori conjunction predicates from the frequent itemsets from the apriori algorithm, as explained in:
         Rawal, Kaivalya, and Himabindu Lakkaraju. "Beyond individualized recourse: Interpretable and interactive summaries of actionable recourses." Advances in Neural Information Processing Systems 33 (2020): 12187-12198.
         """
-        apriori_df = apriori(self.transaction__train_df, min_support=0.01, use_colnames=True)
+        apriori_df = apriori(self.discretized_train_df, min_support=0.1, use_colnames=True)
         return apriori_df
 
 data_str = 'synthetic_athlete'
