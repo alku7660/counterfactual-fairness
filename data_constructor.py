@@ -100,7 +100,8 @@ class Dataset:
         """
         cont_df = df[self.continuous]
         discretized_cont_df = self.discretize_continuous_feat(cont_df)
-        bin_cat_ord_enc = OneHotEncoder(drop='if_binary', dtype=np.uint8, handle_unknown='ignore')
+        # bin_cat_ord_enc = OneHotEncoder(drop='if_binary', dtype=np.uint8, handle_unknown='ignore')
+        bin_cat_ord_enc = OneHotEncoder(dtype=np.uint8, handle_unknown='ignore')
         bin_cat_ord_df = df[self.binary + self.categorical + self.ordinal]
         discretized_bin_cat_ord_np = bin_cat_ord_enc.fit_transform(bin_cat_ord_df)
         bin_cat_ord_cols = bin_cat_ord_enc.get_feature_names_out(self.binary + self.categorical + self.ordinal)
