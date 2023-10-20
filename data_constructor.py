@@ -47,7 +47,6 @@ class Dataset:
         self.train_df, self.test_df, self.train_target, self.test_target = train_test_split(self.df, self.df[self.label_name], train_size=self.train_fraction, random_state=self.seed)
         self.train_df, self.train_target = self.balance_train_data()
         self.discretized_train_df = self.all_one_hot_encode(self.train_df)
-        # self.transaction_train_df = self.encode_for_apriori(self.discretized_train_df)
         self.bin_enc, self.cat_enc, self.bin_cat_enc, self.scaler = self.encoder_scaler_fit()
         self.bin_enc_cols, self.cat_enc_cols, self.bin_cat_enc_cols = self.encoder_scaler_cols()
         self.processed_features = list(self.bin_enc_cols) + list(self.cat_enc_cols) + self.ordinal + self.continuous
@@ -91,7 +90,7 @@ class Dataset:
         discretizer = KBinsDiscretizer(n_bins=bins)
         discretized_np = discretizer.fit_transform(cont_df)
         discretized_cols = discretizer.get_feature_names_out(cont_df.columns)
-        discretized_df = pd.DataFrame(data=discretized_np.toarray(), columns=discretized_cols)
+        discretized_df = pd.DataFrame(index=cont_df.index, data=discretized_np.toarray(), columns=discretized_cols)
         return discretized_df
 
     def all_one_hot_encode(self, df):
@@ -100,12 +99,11 @@ class Dataset:
         """
         cont_df = df[self.continuous]
         discretized_cont_df = self.discretize_continuous_feat(cont_df)
-        # bin_cat_ord_enc = OneHotEncoder(drop='if_binary', dtype=np.uint8, handle_unknown='ignore')
         bin_cat_ord_enc = OneHotEncoder(dtype=np.uint8, handle_unknown='ignore')
         bin_cat_ord_df = df[self.binary + self.categorical + self.ordinal]
         discretized_bin_cat_ord_np = bin_cat_ord_enc.fit_transform(bin_cat_ord_df)
         bin_cat_ord_cols = bin_cat_ord_enc.get_feature_names_out(self.binary + self.categorical + self.ordinal)
-        discretized_bin_cat_ord_df = pd.DataFrame(data=discretized_bin_cat_ord_np.toarray(), columns=bin_cat_ord_cols)
+        discretized_bin_cat_ord_df = pd.DataFrame(index=df.index, data=discretized_bin_cat_ord_np.toarray(), columns=bin_cat_ord_cols)
         all_df = pd.concat((discretized_bin_cat_ord_df, discretized_cont_df), axis=1)
         return all_df
 

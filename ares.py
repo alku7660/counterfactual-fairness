@@ -5,6 +5,7 @@ import networkx as nx
 import gurobipy as gp
 from gurobipy import GRB, tuplelist
 from data_constructor import load_dataset
+from model_constructor import Model
 from evaluator_constructor import distance_calculation, verify_feasibility
 from nnt import nn_for_juice
 import time
@@ -18,12 +19,17 @@ Rawal, Kaivalya, and Himabindu Lakkaraju. "Beyond individualized recourse: Inter
 
 class ARES:
 
-    def __init__(self, data) -> None:
+    def __init__(self, data, model) -> None:
+        self.model = model
         self.discretized_train_df = data.discretized_train_df
+        self.transformed_test_df = data.transformed_test_df
+        self.test_target = data.test_target
+        self.undesired_class = data.undesired_class
         self.protected_groups = data.feat_protected
         self.sensitive_groups = self.get_sensitive_groups()
         self.apriori_df = self.get_apriori_df()
         self.recourse_predicates_per_group = self.get_recourse_predicates_per_sensitive_group()
+        self.fn_instances = self.get_fn_instances()
     
     def get_apriori_df(self):
         """
@@ -54,10 +60,18 @@ class ARES:
             itemset_list = [itemset for itemset in itemset_list if len(itemset) > 0]
             predicate_dict[sensitive_group] = itemset_list
         return predicate_dict
-
+    
+    def get_fn_instances(self):
+        """
+        Obtains the set of instances that belong to the false negative class.
+        """
+        prediction_label_df = pd.DataFrame(index=self.discretized_train_df.index, data=[self.model.model.predict(self.transformed_test_df), self.test_target], columns=['prediction','label'])
+        false_negatives_df = prediction_label_df.loc[(prediction_label_df['prediction'] == self.undesired_class) & (prediction_label_df['label'] != self.undesired_class)]
+        
 data_str = 'synthetic_athlete'
 train_fraction = 0.7
 seed = 12345
 step = 0.01
 data = load_dataset(data_str, train_fraction, seed, step)
-ares = ARES(data)
+model = Model(data)
+ares = ARES(data, model)
