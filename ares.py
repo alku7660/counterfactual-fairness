@@ -31,6 +31,7 @@ class ARES:
         self.apriori_df = self.get_apriori_df()
         self.recourse_predicates_per_group = self.get_recourse_predicates_per_sensitive_group()
         self.fn_instances = self.get_fn_instances()
+        self.coverage_df = self.preallocate_all_group_predicate_R()
     
     def get_apriori_df(self):
         """
@@ -83,11 +84,18 @@ class ARES:
                 q_i_list.append(q_i)
         return q_i_list
     
-    
-    
+    def preallocate_all_group_predicate_R(self):
+        """
+        Obtains the set of all pairs (q_i, c_i)
+        """
+        group_predicate_list = [(key, val) for (key, val) in self.recourse_predicates_per_group.items()]
+        coverage = [0]*len(group_predicate_list)
+        coverage_df = pd.DataFrame(index=group_predicate_list, data=coverage, columns=['coverage'])
+        return coverage_df
+
     def find_recourse_predicate_x_q(self, x, q_list):
         """
-        Obtains the set of C predicates corresponding to the given x and q group
+        Obtains the set of C predicates corresponding to the given x and q group and sums up coverage for C
         """
         c_i_dict = {}
         for q in q_list:
@@ -96,9 +104,23 @@ class ARES:
             for c in recourse_predicates_q:
                 if list(int(x[c].values)) == [1]*len(c):
                     c_i_list.append(c)
+                    self.coverage_df.loc[(q, c), 'coverage'] += 1
             c_i_dict[q] = c_i_list
         return c_i_dict
     
+    def find_recourse_rules(self, q, c):
+        """
+        Given a Q and a C, obtains the C's available in the frequent itemsets belonging to Q
+        """
+        c_list = self.recourse_predicates_per_group[q]
+        for feat in c:
+            feat_name, _ = feat.split('_')
+            for c_i in c_list:
+                c_i_name_list = [i.split('_')[0] for i in c_i]
+                if feat_name not in c_i_name_list:
+                    c_list.remove(c_i)
+        return c_list
+                    
 
     
         
