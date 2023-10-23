@@ -63,10 +63,13 @@ class ARES:
     
     def get_fn_instances(self):
         """
-        Obtains the set of instances that belong to the false negative class.
+        Obtains the set of instances that belong to the false negative class in the test set.
         """
-        prediction_label_df = pd.DataFrame(index=self.discretized_train_df.index, data=[self.model.model.predict(self.transformed_test_df), self.test_target], columns=['prediction','label'])
+        prediction_label_df = pd.DataFrame(index=self.transformed_test_df.index, data=np.array([self.model.model.predict(self.transformed_test_df), self.test_target]).T, columns=['prediction','label'])
         false_negatives_df = prediction_label_df.loc[(prediction_label_df['prediction'] == self.undesired_class) & (prediction_label_df['label'] != self.undesired_class)]
+        false_negatives_idx = false_negatives_df.index
+        
+
         
 data_str = 'synthetic_athlete'
 train_fraction = 0.7
