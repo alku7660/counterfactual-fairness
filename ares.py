@@ -22,6 +22,7 @@ class ARES:
     def __init__(self, data, model) -> None:
         self.model = model
         self.discretized_train_df = data.discretized_train_df
+        self.discretized_test_df = data.discretized_test_df
         self.transformed_test_df = data.transformed_test_df
         self.test_target = data.test_target
         self.undesired_class = data.undesired_class
@@ -66,10 +67,40 @@ class ARES:
         Obtains the set of instances that belong to the false negative class in the test set.
         """
         prediction_label_df = pd.DataFrame(index=self.transformed_test_df.index, data=np.array([self.model.model.predict(self.transformed_test_df), self.test_target]).T, columns=['prediction','label'])
-        false_negatives_df = prediction_label_df.loc[(prediction_label_df['prediction'] == self.undesired_class) & (prediction_label_df['label'] != self.undesired_class)]
-        false_negatives_idx = false_negatives_df.index
-        
+        false_negatives_label_df = prediction_label_df.loc[(prediction_label_df['prediction'] == self.undesired_class) & (prediction_label_df['label'] != self.undesired_class)]
+        false_negatives_idx = false_negatives_label_df.index
+        false_negatives_instances = self.discretized_test_df.loc[false_negatives_idx,:]
+        return false_negatives_instances
+    
+    def find_sensitive_group(self, x):
+        """
+        Obtains the sensitive groups an instance x belongs to as a list
+        """
+        q_i_list = []
+        for sensitive_group in self.sensitive_groups:
+            if x[sensitive_group] == 1:
+                q_i = sensitive_group
+                q_i_list.append(q_i)
+        return q_i_list
+    
+    
+    
+    def find_recourse_predicate_x_q(self, x, q_list):
+        """
+        Obtains the set of C predicates corresponding to the given x and q group
+        """
+        c_i_dict = {}
+        for q in q_list:
+            recourse_predicates_q = self.sensitive_groups[q]
+            c_i_list = []
+            for c in recourse_predicates_q:
+                if list(int(x[c].values)) == [1]*len(c):
+                    c_i_list.append(c)
+            c_i_dict[q] = c_i_list
+        return c_i_dict
+    
 
+    
         
 data_str = 'synthetic_athlete'
 train_fraction = 0.7
