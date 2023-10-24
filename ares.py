@@ -11,6 +11,7 @@ from nnt import nn_for_juice
 import time
 from scipy.stats import norm
 from mlxtend.frequent_patterns import apriori
+import copy
 
 """
 This method is based on:
@@ -31,7 +32,7 @@ class ARES:
         self.apriori_df = self.get_apriori_df()
         self.recourse_predicates_per_group = self.get_recourse_predicates_per_sensitive_group()
         self.fn_instances = self.get_fn_instances()
-        self.coverage_df = self.preallocate_all_group_predicate_R()
+        self.coverage_dict = self.preallocate_all_group_predicate_R()
     
     def get_apriori_df(self):
         """
@@ -88,10 +89,24 @@ class ARES:
         """
         Obtains the set of all pairs (q_i, c_i)
         """
-        group_predicate_list = [(key, val) for (key, val) in self.recourse_predicates_per_group.items()]
-        coverage = [0]*len(group_predicate_list)
-        coverage_df = pd.DataFrame(index=group_predicate_list, data=coverage, columns=['coverage'])
-        return coverage_df
+        all_groups_predicates = []
+        coverage_dict = dict()
+        for key, val in self.recourse_predicates_per_group.items():
+            for val_i in val:
+                all_groups_predicates.append(tuple([key] + val_i))
+        for key_value in all_groups_predicates:
+            coverage_dict[key_value] = 0
+        return coverage_dict
+
+    def find_sensitive_group_x(self, x):
+        """
+        Obtains the sensitive groups x belongs to
+        """
+        q_list = []
+        for q in self.sensitive_groups:
+            if int(x[q].values) == 1:
+                q_list.append(q)
+        return q_list
 
     def find_recourse_predicate_x_q(self, x, q_list):
         """
@@ -99,12 +114,15 @@ class ARES:
         """
         c_i_dict = {}
         for q in q_list:
-            recourse_predicates_q = self.sensitive_groups[q]
+            recourse_predicates_q = self.recourse_predicates_per_group[q]
             c_i_list = []
             for c in recourse_predicates_q:
-                if list(int(x[c].values)) == [1]*len(c):
+                c_values = [int(x[c_feat].values) for c_feat in c]
+                if c_values == [1]*len(c):
                     c_i_list.append(c)
-                    self.coverage_df.loc[(q, c), 'coverage'] += 1
+                    c_key = tuple([q] + c)
+                    if c_key in self.coverage_dict.keys():
+                        self.coverage_dict[c_key] += 1
             c_i_dict[q] = c_i_list
         return c_i_dict
     
@@ -112,16 +130,38 @@ class ARES:
         """
         Given a Q and a C, obtains the C's available in the frequent itemsets belonging to Q
         """
-        c_list = self.recourse_predicates_per_group[q]
-        for feat in c:
-            feat_name, _ = feat.split('_')
-            for c_i in c_list:
+        c_prime_list = copy.deepcopy(self.recourse_predicates_per_group[q])
+        c_list_copy = copy.deepcopy(c_prime_list)
+        for features in c:
+            feat_name, _ = features.split('_')
+            for c_i in c_list_copy:
                 c_i_name_list = [i.split('_')[0] for i in c_i]
-                if feat_name not in c_i_name_list:
-                    c_list.remove(c_i)
-        return c_list
+                if feat_name not in c_i_name_list or len(c) != len(c_i_name_list):
+                    if c_i in c_prime_list:
+                        c_prime_list.remove(c_i)
+            if c in c_prime_list:
+                c_prime_list.remove(c)
+        return c_prime_list
                     
-
+    def get_all_recourse_rules_x(self, sensitive_groups_x, recourse_predicates_x):
+        """
+        Obtains all recourse rules for instance x
+        """
+        c_prime_dict = dict()
+        for q in sensitive_groups_x:
+            for c in recourse_predicates_x[q]:
+                c_prime = self.find_recourse_rules(q, c)
+                c_prime_dict[tuple([q] + c)] = c_prime
+        return c_prime_dict
+    
+    def extract_recourses_x(self, x):
+        """
+        Gets the recourse set for an instance x
+        """
+        sensitive_groups_x = self.find_sensitive_group_x(x)
+        recourse_predicates_x = self.find_recourse_predicate_x_q(x, sensitive_groups_x)
+        recourse_rules = self.get_all_recourse_rules_x(sensitive_groups_x, recourse_predicates_x)
+        return recourse_rules
     
         
 data_str = 'synthetic_athlete'
@@ -131,3 +171,6 @@ step = 0.01
 data = load_dataset(data_str, train_fraction, seed, step)
 model = Model(data)
 ares = ARES(data, model)
+x = data.discretized_test_df.iloc[0,:].to_frame().T
+x_idx = int(x.index)
+recourse_set = ares.extract_recourses_x(x)
