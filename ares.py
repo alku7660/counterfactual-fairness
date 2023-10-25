@@ -33,6 +33,7 @@ class ARES:
         self.recourse_predicates_per_group = self.get_recourse_predicates_per_sensitive_group()
         self.fn_instances = self.get_fn_instances()
         self.coverage_dict = self.preallocate_all_group_predicate_R()
+        self.correctness_dict = dict()
     
     def get_apriori_df(self):
         """
@@ -163,6 +164,11 @@ class ARES:
         recourse_rules = self.get_all_recourse_rules_x(sensitive_groups_x, recourse_predicates_x)
         return recourse_rules
     
+    def add_recourse_rules_x(self, recourse_rules_x):
+        """
+        Adds the recourse rules obtained for x and its correctness to the correctness dictionary
+        """
+        self.correctness_dict[]
         
 data_str = 'synthetic_athlete'
 train_fraction = 0.7

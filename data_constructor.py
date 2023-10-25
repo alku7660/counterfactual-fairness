@@ -47,6 +47,7 @@ class Dataset:
         self.train_df, self.test_df, self.train_target, self.test_target = train_test_split(self.df, self.df[self.label_name], train_size=self.train_fraction, random_state=self.seed)
         self.train_df, self.train_target = self.balance_train_data()
         self.bin_cat_ord_enc = self.all_one_hot_encode(self.train_df)
+        self.discretizer = self.train_discretizer(self.train_df)
         self.discretized_train_df = self.discretize_df(self.train_df)
         self.discretized_test_df = self.discretize_df(self.test_df)
         self.bin_enc, self.cat_enc, self.bin_cat_enc, self.scaler = self.encoder_scaler_fit()
@@ -84,20 +85,27 @@ class Dataset:
             del balanced_train_df[self.label_name[0]]
         return balanced_train_df, balanced_train_df_label
     
+    def train_discretizer(self, df, bins = 6):
+        """
+        Obtains a discretizer for the continuous features
+        """
+        cont_df = df[self.continuous]
+        discretizer = KBinsDiscretizer(n_bins=bins)
+        discretizer.fit(cont_df)
+        return discretizer
+
     def discretize_continuous_feat(self, cont_df):
         """
         Makes all continuous features categorical
         """
-        bins = 6
-        discretizer = KBinsDiscretizer(n_bins=bins)
-        discretized_np = discretizer.fit_transform(cont_df)
-        discretized_cols = discretizer.get_feature_names_out(cont_df.columns)
+        discretized_np = self.discretizer.transform(cont_df)
+        discretized_cols = self.discretizer.get_feature_names_out(cont_df.columns)
         discretized_df = pd.DataFrame(index=cont_df.index, data=discretized_np.toarray(), columns=discretized_cols)
         return discretized_df
 
     def all_one_hot_encode(self, df):
         """
-        Obtains a fully-one-hot-encoded version of the input df (DataFrame) for the apriori algorithm
+        Obtains a fully-one-hot-encoder for the discretization of the data
         """
         bin_cat_ord_enc = OneHotEncoder(dtype=np.uint8, handle_unknown='ignore')
         bin_cat_ord_df = df[self.binary + self.categorical + self.ordinal]
@@ -117,14 +125,20 @@ class Dataset:
         all_df = pd.concat((discretized_bin_cat_ord_df, discretized_cont_df), axis=1)
         return all_df
 
-    def encode_for_apriori(self, df):
+    def decode_df(self, encoded_df):
         """
-        Performs a transaction encoding in order to apply the apriori algorithm on it
+        Performs a the inverse operation of the discretization of the df (uses the encoder and discretizer)
         """
-        enc = TransactionEncoder()
-        transaction_np = enc.fit(df).transform(df)
-        transaction_df = pd.DataFrame(data=transaction_np, columns=enc.columns_)
-        return transaction_df
+        encoded_continuous_cols = self.discretizer.get_feature_names_out(self.continuous)
+        bin_cat_ord_cols = self.bin_cat_ord_enc.get_feature_names_out(self.binary + self.categorical + self.ordinal)
+        cont_encoded_df = encoded_df[encoded_continuous_cols]
+        bin_cat_ord_encoded_df = encoded_df[bin_cat_ord_cols]
+        cont_np = self.discretizer.inverse_transform(cont_encoded_df)
+        cont_df = pd.DataFrame(index=encoded_df.index, data=cont_np, columns=self.continuous)
+        bin_cat_ord_np = self.bin_cat_ord_enc.inverse_transform(bin_cat_ord_encoded_df)
+        bin_cat_ord_df = pd.DataFrame(index=encoded_df.index, data=bin_cat_ord_np, columns=self.binary + self.categorical + self.ordinal)
+        all_df = pd.concat((bin_cat_ord_df, cont_df), axis=1)
+        return all_df
 
     def add_sorted_train_data(self, instance):
         """
