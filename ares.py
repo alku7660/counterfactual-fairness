@@ -88,7 +88,7 @@ class ARES:
     
     def preallocate_all_group_predicate_R(self):
         """
-        Obtains the set of all pairs (q_i, c_i)
+        Preallocates the coverage for all the pairs (q_i, c_i)
         """
         all_groups_predicates = []
         coverage_dict = dict()
@@ -148,12 +148,15 @@ class ARES:
         """
         Obtains all recourse rules for instance x
         """
-        c_prime_dict = dict()
+        q_to_c_dict = dict()
         for q in sensitive_groups_x:
+            c_to_c_prime_dict = dict()
             for c in recourse_predicates_x[q]:
                 c_prime = self.find_recourse_rules(q, c)
-                c_prime_dict[tuple([q] + c)] = c_prime
-        return c_prime_dict
+                c_key = tuple(c)[0] if len(c) == 1 else tuple(c)
+                c_to_c_prime_dict[c_key] = c_prime
+            q_to_c_dict[q] = c_to_c_prime_dict
+        return q_to_c_dict
     
     def extract_recourses_x(self, x):
         """
@@ -164,11 +167,54 @@ class ARES:
         recourse_rules = self.get_all_recourse_rules_x(sensitive_groups_x, recourse_predicates_x)
         return recourse_rules
     
-    def add_recourse_rules_x(self, recourse_rules_x):
+    def preallocate_correctness_feat_change_x(self, recourse_rules_x):
         """
-        Adds the recourse rules obtained for x and its correctness to the correctness dictionary
+        Preallocates the dictionary for correctness and feature change
         """
-        self.correctness_dict[]
+        correctness_dict_x = dict()
+        feat_change_dict_x = dict()
+        for q in recourse_rules_x.keys():
+            c_dict = recourse_rules_x[q]
+            c_prime_dict_corr = dict()
+            c_prime_dict_feat = dict()
+            for c in c_dict.keys():
+                c_prime_list = c_dict[c]
+                correct = dict()
+                feat_change = dict()
+                for c_prime in c_prime_list:
+                    c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
+                    correct[c_prime_key] = 0
+                    feat_change[c_prime_key] = 0
+                c_prime_dict_corr[c] = correct
+                c_prime_dict_feat[c] = feat_change
+            correctness_dict_x[q] = c_prime_dict_corr
+            feat_change_dict_x[q] = c_prime_dict_feat
+        return correctness_dict_x, feat_change_dict_x
+
+    def results_recourse_rules_x(self, recourse_rules_x, x, data, model):
+        """
+        Adds the recourse rules obtained for x, their correctness to the correctness dictionary and the feature change to the change dictionary
+        """
+        correctness_dict_x, feat_change_dict_x = self.preallocate_correctness_feat_change_x(recourse_rules_x)
+        x_prime = copy.deepcopy(x)
+        x_transformed = data.transformed_test_df.loc[x.index,:]
+        for q in recourse_rules_x.keys():
+            c_dict = recourse_rules_x[q]
+            for c in c_dict.keys():
+                c_prime_list = c_dict[c]
+                x_prime[c] = [0]*len(c)
+                for c_prime in c_prime_list:
+                    c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
+                    x_prime[c_prime_key] = [1]*len(c_prime_key)
+                    x_prime_original = data.decode_df(x_prime)
+                    x_prime_transformed = data.transform_data(x_prime_original)
+                    x_pred = model.model.predict(x_transformed)
+                    x_prime_pred = model.model.predict(x_prime_transformed)
+                    if x_pred == data.undesired_class and x_prime_pred != data.undesired_class:
+                        correctness_dict_x[q][c][c_prime_key] += 1
+                    distance = distance_calculation(x_transformed, x_prime_transformed, data, type='l1_l0')
+                    feat_change_dict_x[q][c][c_prime_key] -= distance
+        return correctness_dict_x, feat_change_dict_x
         
 data_str = 'synthetic_athlete'
 train_fraction = 0.7
@@ -178,5 +224,5 @@ data = load_dataset(data_str, train_fraction, seed, step)
 model = Model(data)
 ares = ARES(data, model)
 x = data.discretized_test_df.iloc[0,:].to_frame().T
-x_idx = int(x.index)
 recourse_set = ares.extract_recourses_x(x)
+ares.results_recourse_rules_x(recourse_set, x, data, model)
