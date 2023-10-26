@@ -202,10 +202,12 @@ class ARES:
             c_dict = recourse_rules_x[q]
             for c in c_dict.keys():
                 c_prime_list = c_dict[c]
-                x_prime[c] = [0]*len(c)
+                len_c = 1 if isinstance(c, str) else len(c)
+                x_prime[c] = [0]*len_c
                 for c_prime in c_prime_list:
                     c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
-                    x_prime[c_prime_key] = [1]*len(c_prime_key)
+                    len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
+                    x_prime[c_prime_key] = [1]*len_c_prime_key
                     x_prime_original = data.decode_df(x_prime)
                     x_prime_transformed = data.transform_data(x_prime_original)
                     x_pred = model.model.predict(x_transformed)
