@@ -191,30 +191,36 @@ class ARES:
             feat_change_dict_x[q] = c_prime_dict_feat
         return correctness_dict_x, feat_change_dict_x
 
-    def results_recourse_rules_x(self, recourse_rules_x, x, data, model):
+    def results_recourse_rules_x(self, recourse_rules_x, x, data, model, correctness_dict_x, feat_change_dict_x):
         """
         Adds the recourse rules obtained for x, their correctness to the correctness dictionary and the feature change to the change dictionary
         """
-        correctness_dict_x, feat_change_dict_x = self.preallocate_correctness_feat_change_x(recourse_rules_x)
-        x_prime = copy.deepcopy(x)
+        if correctness_dict_x is None and feat_change_dict_x is None:
+            correctness_dict_x, feat_change_dict_x = self.preallocate_correctness_feat_change_x(recourse_rules_x)
         x_transformed = data.transformed_test_df.loc[x.index,:]
         for q in recourse_rules_x.keys():
             c_dict = recourse_rules_x[q]
             for c in c_dict.keys():
                 c_prime_list = c_dict[c]
                 len_c = 1 if isinstance(c, str) else len(c)
-                x_prime[c] = [0]*len_c
+                c_key = c if isinstance(c, str) else list(c)
                 for c_prime in c_prime_list:
+                    x_prime = copy.deepcopy(x)
+                    x_prime[c_key] = [0]*len_c
                     c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
                     len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
-                    x_prime[c_prime_key] = [1]*len_c_prime_key
+                    x_prime[c_prime] = np.array([1]*len_c_prime_key)
                     x_prime_original = data.decode_df(x_prime)
                     x_prime_transformed = data.transform_data(x_prime_original)
+                    c_prime_key_name_list = [c_prime_key.split('_')[0]] if len_c_prime_key == 1 else [i.split('_') for i in c_prime_key]
+                    for cont_feat in data.continuous:
+                        if cont_feat not in c_prime_key_name_list:
+                            x_prime_transformed[cont_feat] = x_transformed[cont_feat].values
                     x_pred = model.model.predict(x_transformed)
                     x_prime_pred = model.model.predict(x_prime_transformed)
                     if x_pred == data.undesired_class and x_prime_pred != data.undesired_class:
                         correctness_dict_x[q][c][c_prime_key] += 1
-                    distance = distance_calculation(x_transformed, x_prime_transformed, data, type='l1_l0')
+                    distance = distance_calculation(np.array(x_transformed), np.array(x_prime_transformed), data, type='L1_L0')
                     feat_change_dict_x[q][c][c_prime_key] -= distance
         return correctness_dict_x, feat_change_dict_x
         
@@ -225,6 +231,8 @@ step = 0.01
 data = load_dataset(data_str, train_fraction, seed, step)
 model = Model(data)
 ares = ARES(data, model)
-x = data.discretized_test_df.iloc[0,:].to_frame().T
-recourse_set = ares.extract_recourses_x(x)
-ares.results_recourse_rules_x(recourse_set, x, data, model)
+correctness_dict, feat_change_dict = None, None
+for x_fn_idx in ares.fn_instances.index:
+    x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T
+    recourse_set = ares.extract_recourses_x(x)
+    correctness_dict, feat_change_dict = ares.results_recourse_rules_x(recourse_set, x, data, model, correctness_dict, feat_change_dict)
