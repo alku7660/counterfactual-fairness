@@ -27,6 +27,7 @@ class ARES:
         self.discretized_train_df = data.discretized_train_df
         self.discretized_test_df = data.discretized_test_df
         self.transformed_test_df = data.transformed_test_df
+        self.transformed_test_np = data.transformed_test_np
         self.test_target = data.test_target
         self.undesired_class = data.undesired_class
         self.protected_groups = data.feat_protected
@@ -35,7 +36,8 @@ class ARES:
         self.recourse_predicates_per_group = self.get_recourse_predicates_per_sensitive_group()
         self.fn_instances = self.get_fn_instances()
         self.coverage_dict = self.preallocate_all_group_predicate_R()
-        self.correctness_dict = dict()
+        self.correctness_dict = None
+        self.feat_change_dict = None
     
     def get_apriori_df(self):
         """
@@ -71,7 +73,7 @@ class ARES:
         """
         Obtains the set of instances that belong to the false negative class in the test set.
         """
-        prediction_label_df = pd.DataFrame(index=self.transformed_test_df.index, data=np.array([self.model.model.predict(self.transformed_test_df), self.test_target]).T, columns=['prediction','label'])
+        prediction_label_df = pd.DataFrame(index=self.transformed_test_df.index, data=np.array([self.model.model.predict(self.transformed_test_np), self.test_target]).T, columns=['prediction','label'])
         false_negatives_label_df = prediction_label_df.loc[(prediction_label_df['prediction'] == self.undesired_class) & (prediction_label_df['label'] != self.undesired_class)]
         false_negatives_idx = false_negatives_label_df.index
         false_negatives_instances = self.discretized_test_df.loc[false_negatives_idx,:]
@@ -249,8 +251,8 @@ class ARES:
                     for cont_feat in data.continuous:
                         if cont_feat not in c_prime_key_name_list:
                             x_prime_transformed[cont_feat] = x_transformed[cont_feat].values
-                    x_pred = model.model.predict(x_transformed)
-                    x_prime_pred = model.model.predict(x_prime_transformed)
+                    x_pred = model.model.predict(x_transformed.values)
+                    x_prime_pred = model.model.predict(x_prime_transformed.values)
                     if x_pred == data.undesired_class and x_prime_pred != data.undesired_class:
                         correctness_dict_x[q][c][c_prime_key] += 1
                     distance = distance_calculation(np.array(x_transformed), np.array(x_prime_transformed), data, type='L1_L0')
@@ -277,8 +279,7 @@ class ARES:
         Changes the result dictionaries into a more readable form (this is used for correctness and feature change dictionaries)
         """
         modified_result_dict = {(key1, key2, key3): value for key1, dict2 in result_dict.items() for key2, dict3 in dict2.items() for key3, value in dict3.items()}
-        modified_result_df = pd.DataFrame(modified_result_dict).T
-        return modified_result_df
+        return modified_result_dict
 
 data_str = 'synthetic_athlete'
 train_fraction = 0.7
@@ -292,7 +293,7 @@ start_time = time.time()
 correctness_dict, feat_change_dict = ares.preallocate_all_instances(data)
 end_time = time.time()
 print(f'Preallocated recourse set for all instances (time: {np.round(end_time - start_time, 2)} s)')
-counter = 0
+counter = 1
 for x_fn_idx in ares.fn_instances.index:
     start_time = time.time()
     print(f'Analyzing instance {x_fn_idx} ({counter}/{len(ares.fn_instances.index)})')
@@ -302,5 +303,8 @@ for x_fn_idx in ares.fn_instances.index:
     correctness_dict, feat_change_dict = ares.add_results_to_dicts(correctness_dict, feat_change_dict, correctness_dict_x, feat_change_dict_x)
     end_time = time.time()
     print(f'Instance {x_fn_idx} done (time: {np.round(end_time - start_time, 2)} s)')
-correctness_df = ares.format_results_dict(correctness_dict)
-feat_change_df = ares.format_results_dict(feat_change_dict)
+    counter += 1
+ares.correctness_dict = ares.format_results_dict(correctness_dict)
+ares.feat_change_dict = ares.format_results_dict(feat_change_dict)
+# 1. Find for each fn instance x, which recourse rule applies best (highest chance of correctness).
+# 2. Calculate the distance from fn instance x to each of the recourse rules limits and report that for the comparison with fijuice.
