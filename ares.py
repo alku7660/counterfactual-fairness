@@ -36,8 +36,7 @@ class ARES:
         self.recourse_predicates_per_group = self.get_recourse_predicates_per_sensitive_group()
         self.fn_instances = self.get_fn_instances()
         self.coverage_dict = self.preallocate_all_group_predicate_R()
-        self.correctness_dict = None
-        self.feat_change_dict = None
+        self.results_df = pd.DataFrame(columns=['x_idx', 'q', 'q_c', 'q_c_c_prime', 'correctness', 'feat_change'])
     
     def get_apriori_df(self):
         """
@@ -231,18 +230,21 @@ class ARES:
         """
         Adds the recourse rules obtained for x, their correctness to the correctness dictionary and the feature change to the change dictionary
         """
-        correctness_dict_x, feat_change_dict_x = self.preallocate_correctness_feat_change_x(recourse_rules_x)
+        x_idx = int(x.index[0])
         x_transformed = data.transformed_test_df.loc[x.index,:]
+        results_x_list = []
         for q in recourse_rules_x.keys():
             c_dict = recourse_rules_x[q]
             for c in c_dict.keys():
                 c_prime_list = c_dict[c]
                 c_key = c if isinstance(c, str) else list(c)
+                q_c = (q, c_key)
                 len_c = 1 if isinstance(c, str) else len(c)
                 for c_prime in c_prime_list:
                     x_prime = copy.deepcopy(x)
                     x_prime[c_key] = [0]*len_c
                     c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
+                    q_c_c_prime = (q, c_key, c_prime_key)
                     len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
                     x_prime[c_prime] = np.array([1]*len_c_prime_key)
                     x_prime_original = data.decode_df(x_prime)
@@ -254,32 +256,35 @@ class ARES:
                     x_pred = model.model.predict(x_transformed.values)
                     x_prime_pred = model.model.predict(x_prime_transformed.values)
                     if x_pred == data.undesired_class and x_prime_pred != data.undesired_class:
-                        correctness_dict_x[q][c][c_prime_key] += 1
-                    distance = distance_calculation(np.array(x_transformed), np.array(x_prime_transformed), data, type='L1_L0')
-                    feat_change_dict_x[q][c][c_prime_key] -= distance
-        return correctness_dict_x, feat_change_dict_x
+                        correctness_q_c_c_prime = 1
+                    else:
+                        correctness_q_c_c_prime = 0
+                    feat_change_q_c_c_prime = distance_calculation(np.array(x_transformed), np.array(x_prime_transformed), data, type='L1_L0')
+                    result_x = [x_idx, q, q_c, q_c_c_prime, correctness_q_c_c_prime, feat_change_q_c_c_prime]
+                    results_x_list.append(result_x)
+        return results_x_list
     
-    def add_results_to_dicts(self, correctness_dict, feat_change_dict, correctness_dict_x, feat_change_dict_x):
+    def add_results(self, results_x):
         """
-        Joins the dicts holding all the results with new instance dictionaries from ARES
+        Joins the list of results of x holding all the results with new instance dictionaries from ARES to the DataFrame containing everything
         """
-        for q in correctness_dict_x.keys():
-            c_dict = correctness_dict_x[q]
-            for c in c_dict.keys():
-                c_prime_list = c_dict[c]
-                for c_prime in c_prime_list:
-                    correctness_x = correctness_dict_x[q][c][c_prime]
-                    feat_change_x = feat_change_dict_x[q][c][c_prime]
-                    correctness_dict[q][c][c_prime] += correctness_x
-                    feat_change_dict[q][c][c_prime] += feat_change_x
-        return correctness_dict, feat_change_dict
+        results_x_df = pd.DataFrame(data=results_x, columns=self.results_df.columns)
+        self.results_df = pd.concat((self.results_df, results_x_df))
     
-    def format_results_dict(self, result_dict):
+    def format_results(self):
         """
         Changes the result dictionaries into a more readable form (this is used for correctness and feature change dictionaries)
         """
-        modified_result_dict = {(key1, key2, key3): value for key1, dict2 in result_dict.items() for key2, dict3 in dict2.items() for key3, value in dict3.items()}
-        return modified_result_dict
+        unique_q_c_c_prime = self.results_df['q_c_c_prime'].unique()
+        total_instances_q_c_c_prime_df = self.results_df['q_c_c_prime'].value_counts()
+        correct_instances_q_c_c_prime_df = self.results_df[self.results_df['correctness'] == 1]['q_c_c_prime'].value_counts()
+        q_c_c_prime_list = []
+        for q_c_c_prime in unique_q_c_c_prime:
+            total_instances_q_c_c_prime = total_instances_q_c_c_prime_df[q_c_c_prime]
+            correct_instances_q_c_c_prime = correct_instances_q_c_c_prime_df[q_c_c_prime]
+            correct_over_total_q_c_c_prime = correct_instances_q_c_c_prime/total_instances_q_c_c_prime
+            q_c_c_prime_list.append([q_c_c_prime, total_instances_q_c_c_prime, correct_instances_q_c_c_prime, correct_over_total_q_c_c_prime])
+        self.correctness_df = pd.DataFrame(data=q_c_c_prime_list, columns=['q_c_c_prime','total_instances','correct_instances','correct_over_total'])
 
 data_str = 'synthetic_athlete'
 train_fraction = 0.7
@@ -288,23 +293,17 @@ step = 0.01
 data = load_dataset(data_str, train_fraction, seed, step)
 model = Model(data)
 ares = ARES(data, model)
-print(f'Preallocating recourse sets for all instances')
-start_time = time.time()
-correctness_dict, feat_change_dict = ares.preallocate_all_instances(data)
-end_time = time.time()
-print(f'Preallocated recourse set for all instances (time: {np.round(end_time - start_time, 2)} s)')
 counter = 1
 for x_fn_idx in ares.fn_instances.index:
     start_time = time.time()
-    print(f'Analyzing instance {x_fn_idx} ({counter}/{len(ares.fn_instances.index)})')
+    print(f'Dataset: {data_str}. Analyzing instance {x_fn_idx} ({counter}/{len(ares.fn_instances.index)})')
     x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T
     recourse_set = ares.extract_recourses_x(x)
-    correctness_dict_x, feat_change_dict_x = ares.results_recourse_rules_x(recourse_set, x, data, model)
-    correctness_dict, feat_change_dict = ares.add_results_to_dicts(correctness_dict, feat_change_dict, correctness_dict_x, feat_change_dict_x)
+    results_x = ares.results_recourse_rules_x(recourse_set, x, data, model)
+    ares.add_results(results_x)
     end_time = time.time()
-    print(f'Instance {x_fn_idx} done (time: {np.round(end_time - start_time, 2)} s)')
+    print(f'Dataset: {data_str}. Instance {x_fn_idx} done (time: {np.round(end_time - start_time, 2)} s)')
     counter += 1
-ares.correctness_dict = ares.format_results_dict(correctness_dict)
-ares.feat_change_dict = ares.format_results_dict(feat_change_dict)
+ares.format_results(correctness_dict, feat_change_dict)
 # 1. Find for each fn instance x, which recourse rule applies best (highest chance of correctness).
 # 2. Calculate the distance from fn instance x to each of the recourse rules limits and report that for the comparison with fijuice.
