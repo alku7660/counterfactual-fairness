@@ -5,6 +5,7 @@ from ijuice import IJUICE
 from fijuice import FIJUICE
 from fijuice_likelihood_constraint import FIJUICE_LIKE_CONSTRAINT
 from fijuice_likelihood_optimize import FIJUICE_LIKE_OPTIMIZE
+from ares import ARES
 
 class Counterfactual:
 
@@ -38,6 +39,8 @@ class Counterfactual:
             cf_method = FIJUICE_LIKE_CONSTRAINT(self)
         if self.method == 'fijuice_like_optimize':
             cf_method = FIJUICE_LIKE_OPTIMIZE(self)
+        if self.method == 'ares':
+            cf_method = ARES(self)
         # elif self.method == 'nn':
         #     cf_method = NN(self)
         # elif self.method == 'mo':

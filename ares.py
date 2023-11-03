@@ -22,7 +22,9 @@ Rawal, Kaivalya, and Himabindu Lakkaraju. "Beyond individualized recourse: Inter
 
 class ARES:
 
-    def __init__(self, data, model) -> None:
+    def __init__(self, counterfactual) -> None:
+        data = counterfactual.data
+        model = counterfactual.model
         self.model = model
         self.discretized_train_df = data.discretized_train_df
         self.discretized_test_df = data.discretized_test_df
@@ -295,15 +297,15 @@ class ARES:
         """
         Selects the best recourse rule for every instance x in the set of false negatives
         """
-        for x_idx in self.results_df['x_idx']:
+        for x_idx in self.results_df['x_idx'].unique():
             filter_x_correct_result_df = self.results_df[(self.results_df['x_idx'] == x_idx) & (self.results_df['correctness'] == 1)]
             for best_q_c_c_prime in list(self.correctness_df['q_c_c_prime']):
                 if best_q_c_c_prime in list(filter_x_correct_result_df['q_c_c_prime']):
                     found_best_q_c_c_prime = best_q_c_c_prime
-                    feat_change_best_q_c_c_prime = filter_x_correct_result_df[filter_x_correct_result_df['q_c_c_prime'] == found_best_q_c_c_prime]['feat_change'][0]
+                    feat_change_best_q_c_c_prime = filter_x_correct_result_df[filter_x_correct_result_df['q_c_c_prime'] == found_best_q_c_c_prime]['feat_change'].values[0]
                     break
             best_recourse_x = [x_idx, found_best_q_c_c_prime, 1, feat_change_best_q_c_c_prime]
-            best_recourse_x_df = pd.DataFrame(data=best_recourse_x, columns=self.best_recourse_df.columns[0])
+            best_recourse_x_df = pd.DataFrame(data=[best_recourse_x], columns=self.best_recourse_df.columns)
             self.best_recourse_df = pd.concat((self.best_recourse_df, best_recourse_x_df))
 
 data_str = 'synthetic_athlete'
@@ -314,7 +316,7 @@ data = load_dataset(data_str, train_fraction, seed, step)
 model = Model(data)
 ares = ARES(data, model)
 counter = 1
-for x_fn_idx in ares.fn_instances.index[:5]:
+for x_fn_idx in ares.fn_instances.index[:10]:
     start_time = time.time()
     x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T
     recourse_set = ares.extract_recourses_x(x)
