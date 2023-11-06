@@ -25,6 +25,7 @@ class ARES:
     def __init__(self, counterfactual) -> None:
         data = counterfactual.data
         model = counterfactual.model
+        self.cluster = counterfactual.cluster
         self.model = model
         self.discretized_train_df = data.discretized_train_df
         self.discretized_test_df = data.discretized_test_df
@@ -325,8 +326,17 @@ for x_fn_idx in ares.fn_instances.index[:10]:
     end_time = time.time()
     print(f'Dataset: {data_str}. Instance {x_fn_idx} ({counter}/{len(ares.fn_instances.index)}) done (time: {np.round(end_time - start_time, 2)} s)')
     counter += 1
+counter = 1
+for c_idx in range(len(ares.cluster.filtered_centroids_list)):
+    start_time = time.time()
+    centroid = ares.cluster.filtered_centroids_list[c_idx]
+    original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[0], columns=data.features)
+    discretized_centroid = data.discretize_df(original_centroid)
+    recourse_set = ares.extract_recourses_x(discretized_centroid)
+    results_centroid = ares.results_recourse_rules_x(recourse_set, discretized_centroid, data, model)
+    ares.add_results(results_centroid)
+    end_time = time.time()
+    print(f'Dataset: {data_str}. Centroid {c_idx} ({counter}/{len(ares.cluster.filtered_centroids_list)}) done (time: {np.round(end_time - start_time, 2)} s)')
+    counter += 1
 ares.format_results()
 ares.get_best_recourse_rule_x()
-
-# 1. Find for each fn instance x, which recourse rule applies best (highest chance of correctness).
-# 2. Calculate the distance from fn instance x to each of the recourse rules limits and report that for the comparison with fijuice.

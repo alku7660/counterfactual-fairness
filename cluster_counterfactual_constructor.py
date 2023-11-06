@@ -31,7 +31,7 @@ class Counterfactual:
     def select_cf_method(self):
         """
         Selects the method to find the counterfactual and stores it in "normal_x_cf"
-        ['nn','mo','ft','rt','gs','face','dice','mace','cchvae','juice','ijuice']
+        ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice','fijuice_like_constraint','fijuice_like_optimize','ares']
         """
         if self.method == 'fijuice':
             cf_method = FIJUICE(self)

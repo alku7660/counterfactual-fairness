@@ -14,7 +14,7 @@ from sklearn.metrics import f1_score
 from support import save_obj
 
 datasets = ['german','compass','oulad','synthetic_athlete'] # 'german','dutch','compass','oulad','synthetic_athlete'
-methods_to_run = ['fijuice_like_optimize'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice','fijuice_like_constraint','fijuice_like_optimize']
+methods_to_run = ['fijuice_like_optimize'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice','fijuice_like_constraint','fijuice_like_optimize','ares']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -41,6 +41,7 @@ if __name__=='__main__':
         cf_evaluator = Evaluator(data, n_feat, methods_to_run[0], clusters_obj)
         cf_evaluator.add_fairness_measures(data, model)
         cf_evaluator.add_fnr_data(data)
+        # if methods_to_run[0] in ['fijuice_like_constraint','fijuice_like_optimize']:
         graph_obj = Graph(data, model, clusters_obj, dist, t=t, k=k)
         for lagrange in lagranges:
             for likelihood_factor in likelihood_factors:
@@ -64,6 +65,7 @@ if __name__=='__main__':
                             print(f'---------------------------')
                             print(f'  DONE: {data_str}, lagrange: {lagrange}, likelihood: {likelihood_factor}, alpha: {alpha}, beta: {beta}, gamma: {gamma}')
                 print(f'---------------------------')
+        # elif methods_to_run[0] == 'ares':
         print(f'---------------------------')
         print(f'  DONE: {data_str}')
         print(f'---------------------------')

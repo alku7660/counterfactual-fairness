@@ -678,7 +678,7 @@ class Evaluator():
         penalize_instance = sorted_train_x[-1][0]
         return penalize_instance
 
-    def add_cf_data(self, counterfactual, lagrange):
+    def add_cf_data(self, counterfactual, lagrange, method):
         """
         DESCRIPTION:            Stores the cluster CF and obtains all the performance measures for the cluster counterfactual 
         OUTPUT: (None: stored as class attributes)
