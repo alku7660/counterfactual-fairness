@@ -34,6 +34,7 @@ class ARES:
         self.test_target = data.test_target
         self.undesired_class = data.undesired_class
         self.protected_groups = data.feat_protected
+        start_time = time.time()
         self.sensitive_groups = self.get_sensitive_groups()
         self.apriori_df = self.get_apriori_df()
         self.recourse_predicates_per_group = self.get_recourse_predicates_per_sensitive_group()
@@ -45,7 +46,10 @@ class ARES:
         self.get_recourses_for_centroids(data, model)
         self.format_results()
         self.get_best_recourse_rule_x()
-    
+        self.normal_x_cf = self.get_cf_normal_x_form(data)
+        end_time = time.time()
+        self.run_time = end_time - start_time
+
     def get_apriori_df(self):
         """
         Obtains the apriori conjunction predicates from the frequent itemsets from the apriori algorithm, as explained in:
