@@ -66,7 +66,7 @@ if __name__=='__main__':
                                 print(f'  DONE: {data_str}, lagrange: {lagrange}, likelihood: {likelihood_factor}, alpha: {alpha}, beta: {beta}, gamma: {gamma}')
                     print(f'---------------------------')
         elif methods_to_run[0] == 'ares':
-            counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagranges[0], likelihood_factor[0], alphas[0], betas[0], gammas[0], type=dist, t=100, k=1, graph=graph_obj)
+            counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagranges[0], likelihood_factors[0], alphas[0], betas[0], gammas[0], type=dist, t=100, k=1)
         print(f'---------------------------')
         print(f'  DONE: {data_str}')
         print(f'---------------------------')
