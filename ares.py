@@ -41,6 +41,10 @@ class ARES:
         self.coverage_dict = self.preallocate_all_group_predicate_R()
         self.results_df = pd.DataFrame(columns=['x_idx', 'q', 'q_c', 'q_c_c_prime', 'correctness', 'feat_change'])
         self.best_recourse_df = pd.DataFrame(columns=['x_idx', 'best_q_c_c_prime', 'correctness', 'feat_change'])
+        self.get_recourses_for_fn_instances(data, model)
+        self.get_recourses_for_centroids(data, model)
+        self.format_results()
+        self.get_best_recourse_rule_x()
     
     def get_apriori_df(self):
         """
@@ -276,6 +280,37 @@ class ARES:
         results_x_df = pd.DataFrame(data=results_x, columns=self.results_df.columns)
         self.results_df = pd.concat((self.results_df, results_x_df))
     
+    def get_recourses_for_fn_instances(self, data, model):
+        """
+        Obtains all the best recourses for all FN instances
+        """
+        counter = 1
+        for x_fn_idx in self.fn_instances.index[:10]:
+            start_time = time.time()
+            x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T
+            recourse_set = self.extract_recourses_x(x)
+            results_x = self.results_recourse_rules_x(recourse_set, x, data, model)
+            self.add_results(results_x)
+            end_time = time.time()
+            print(f'Dataset: {data.name}. Instance {x_fn_idx} ({counter}/{len(self.fn_instances.index)}) done (time: {np.round(end_time - start_time, 2)} s)')
+            counter += 1
+    
+    def get_recourses_for_centroids(self, data, model):
+        """
+        Obtains the best recourses for centroids
+        """
+        for c_idx in range(len(self.cluster.filtered_centroids_list)):
+            start_time = time.time()
+            centroid = self.cluster.filtered_centroids_list[c_idx]
+            original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[0], columns=data.features)
+            discretized_centroid = data.discretize_df(original_centroid)
+            recourse_set = self.extract_recourses_x(discretized_centroid)
+            results_centroid = self.results_recourse_rules_x(recourse_set, discretized_centroid, data, model)
+            self.add_results(results_centroid)
+            end_time = time.time()
+            print(f'Dataset: {data.name}. Centroid {c_idx} ({counter}/{len(self.cluster.filtered_centroids_list)}) done (time: {np.round(end_time - start_time, 2)} s)')
+            counter += 1
+
     def format_results(self):
         """
         Changes the result dictionaries into a more readable form (this is used for correctness and feature change dictionaries)
@@ -309,34 +344,32 @@ class ARES:
             best_recourse_x_df = pd.DataFrame(data=[best_recourse_x], columns=self.best_recourse_df.columns)
             self.best_recourse_df = pd.concat((self.best_recourse_df, best_recourse_x_df))
 
-data_str = 'synthetic_athlete'
-train_fraction = 0.7
-seed = 12345
-step = 0.01
-data = load_dataset(data_str, train_fraction, seed, step)
-model = Model(data)
-ares = ARES(data, model)
-counter = 1
-for x_fn_idx in ares.fn_instances.index[:10]:
-    start_time = time.time()
-    x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T
-    recourse_set = ares.extract_recourses_x(x)
-    results_x = ares.results_recourse_rules_x(recourse_set, x, data, model)
-    ares.add_results(results_x)
-    end_time = time.time()
-    print(f'Dataset: {data_str}. Instance {x_fn_idx} ({counter}/{len(ares.fn_instances.index)}) done (time: {np.round(end_time - start_time, 2)} s)')
-    counter += 1
-counter = 1
-for c_idx in range(len(ares.cluster.filtered_centroids_list)):
-    start_time = time.time()
-    centroid = ares.cluster.filtered_centroids_list[c_idx]
-    original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[0], columns=data.features)
-    discretized_centroid = data.discretize_df(original_centroid)
-    recourse_set = ares.extract_recourses_x(discretized_centroid)
-    results_centroid = ares.results_recourse_rules_x(recourse_set, discretized_centroid, data, model)
-    ares.add_results(results_centroid)
-    end_time = time.time()
-    print(f'Dataset: {data_str}. Centroid {c_idx} ({counter}/{len(ares.cluster.filtered_centroids_list)}) done (time: {np.round(end_time - start_time, 2)} s)')
-    counter += 1
-ares.format_results()
-ares.get_best_recourse_rule_x()
+# data_str = 'synthetic_athlete'
+# train_fraction = 0.7
+# seed = 12345
+# step = 0.01
+# data = load_dataset(data_str, train_fraction, seed, step)
+# model = Model(data)
+# ares = ARES(data, model)
+# counter = 1
+# for x_fn_idx in ares.fn_instances.index[:10]:
+#     start_time = time.time()
+#     x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T
+#     recourse_set = ares.extract_recourses_x(x)
+#     results_x = ares.results_recourse_rules_x(recourse_set, x, data, model)
+#     ares.add_results(results_x)
+#     end_time = time.time()
+#     print(f'Dataset: {data_str}. Instance {x_fn_idx} ({counter}/{len(ares.fn_instances.index)}) done (time: {np.round(end_time - start_time, 2)} s)')
+#     counter += 1
+# counter = 1
+# for c_idx in range(len(ares.cluster.filtered_centroids_list)):
+#     start_time = time.time()
+#     centroid = ares.cluster.filtered_centroids_list[c_idx]
+#     original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[f'c_{c_idx}'], columns=data.features)
+#     discretized_centroid = data.discretize_df(original_centroid)
+#     recourse_set = ares.extract_recourses_x(discretized_centroid)
+#     results_centroid = ares.results_recourse_rules_x(recourse_set, discretized_centroid, data, model)
+#     ares.add_results(results_centroid)
+#     end_time = time.time()
+#     print(f'Dataset: {data_str}. Centroid {c_idx} ({counter}/{len(ares.cluster.filtered_centroids_list)}) done (time: {np.round(end_time - start_time, 2)} s)')
+#     counter += 1

@@ -13,8 +13,8 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['german','compass','oulad','synthetic_athlete'] # 'german','dutch','compass','oulad','synthetic_athlete'
-methods_to_run = ['fijuice_like_optimize'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice','fijuice_like_constraint','fijuice_like_optimize','ares']
+datasets = ['synthetic_athlete'] # 'german','dutch','compass','oulad','synthetic_athlete'
+methods_to_run = ['ares'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice','fijuice_like_constraint','fijuice_like_optimize','ares']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -41,31 +41,32 @@ if __name__=='__main__':
         cf_evaluator = Evaluator(data, n_feat, methods_to_run[0], clusters_obj)
         cf_evaluator.add_fairness_measures(data, model)
         cf_evaluator.add_fnr_data(data)
-        # if methods_to_run[0] in ['fijuice_like_constraint','fijuice_like_optimize']:
-        graph_obj = Graph(data, model, clusters_obj, dist, t=t, k=k)
-        for lagrange in lagranges:
-            for likelihood_factor in likelihood_factors:
-                for alpha in alphas:
-                    for beta in betas:
-                        for gamma in gammas:
-                            print(f'---------------------------------------')
-                            print(f'                    Dataset: {data_str}')
-                            print(f'        Train dataset shape: {data.train_df.shape}')
-                            print(f'         Test dataset shape: {data.false_undesired_test_df.shape}')
-                            print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
-                            print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
-                            print(f'                   lagrange: {lagrange}')
-                            print(f'          likelihood factor: {likelihood_factor}')
-                            print(f'                      alpha: {alpha}')
-                            print(f'                       beta: {beta}')
-                            print(f'                      gamma: {gamma}')
-                            print(f'---------------------------------------')
-                            counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagrange, likelihood_factor, alpha, beta, gamma, type=dist, t=100, k=1, graph=graph_obj)
-                            cf_evaluator.add_cf_data(counterfactual, lagrange)
-                            print(f'---------------------------')
-                            print(f'  DONE: {data_str}, lagrange: {lagrange}, likelihood: {likelihood_factor}, alpha: {alpha}, beta: {beta}, gamma: {gamma}')
-                print(f'---------------------------')
-        # elif methods_to_run[0] == 'ares':
+        if methods_to_run[0] in ['fijuice_like_constraint','fijuice_like_optimize']:
+            graph_obj = Graph(data, model, clusters_obj, dist, t=t, k=k)
+            for lagrange in lagranges:
+                for likelihood_factor in likelihood_factors:
+                    for alpha in alphas:
+                        for beta in betas:
+                            for gamma in gammas:
+                                print(f'---------------------------------------')
+                                print(f'                    Dataset: {data_str}')
+                                print(f'        Train dataset shape: {data.train_df.shape}')
+                                print(f'         Test dataset shape: {data.false_undesired_test_df.shape}')
+                                print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
+                                print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
+                                print(f'                   lagrange: {lagrange}')
+                                print(f'          likelihood factor: {likelihood_factor}')
+                                print(f'                      alpha: {alpha}')
+                                print(f'                       beta: {beta}')
+                                print(f'                      gamma: {gamma}')
+                                print(f'---------------------------------------')
+                                counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagrange, likelihood_factor, alpha, beta, gamma, type=dist, t=100, k=1, graph=graph_obj)
+                                cf_evaluator.add_cf_data(counterfactual, lagrange)
+                                print(f'---------------------------')
+                                print(f'  DONE: {data_str}, lagrange: {lagrange}, likelihood: {likelihood_factor}, alpha: {alpha}, beta: {beta}, gamma: {gamma}')
+                    print(f'---------------------------')
+        elif methods_to_run[0] == 'ares':
+            counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagranges[0], likelihood_factor[0], alphas[0], betas[0], gammas[0], type=dist, t=100, k=1, graph=graph_obj)
         print(f'---------------------------')
         print(f'  DONE: {data_str}')
         print(f'---------------------------')
