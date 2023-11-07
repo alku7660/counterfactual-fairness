@@ -238,8 +238,13 @@ class ARES:
         """
         Adds the recourse rules obtained for x, their correctness to the correctness dictionary and the feature change to the change dictionary
         """
-        x_idx = int(x.index[0])
-        x_transformed = data.transformed_test_df.loc[x.index,:]
+        if not isinstance(x.index[0], str):
+            x_idx = int(x.index[0])
+            x_transformed = data.transformed_test_df.loc[x.index,:]
+        else:
+            x_idx = x.index[0]
+            x_idx_c_idx = int(x_idx.split('_')[-1])
+            x_transformed = self.cluster.filtered_centroids_list[x_idx_c_idx].normal_x_df
         results_x_list = []
         for q in recourse_rules_x.keys():
             c_dict = recourse_rules_x[q]
@@ -285,7 +290,7 @@ class ARES:
         Obtains all the best recourses for all FN instances
         """
         counter = 1
-        for x_fn_idx in self.fn_instances.index[:10]:
+        for x_fn_idx in self.fn_instances.index:
             start_time = time.time()
             x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T
             recourse_set = self.extract_recourses_x(x)
@@ -299,10 +304,11 @@ class ARES:
         """
         Obtains the best recourses for centroids
         """
+        counter = 1
         for c_idx in range(len(self.cluster.filtered_centroids_list)):
             start_time = time.time()
             centroid = self.cluster.filtered_centroids_list[c_idx]
-            original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[0], columns=data.features)
+            original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[f'c_{c_idx}'], columns=data.features)
             discretized_centroid = data.discretize_df(original_centroid)
             recourse_set = self.extract_recourses_x(discretized_centroid)
             results_centroid = self.results_recourse_rules_x(recourse_set, discretized_centroid, data, model)
