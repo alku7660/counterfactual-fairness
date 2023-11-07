@@ -234,6 +234,14 @@ class ARES:
                                         continue
         return correctness_dict, feat_change_dict
 
+    def transform_to_normal_x(self, x, data):
+        """
+        Transforms an instance x from discretized form to normal x form 
+        """
+        x_original = data.decode_df(x)
+        x_transformed = data.transform_data(x_original)
+        return x_transformed
+
     def results_recourse_rules_x(self, recourse_rules_x, x, data, model):
         """
         Adds the recourse rules obtained for x, their correctness to the correctness dictionary and the feature change to the change dictionary
@@ -261,8 +269,7 @@ class ARES:
                     q_c_c_prime = (q, c_key, c_prime_key)
                     len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
                     x_prime[c_prime] = np.array([1]*len_c_prime_key)
-                    x_prime_original = data.decode_df(x_prime)
-                    x_prime_transformed = data.transform_data(x_prime_original)
+                    x_prime_transformed = self.transform_to_normal_x(x_prime)
                     c_prime_key_name_list = [c_prime_key.split('_')[0]] if len_c_prime_key == 1 else [i.split('_') for i in c_prime_key]
                     for cont_feat in data.continuous:
                         if cont_feat not in c_prime_key_name_list:
@@ -278,6 +285,18 @@ class ARES:
                     results_x_list.append(result_x)
         return results_x_list
     
+    def change_x_to_x_prime(self, x, q_c_c_prime):
+        """
+        Transforms and instance x to x_prime by using the given recourse rule. x must be in discretized form.
+        """
+        x_prime = copy.deepcopy(x)
+        c, c_prime = q_c_c_prime[1], q_c_c_prime[2]
+        len_c = 1 if isinstance(c, str) else len(c)
+        x_prime[c] = [0]*len_c
+        len_c_prime_key = 1 if isinstance(c_prime, str) else len(c_prime)
+        x_prime[c_prime] = np.array([1]*len_c_prime_key)
+        return x_prime
+
     def add_results(self, results_x):
         """
         Joins the list of results of x holding all the results with new instance dictionaries from ARES to the DataFrame containing everything
@@ -350,32 +369,19 @@ class ARES:
             best_recourse_x_df = pd.DataFrame(data=[best_recourse_x], columns=self.best_recourse_df.columns)
             self.best_recourse_df = pd.concat((self.best_recourse_df, best_recourse_x_df))
 
-# data_str = 'synthetic_athlete'
-# train_fraction = 0.7
-# seed = 12345
-# step = 0.01
-# data = load_dataset(data_str, train_fraction, seed, step)
-# model = Model(data)
-# ares = ARES(data, model)
-# counter = 1
-# for x_fn_idx in ares.fn_instances.index[:10]:
-#     start_time = time.time()
-#     x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T
-#     recourse_set = ares.extract_recourses_x(x)
-#     results_x = ares.results_recourse_rules_x(recourse_set, x, data, model)
-#     ares.add_results(results_x)
-#     end_time = time.time()
-#     print(f'Dataset: {data_str}. Instance {x_fn_idx} ({counter}/{len(ares.fn_instances.index)}) done (time: {np.round(end_time - start_time, 2)} s)')
-#     counter += 1
-# counter = 1
-# for c_idx in range(len(ares.cluster.filtered_centroids_list)):
-#     start_time = time.time()
-#     centroid = ares.cluster.filtered_centroids_list[c_idx]
-#     original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[f'c_{c_idx}'], columns=data.features)
-#     discretized_centroid = data.discretize_df(original_centroid)
-#     recourse_set = ares.extract_recourses_x(discretized_centroid)
-#     results_centroid = ares.results_recourse_rules_x(recourse_set, discretized_centroid, data, model)
-#     ares.add_results(results_centroid)
-#     end_time = time.time()
-#     print(f'Dataset: {data_str}. Centroid {c_idx} ({counter}/{len(ares.cluster.filtered_centroids_list)}) done (time: {np.round(end_time - start_time, 2)} s)')
-#     counter += 1
+    def get_cf_normal_x_form(self, data):
+        """
+        Obtains the normal x form of the CF obtained through the recourse rules
+        """
+        normal_x_cf = {}
+        for c_idx in range(len(self.cluster.filtered_centroids_list)):
+            idx, dict_idx = f'c_{c_idx}', c_idx+1
+            centroid = self.cluster.filtered_centroids_list[c_idx]
+            original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[f'c_{c_idx}'], columns=data.features)
+            x = data.discretize_df(original_centroid)
+            q_c_c_prime = self.best_recourse_df[self.best_recourse_df['x_idx'] == idx]['best_q_c_c_prime']
+            x_prime = self.change_x_to_x_prime(x, q_c_c_prime)
+            x_prime_normal = self.transform_to_normal_x(x_prime, data)
+            normal_x_cf[dict_idx] = x_prime_normal
+        return normal_x_cf
+
