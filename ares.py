@@ -403,9 +403,9 @@ class ARES:
         Obtains the normal x form for all unique q_c_c_prime recourse rules for all the false negatives, including centroids
         """
         normal_x_cf = dict()
-        for idx in list(self.best_recourse_df.index):
-            q_c_c_prime_idx = self.best_recourse_df.loc[idx]['best_q_c_c_prime']
-            x_idx = self.discretized_test_df.loc[idx]
+        for idx in list(self.best_recourse_df['x_idx']):
+            q_c_c_prime_idx = self.best_recourse_df[self.best_recourse_df['x_idx'] == 135]['best_q_c_c_prime'][0]
+            x_idx = self.discretized_test_df.loc[idx].to_frame().T
             x_prime = self.change_x_to_x_prime(x_idx, q_c_c_prime_idx)
             x_prime_normal = self.transform_to_normal_x(x_prime, data)
             normal_x_cf[idx] = x_prime_normal
