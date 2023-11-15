@@ -67,6 +67,7 @@ if __name__=='__main__':
                     print(f'---------------------------')
         elif methods_to_run[0] == 'ares':
             counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagranges[0], likelihood_factors[0], alphas[0], betas[0], gammas[0], type=dist, t=100, k=1)
+            cf_evaluator.add_cf_data(counterfactual, lagrange[0], methods_to_run[0])
         print(f'---------------------------')
         print(f'  DONE: {data_str}')
         print(f'---------------------------')

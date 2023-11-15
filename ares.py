@@ -46,7 +46,9 @@ class ARES:
         self.get_recourses_for_centroids(data, model)
         self.format_results()
         self.get_best_recourse_rule_x()
+        self.unique_recourse_rules_df = self.get_unique_recourse_rules()
         self.normal_x_cf = self.get_cf_normal_x_form(data)
+        self.normal_x_cf_centroids = self.get_cf_normal_x_form_centroids(data)
         end_time = time.time()
         self.run_time = end_time - start_time
 
@@ -214,7 +216,7 @@ class ARES:
         for x_fn_i in range(len(self.fn_instances.index)):
             x_fn_idx = self.fn_instances.index[x_fn_i]
             x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T
-            recourse_set = ares.extract_recourses_x(x)
+            recourse_set = self.extract_recourses_x(x)
             correctness_dict_x, feat_change_dict_x = self.preallocate_correctness_feat_change_x(recourse_set)
             if x_fn_i == 0:
                 correctness_dict.update(correctness_dict_x)
@@ -273,7 +275,7 @@ class ARES:
                     q_c_c_prime = (q, c_key, c_prime_key)
                     len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
                     x_prime[c_prime] = np.array([1]*len_c_prime_key)
-                    x_prime_transformed = self.transform_to_normal_x(x_prime)
+                    x_prime_transformed = self.transform_to_normal_x(x_prime, data)
                     c_prime_key_name_list = [c_prime_key.split('_')[0]] if len_c_prime_key == 1 else [i.split('_') for i in c_prime_key]
                     for cont_feat in data.continuous:
                         if cont_feat not in c_prime_key_name_list:
@@ -373,19 +375,38 @@ class ARES:
             best_recourse_x_df = pd.DataFrame(data=[best_recourse_x], columns=self.best_recourse_df.columns)
             self.best_recourse_df = pd.concat((self.best_recourse_df, best_recourse_x_df))
 
-    def get_cf_normal_x_form(self, data):
+    def get_unique_recourse_rules(self):
         """
-        Obtains the normal x form of the CF obtained through the recourse rules
+        Obtains the unique rules used
         """
-        normal_x_cf = {}
+        unique_recourse_rules_df = self.best_recourse_df['best_q_c_c_prime'].value_counts()
+        return unique_recourse_rules_df
+
+    def get_cf_normal_x_form_centroids(self, data):
+        """
+        Obtains the normal x form of the CF obtained through the recourse rules for the centroids
+        """
+        normal_x_cf_centroids = dict()
         for c_idx in range(len(self.cluster.filtered_centroids_list)):
             idx, dict_idx = f'c_{c_idx}', c_idx+1
             centroid = self.cluster.filtered_centroids_list[c_idx]
             original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[f'c_{c_idx}'], columns=data.features)
             x = data.discretize_df(original_centroid)
-            q_c_c_prime = self.best_recourse_df[self.best_recourse_df['x_idx'] == idx]['best_q_c_c_prime']
+            q_c_c_prime = self.best_recourse_df[self.best_recourse_df['x_idx'] == idx]['best_q_c_c_prime'][0]
             x_prime = self.change_x_to_x_prime(x, q_c_c_prime)
             x_prime_normal = self.transform_to_normal_x(x_prime, data)
-            normal_x_cf[dict_idx] = x_prime_normal
-        return normal_x_cf
+            normal_x_cf_centroids[idx] = x_prime_normal
+        return normal_x_cf_centroids
 
+    def get_cf_normal_x_form(self, data):
+        """
+        Obtains the normal x form for all unique q_c_c_prime recourse rules for all the false negatives, including centroids
+        """
+        normal_x_cf = dict()
+        for idx in list(self.best_recourse_df.index):
+            q_c_c_prime_idx = self.best_recourse_df.loc[idx]['best_q_c_c_prime']
+            x_idx = self.discretized_test_df.loc[idx]
+            x_prime = self.change_x_to_x_prime(x_idx, q_c_c_prime_idx)
+            x_prime_normal = self.transform_to_normal_x(x_prime, data)
+            normal_x_cf[idx] = x_prime_normal
+        return normal_x_cf
