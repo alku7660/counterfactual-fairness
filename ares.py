@@ -388,11 +388,18 @@ class ARES:
         """
         normal_x_cf_centroids = dict()
         for c_idx in range(len(self.cluster.filtered_centroids_list)):
-            idx, dict_idx = f'c_{c_idx}', c_idx+1
+            idx = f'c_{c_idx}'
             centroid = self.cluster.filtered_centroids_list[c_idx]
             original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[f'c_{c_idx}'], columns=data.features)
             x = data.discretize_df(original_centroid)
             q_c_c_prime = self.best_recourse_df[self.best_recourse_df['x_idx'] == idx]['best_q_c_c_prime'][0]
+            c_prime = q_c_c_prime[-1]
+            c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
+            len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
+            c_prime_key_name_list = [c_prime_key.split('_')[0]] if len_c_prime_key == 1 else [i.split('_') for i in c_prime_key]
+            for cont_feat in data.continuous:
+                if cont_feat not in c_prime_key_name_list:
+                    x_prime_normal[cont_feat] = centroid.normal_x_df[cont_feat].values
             x_prime = self.change_x_to_x_prime(x, q_c_c_prime)
             x_prime_normal = self.transform_to_normal_x(x_prime, data)
             normal_x_cf_centroids[idx] = x_prime_normal
@@ -405,8 +412,15 @@ class ARES:
         normal_x_cf = dict()
         for idx in list(self.best_recourse_df['x_idx']):
             q_c_c_prime_idx = self.best_recourse_df[self.best_recourse_df['x_idx'] == 135]['best_q_c_c_prime'][0]
+            c_prime = [q_c_c_prime_idx[-1]]
+            c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
+            len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
             x_idx = self.discretized_test_df.loc[idx].to_frame().T
             x_prime = self.change_x_to_x_prime(x_idx, q_c_c_prime_idx)
             x_prime_normal = self.transform_to_normal_x(x_prime, data)
+            c_prime_key_name_list = [c_prime_key.split('_')[0]] if len_c_prime_key == 1 else [i.split('_') for i in c_prime_key]
+            for cont_feat in data.continuous:
+                if cont_feat not in c_prime_key_name_list:
+                    x_prime_normal[cont_feat] = self.transformed_test_df.loc[idx][cont_feat]
             normal_x_cf[idx] = x_prime_normal
         return normal_x_cf
