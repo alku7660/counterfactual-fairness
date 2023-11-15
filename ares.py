@@ -297,6 +297,8 @@ class ARES:
         """
         x_prime = copy.deepcopy(x)
         c, c_prime = q_c_c_prime[1], q_c_c_prime[2]
+        c = tuple(c)[0] if len(c) == 1 else tuple(c)
+        c_prime = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
         len_c = 1 if isinstance(c, str) else len(c)
         x_prime[c] = [0]*len_c
         len_c_prime_key = 1 if isinstance(c_prime, str) else len(c_prime)
@@ -411,11 +413,14 @@ class ARES:
         """
         normal_x_cf = dict()
         for idx in list(self.best_recourse_df['x_idx']):
-            q_c_c_prime_idx = self.best_recourse_df[self.best_recourse_df['x_idx'] == 135]['best_q_c_c_prime'][0]
+            q_c_c_prime_idx = self.best_recourse_df[self.best_recourse_df['x_idx'] == idx]['best_q_c_c_prime'][0]
             c_prime = [q_c_c_prime_idx[-1]]
             c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
             len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
-            x_idx = self.discretized_test_df.loc[idx].to_frame().T
+            if isinstance(idx,str):
+                continue
+            else:
+                x_idx = self.discretized_test_df.loc[idx].to_frame().T
             x_prime = self.change_x_to_x_prime(x_idx, q_c_c_prime_idx)
             x_prime_normal = self.transform_to_normal_x(x_prime, data)
             c_prime_key_name_list = [c_prime_key.split('_')[0]] if len_c_prime_key == 1 else [i.split('_') for i in c_prime_key]
