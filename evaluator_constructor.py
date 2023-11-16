@@ -155,6 +155,7 @@ class Evaluator():
         self.n_feat = n_feat
         self.cf_df = pd.DataFrame()
         self.cluster_obj = cluster_obj
+        self.epsilon = self.calculate_epsilon(data_obj)
 
     def search_desired_class_penalize(self, x, data):
         """
@@ -581,13 +582,22 @@ class Evaluator():
         pred = model_obj.model.predict(self.groups_cf[group])
         self.group_cf_validity[group] = pred != self.undesired_class
 
+    def calculate_epsilon(self, data):
+        """
+        Obtains the epsilon value for the estimation of the likelihood of all the CFs obtained by the ARES method
+        """
+        distance = distance_matrix(data.transformed_train_np, data.transformed_train_np, p=1)
+        upper_tri_distance = distance[np.triu_indices(len(data.transformed_train_np), k = 1)]
+        return np.std(upper_tri_distance, ddof=1) 
+
     def get_likelihood(self, data, cfs, dist='euclidean'):
         """
         Extracts the likelihood of all the nodes obtained
         """
         rho = {}
-        cfs_keys = cfs.keys()
-        distance = distance_matrix(cfs, data.transformed_train_np, p=1)
+        cfs_keys = list(cfs.keys())
+        cfs_np = np.array([cfs[i].values[0] for i in cfs.keys()])
+        distance = distance_matrix(cfs_np, data.transformed_train_np, p=1)
         gaussian_kernel = np.exp(-distance/self.epsilon)**2 
         for cf_key_idx in range(len(cfs_keys)):
             cf_key = cfs_keys[cf_key_idx]
@@ -731,8 +741,31 @@ class Evaluator():
                 'normal_cf','cf','cf_proximity','cf_feasibility','mean_likelihood','cf_time','model_status','obj_val']
         data = counterfactual.data
         cfs = counterfactual.cf_method.normal_x_cf
+        run_time = counterfactual.cf_method.run_time
         rho = self.get_likelihood(data, cfs)
+        mean_likelihood = np.mean([rho[cf] for cf in rho.keys()])
         lagrange = counterfactual.lagrange
-        for 
-        data_list = [lagrange, counterfactual.likelihood_factor, counterfactual.alpha, counterfactual.beta, counterfactual.gamma,
-                     centroid]
+        for idx in range(len(counterfactual.cf_method.best_recourse_df)):
+            instance = counterfactual.cf_method.best_recourse_df.iloc[idx]
+            instance_idx = instance['x_idx']
+            if isinstance(instance_idx,str):
+                continue
+            else:
+                x = data.test_df.loc[instance_idx].values
+            normal_x = data.transformed_test_df.loc[instance_idx].values
+            q_c_c_prime = instance['best_q_c_c_prime']
+            q, c, c_prime = q_c_c_prime[0], q_c_c_prime[1], q_c_c_prime[2]
+            feat, feat_val = q.split('_')[0], int(q.split('_')[1]) 
+            q = q if isinstance(q,str) else list(q) 
+            c = c if isinstance(c,str) else list(c) 
+            c_prime = c_prime if isinstance(c_prime,str) else list(c_prime)
+            normal_cf_df = cfs[instance_idx]
+            normal_cf = normal_cf_df.values[0]
+            original_cf = self.inverse_transform_original(normal_cf_df).values
+            cf_proximity = distance_calculation(normal_x, normal_cf, data, counterfactual.type)
+            cf_feasibility = verify_feasibility(normal_x, normal_cf, data)
+            data_list = [lagrange, counterfactual.likelihood_factor, counterfactual.alpha, counterfactual.beta, 
+                         counterfactual.gamma, feat, feat_val, instance_idx, instance_idx, normal_x, x, normal_cf, 
+                         original_cf, cf_proximity, cf_feasibility, mean_likelihood, run_time, 2, 'NA']
+            data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
+            self.cf_df = pd.concat((self.cf_df, data_df),axis=0)

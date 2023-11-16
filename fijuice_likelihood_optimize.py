@@ -24,14 +24,14 @@ class FIJUICE_LIKE_OPTIMIZE:
         end_time = time.time()
         self.run_time = end_time - start_time
 
-    def find_potential_justifiers(self, counterfactual, ijuice_search=False):
+    def find_potential_justifiers(self, counterfactual, extra_search=False):
         """
         Finds the set of training observations belonging to, and predicted as, the counterfactual class
         """
         train_np = counterfactual.data.transformed_train_np
         train_target = counterfactual.data.train_target
         train_pred = counterfactual.model.model.predict(train_np)
-        if not ijuice_search:
+        if not extra_search:
             potential_justifiers = train_np[(train_target != self.ioi_label) & (train_pred != self.ioi_label)]
         else:
             potential_justifiers = train_np[train_target != self.ioi_label]
@@ -43,7 +43,7 @@ class FIJUICE_LIKE_OPTIMIZE:
             normal_centroid = c.normal_x
             sort_potential_justifiers_centroid = []
             for i in range(potential_justifiers.shape[0]):
-                if ijuice_search: 
+                if extra_search: 
                     if verify_feasibility(normal_centroid, potential_justifiers[i], counterfactual.data):
                         dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=counterfactual.type)
                         sort_potential_justifiers_centroid.append((potential_justifiers[i], dist))
