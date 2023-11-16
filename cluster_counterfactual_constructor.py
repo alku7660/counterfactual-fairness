@@ -3,13 +3,13 @@ from mo import MO
 from cchvae import CCHVAE
 from ijuice import IJUICE
 from fijuice import FIJUICE
-from fijuice_likelihood_constraint import FIJUICE_LIKE_CONSTRAINT
-from fijuice_likelihood_optimize import FIJUICE_LIKE_OPTIMIZE
+from foce_constraint import FOCE_CONSTRAINT
+from foce_optimize import FOCE_OPTIMIZE
 from ares import ARES
 
 class Counterfactual:
 
-    def __init__(self, data, model, method, cluster, lagrange, likelihood_factor=0.2, alpha=1, beta=1, gamma=1, type='L1_L0', t=100, k=10, graph=None):
+    def __init__(self, data, model, method, cluster, lagrange, likelihood_factor=0.2, alpha=1, beta=1, gamma=1, type='L1_L0', graph=None):
         self.data = data
         self.model = model
         self.method = method
@@ -18,8 +18,8 @@ class Counterfactual:
         self.lagrange = lagrange
         self.likelihood_factor = likelihood_factor
         self.alpha, self.beta, self.gamma = alpha, beta, gamma
-        self.t = t
-        self.k = k
+        # self.t = t
+        # self.k = k
         self.graph = graph
         if self.graph is not None:
             self.rho_min = self.calculate_rho_min()
@@ -39,9 +39,9 @@ class Counterfactual:
         if self.method == 'fijuice':
             cf_method = FIJUICE(self)
         if self.method == 'fijuice_like_constraint':
-            cf_method = FIJUICE_LIKE_CONSTRAINT(self)
+            cf_method = FOCE_CONSTRAINT(self)
         if self.method == 'fijuice_like_optimize':
-            cf_method = FIJUICE_LIKE_OPTIMIZE(self)
+            cf_method = FOCE_OPTIMIZE(self)
         if self.method == 'ares':
             cf_method = ARES(self)
         # elif self.method == 'nn':

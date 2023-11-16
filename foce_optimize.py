@@ -9,7 +9,7 @@ from nnt import nn_for_juice
 import time
 from scipy.stats import norm
 
-class FIJUICE_LIKE_OPTIMIZE:
+class FOCE_OPTIMIZE:
 
     def __init__(self, counterfactual):
         self.cluster = counterfactual.cluster

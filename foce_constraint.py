@@ -9,7 +9,7 @@ from nnt import nn_for_juice
 import time
 from scipy.stats import norm
 
-class FIJUICE_LIKE_CONSTRAINT:
+class FOCE_CONSTRAINT:
 
     def __init__(self, counterfactual):
         self.cluster = counterfactual.cluster

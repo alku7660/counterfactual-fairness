@@ -14,7 +14,7 @@ from sklearn.metrics import f1_score
 from support import save_obj
 
 datasets = ['synthetic_athlete'] # 'german','dutch','compass','oulad','synthetic_athlete'
-methods_to_run = ['ares'] # ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice','fijuice_like_constraint','fijuice_like_optimize','ares']
+methods_to_run = ['fijuice_like_optimize'] # ['nn','fijuice_like_constraint','fijuice_like_optimize','ares']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -24,9 +24,9 @@ only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class 
 clustering_metric = 'complete' # Clustering metric used
 dist = 'L1_L0'
 lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-likelihood_factors = [0.0] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
-t = 100 # Number of preselected close NN Training Counterfactuals
-k = 10
+likelihood_factors = [0.5] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+# t = 100 # Number of preselected close NN Training Counterfactuals
+# k = 10
 alphas =  [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 betas = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 gammas = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
@@ -42,7 +42,7 @@ if __name__=='__main__':
         cf_evaluator.add_fairness_measures(data, model)
         cf_evaluator.add_fnr_data(data)
         if methods_to_run[0] in ['fijuice_like_constraint','fijuice_like_optimize']:
-            graph_obj = Graph(data, model, clusters_obj, dist, t=t, k=k)
+            graph_obj = Graph(data, model, clusters_obj, dist)
             for lagrange in lagranges:
                 for likelihood_factor in likelihood_factors:
                     for alpha in alphas:
@@ -60,13 +60,13 @@ if __name__=='__main__':
                                 print(f'                       beta: {beta}')
                                 print(f'                      gamma: {gamma}')
                                 print(f'---------------------------------------')
-                                counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagrange, likelihood_factor, alpha, beta, gamma, type=dist, t=100, k=1, graph=graph_obj)
+                                counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagrange, likelihood_factor, alpha, beta, gamma, type=dist, graph=graph_obj)
                                 cf_evaluator.add_cf_data(counterfactual, lagrange)
                                 print(f'---------------------------')
                                 print(f'  DONE: {data_str}, lagrange: {lagrange}, likelihood: {likelihood_factor}, alpha: {alpha}, beta: {beta}, gamma: {gamma}')
                     print(f'---------------------------')
         elif methods_to_run[0] == 'ares':
-            counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagranges[0], likelihood_factors[0], alphas[0], betas[0], gammas[0], type=dist, t=100, k=1)
+            counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagranges[0], likelihood_factors[0], alphas[0], betas[0], gammas[0], type=dist)
             cf_evaluator.add_cf_data_ares(counterfactual)
         print(f'---------------------------')
         print(f'  DONE: {data_str}')
