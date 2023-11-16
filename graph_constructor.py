@@ -327,11 +327,6 @@ class Graph:
         Extracts the likelihood of all the nodes obtained
         """
         rho = {}
-        # for i in range(1, len(all_nodes) + 1):
-        #     node_i = all_nodes[i - 1]
-        #     sum_gaussian_kernel_node_i = 0
-        #     for x in data.transformed_train_np:
-        #         sum_gaussian_kernel_node_i += np.exp(-((distance_calculation(node_i, x, data, dist)/self.epsilon)**2))
         distance = distance_matrix(all_nodes, data.transformed_train_np, p=1)
         gaussian_kernel = np.exp(-distance/self.epsilon)**2 
         for i in range(1, len(all_nodes) + 1):

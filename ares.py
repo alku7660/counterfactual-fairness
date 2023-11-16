@@ -297,8 +297,8 @@ class ARES:
         """
         x_prime = copy.deepcopy(x)
         c, c_prime = q_c_c_prime[1], q_c_c_prime[2]
-        c = tuple(c)[0] if len(c) == 1 else tuple(c)
-        c_prime = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
+        c = c if isinstance(c,str) else list(c)
+        c_prime = c_prime if isinstance(c_prime,str) else list(c_prime)
         len_c = 1 if isinstance(c, str) else len(c)
         x_prime[c] = [0]*len_c
         len_c_prime_key = 1 if isinstance(c_prime, str) else len(c_prime)
@@ -317,14 +317,15 @@ class ARES:
         Obtains all the best recourses for all FN instances
         """
         counter = 1
-        for x_fn_idx in self.fn_instances.index:
+        set_instances = self.fn_instances.index[:8]
+        for x_fn_idx in set_instances:
             start_time = time.time()
             x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T
             recourse_set = self.extract_recourses_x(x)
             results_x = self.results_recourse_rules_x(recourse_set, x, data, model)
             self.add_results(results_x)
             end_time = time.time()
-            print(f'Dataset: {data.name}. Instance {x_fn_idx} ({counter}/{len(self.fn_instances.index)}) done (time: {np.round(end_time - start_time, 2)} s)')
+            print(f'Dataset: {data.name}. Instance {x_fn_idx} ({counter}/{len(set_instances)}) done (time: {np.round(end_time - start_time, 2)} s)')
             counter += 1
     
     def get_recourses_for_centroids(self, data, model):
@@ -398,12 +399,12 @@ class ARES:
             c_prime = q_c_c_prime[-1]
             c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
             len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
+            x_prime = self.change_x_to_x_prime(x, q_c_c_prime)
+            x_prime_normal = self.transform_to_normal_x(x_prime, data)
             c_prime_key_name_list = [c_prime_key.split('_')[0]] if len_c_prime_key == 1 else [i.split('_') for i in c_prime_key]
             for cont_feat in data.continuous:
                 if cont_feat not in c_prime_key_name_list:
                     x_prime_normal[cont_feat] = centroid.normal_x_df[cont_feat].values
-            x_prime = self.change_x_to_x_prime(x, q_c_c_prime)
-            x_prime_normal = self.transform_to_normal_x(x_prime, data)
             normal_x_cf_centroids[idx] = x_prime_normal
         return normal_x_cf_centroids
 

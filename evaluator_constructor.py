@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from support import euclidean, sort_data_distance
 from support import verify_feasibility
+from scipy.spatial import distance_matrix
 from scipy.stats import norm
 import copy
 
@@ -580,6 +581,19 @@ class Evaluator():
         pred = model_obj.model.predict(self.groups_cf[group])
         self.group_cf_validity[group] = pred != self.undesired_class
 
+    def get_likelihood(self, data, cfs, dist='euclidean'):
+        """
+        Extracts the likelihood of all the nodes obtained
+        """
+        rho = {}
+        cfs_keys = cfs.keys()
+        distance = distance_matrix(cfs, data.transformed_train_np, p=1)
+        gaussian_kernel = np.exp(-distance/self.epsilon)**2 
+        for cf_key_idx in range(len(cfs_keys)):
+            cf_key = cfs_keys[cf_key_idx]
+            rho[cf_key] = np.sum(gaussian_kernel, axis=1)[cf_key_idx-1]
+        return rho
+
     def prepare_groups_clusters_analysis(self):
         """
         DESCRIPTION:            Preallocates the required dictionaries and DataFrames for the analysis of groups and clusters
@@ -707,3 +721,18 @@ class Evaluator():
                              counterfactual.cf_method.model_status, counterfactual.cf_method.obj_val]
                 data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
                 self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
+
+    def add_cf_data_ares(self, counterfactual):
+        """
+        DESCRIPTION: Stores the results for the ARES method in the evaluation object
+        OUTPUT: (None: stored as class attributes)
+        """ 
+        cols = ['lagrange','likelihood','alpha','beta','gamma','feature','feat_value','instance_idx','centroid_idx','normal_centroid','centroid',
+                'normal_cf','cf','cf_proximity','cf_feasibility','mean_likelihood','cf_time','model_status','obj_val']
+        data = counterfactual.data
+        cfs = counterfactual.cf_method.normal_x_cf
+        rho = self.get_likelihood(data, cfs)
+        lagrange = counterfactual.lagrange
+        for 
+        data_list = [lagrange, counterfactual.likelihood_factor, counterfactual.alpha, counterfactual.beta, counterfactual.gamma,
+                     centroid]
