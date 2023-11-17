@@ -22,6 +22,7 @@ epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feat
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 clustering_metric = 'complete' # Clustering metric used
+percentage_close_train_cf = 0.1
 dist = 'L1_L0'
 lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 likelihood_factors = [0.5] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
@@ -42,7 +43,7 @@ if __name__=='__main__':
         cf_evaluator.add_fairness_measures(data, model)
         cf_evaluator.add_fnr_data(data)
         if methods_to_run[0] in ['fijuice_like_constraint','fijuice_like_optimize']:
-            graph_obj = Graph(data, model, clusters_obj, dist)
+            graph_obj = Graph(data, model, clusters_obj, dist, percentage=percentage_close_train_cf)
             for lagrange in lagranges:
                 for likelihood_factor in likelihood_factors:
                     for alpha in alphas:

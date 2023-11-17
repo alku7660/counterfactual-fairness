@@ -16,49 +16,47 @@ class FOCE_OPTIMIZE:
         self.ioi_label = self.cluster.undesired_class
         self.lagrange = counterfactual.lagrange
         self.alpha, self.beta, self.gamma = counterfactual.alpha, counterfactual.beta, counterfactual.gamma
-        self.t = counterfactual.t
-        self.k = counterfactual.k
         self.graph = counterfactual.graph
         start_time = time.time()
-        self.normal_x_cf, self.nodes_solution, self.model_status, self.obj_val = self.Fijuice(counterfactual)
+        self.normal_x_cf, self.nodes_solution, self.model_status, self.obj_val = self.Foce(counterfactual)
         end_time = time.time()
         self.run_time = end_time - start_time
 
-    def find_potential_justifiers(self, counterfactual, extra_search=False):
-        """
-        Finds the set of training observations belonging to, and predicted as, the counterfactual class
-        """
-        train_np = counterfactual.data.transformed_train_np
-        train_target = counterfactual.data.train_target
-        train_pred = counterfactual.model.model.predict(train_np)
-        if not extra_search:
-            potential_justifiers = train_np[(train_target != self.ioi_label) & (train_pred != self.ioi_label)]
-        else:
-            potential_justifiers = train_np[train_target != self.ioi_label]
-        potential_justifiers_df = pd.DataFrame(columns = ['centroid','feat','feat_val','justifiers'])
-        for idx in range(len(self.cluster.filtered_centroids_list)):
-            c = self.cluster.filtered_centroids_list[idx]
-            feat = c.feat
-            feat_val = c.feat_val
-            normal_centroid = c.normal_x
-            sort_potential_justifiers_centroid = []
-            for i in range(potential_justifiers.shape[0]):
-                if extra_search: 
-                    if verify_feasibility(normal_centroid, potential_justifiers[i], counterfactual.data):
-                        dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=counterfactual.type)
-                        sort_potential_justifiers_centroid.append((potential_justifiers[i], dist))
-                else:
-                    dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=counterfactual.type)
-                    sort_potential_justifiers_centroid.append((potential_justifiers[i], dist))
-            sort_potential_justifiers_centroid.sort(key=lambda x: x[1])
-            sort_potential_justifiers_centroid = [i[0] for i in sort_potential_justifiers_centroid]
-            if len(sort_potential_justifiers_centroid) > self.t:
-                sort_potential_justifiers_centroid = sort_potential_justifiers_centroid[:self.t]
-            centroid_df_data = pd.DataFrame([[normal_centroid, feat, feat_val, sort_potential_justifiers_centroid]], index=[idx], columns=potential_justifiers_df.columns)
-            potential_justifiers_df = pd.concat((potential_justifiers_df, centroid_df_data), axis=0)
-        return potential_justifiers_df
+    # def find_potential_justifiers(self, counterfactual, extra_search=False):
+    #     """
+    #     Finds the set of training observations belonging to, and predicted as, the counterfactual class
+    #     """
+    #     train_np = counterfactual.data.transformed_train_np
+    #     train_target = counterfactual.data.train_target
+    #     train_pred = counterfactual.model.model.predict(train_np)
+    #     if not extra_search:
+    #         potential_justifiers = train_np[(train_target != self.ioi_label) & (train_pred != self.ioi_label)]
+    #     else:
+    #         potential_justifiers = train_np[train_target != self.ioi_label]
+    #     potential_justifiers_df = pd.DataFrame(columns = ['centroid','feat','feat_val','justifiers'])
+    #     for idx in range(len(self.cluster.filtered_centroids_list)):
+    #         c = self.cluster.filtered_centroids_list[idx]
+    #         feat = c.feat
+    #         feat_val = c.feat_val
+    #         normal_centroid = c.normal_x
+    #         sort_potential_justifiers_centroid = []
+    #         for i in range(potential_justifiers.shape[0]):
+    #             if extra_search: 
+    #                 if verify_feasibility(normal_centroid, potential_justifiers[i], counterfactual.data):
+    #                     dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=counterfactual.type)
+    #                     sort_potential_justifiers_centroid.append((potential_justifiers[i], dist))
+    #             else:
+    #                 dist = distance_calculation(potential_justifiers[i], normal_centroid, counterfactual.data, type=counterfactual.type)
+    #                 sort_potential_justifiers_centroid.append((potential_justifiers[i], dist))
+    #         sort_potential_justifiers_centroid.sort(key=lambda x: x[1])
+    #         sort_potential_justifiers_centroid = [i[0] for i in sort_potential_justifiers_centroid]
+    #         if len(sort_potential_justifiers_centroid) > self.t:
+    #             sort_potential_justifiers_centroid = sort_potential_justifiers_centroid[:self.t]
+    #         centroid_df_data = pd.DataFrame([[normal_centroid, feat, feat_val, sort_potential_justifiers_centroid]], index=[idx], columns=potential_justifiers_df.columns)
+    #         potential_justifiers_df = pd.concat((potential_justifiers_df, centroid_df_data), axis=0)
+    #     return potential_justifiers_df
 
-    def Fijuice(self, counterfactual):
+    def Foce(self, counterfactual):
         """
         FairJUICE algorithm
         """
@@ -67,12 +65,12 @@ class FOCE_OPTIMIZE:
 
     def do_optimize_all(self, counterfactual):
         """
-        Method that finds FiJUICE CF prioritizing likelihood using Gurobi optimization package
+        Method that finds Foce CF prioritizing likelihood using Gurobi optimization package
         """
         """
         MODEL
         """
-        opt_model = gp.Model(name='FiJUICE')
+        opt_model = gp.Model(name='Foce')
         G = nx.DiGraph()
         G.add_nodes_from(self.graph.rho)
 

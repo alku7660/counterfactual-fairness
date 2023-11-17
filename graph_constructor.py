@@ -13,13 +13,14 @@ from scipy.stats import norm
 
 class Graph:
 
-    def __init__(self, data, model, cluster, type) -> None:
+    def __init__(self, data, model, cluster, type, percentage) -> None:
+        self.percentage = percentage
         self.cluster = cluster
         self.ioi_label = cluster.undesired_class
         self.train_cf = self.find_train_cf(data, model, type)
         # self.train_cf = self.nn_list(data)
         self.epsilon = self.get_epsilon(data, dist=type)
-        self.feat_possible_values, self.all_nodes, self.C, self.W, self.CW, self.F, self.A, self.rho = self.construct_graph(data, model, type)
+        self.feat_possible_values, self.all_nodes, self.C, self.W, self.CW, self.F, self.A, self.rho, self.eta = self.construct_graph(data, model, type)
     
     def find_train_cf(self, data, model, type, extra_search=False):
         """
@@ -55,6 +56,7 @@ class Graph:
         # return train_cf_df
         sort_train_cf_centroid.sort(key=lambda x: x[1])
         sort_train_cf_centroid = [i[0] for i in sort_train_cf_centroid]
+        sort_train_cf_centroid = sort_train_cf_centroid[:int(len(sort_train_cf_centroid)*self.percentage)]
         return sort_train_cf_centroid
 
     def nn_list(self, data):
@@ -92,12 +94,11 @@ class Graph:
         print(f'Obtained all costs in the graph')
         F = self.get_all_feasibility(data, all_nodes)
         print(f'Obtained all feasibility in the graph')
-        # A = self.get_all_adjacency(data, all_nodes)
-        A = 1
-        # print(f'Obtained adjacency matrix')
         rho = self.get_all_likelihood(data, all_nodes, dist=type)
         print(f'Obtained all Likelihood parameter')
-        return feat_possible_values, all_nodes, C, W, CW, F, A, rho
+        eta = self.get_all_effectiveness(data, all_nodes)
+        print(f'Obtained all effectiveness parameter')
+        return feat_possible_values, all_nodes, C, W, CW, F, A, rho, eta
     
     def get_feat_possible_values(self, data, obj=None, points=None):
         """
@@ -211,11 +212,12 @@ class Graph:
                     dist_instance_node += distance_calculation(instance, node_k, data, type)
                 C[c_idx, k] = dist_instance_node/len(cluster_instances_list)
                 CW[c_idx, k] = C[c_idx, k]*W[c_idx]
+                print(f'Costs for centroid {c_idx}, node {k} calculated')
         return C, W, CW
     
     def get_all_feasibility(self, data, all_nodes):
         """
-        Outputs the counterfactual feasibility parameter for all graph nodes (including the potential justifiers) 
+        Outputs the counterfactual feasibility parameter for all graph nodes (including the training CFs) 
         """
         F = {}
         for c_idx in range(1, len(self.cluster.filtered_centroids_list) + 1):
@@ -225,62 +227,78 @@ class Graph:
                 F[c_idx, k] = verify_feasibility(normal_centroid, node_k, data)
         return F
     
-    def get_all_adjacency(self, data, all_nodes):
+    def get_all_effectiveness(self, data, all_nodes):
         """
-        Method that outputs the adjacency matrix required for optimization
+        Outputs the counterfactual effectiveness parameter for all nodes (including the training CFs)
         """
-        toler = 0.00001
-        centroids_array = np.array([self.cluster.filtered_centroids_list[i].normal_x for i in range(len(self.cluster.filtered_centroids_list))])
-        justifiers_array = np.array(self.train_cf)
-        A = tuplelist()
-        for i in range(1, len(all_nodes) + 1):
-            node_i = all_nodes[i - 1]
-            for j in range(i + 1, len(all_nodes) + 1):
-                node_j = all_nodes[j - 1]
-                vector_ij = node_j - node_i
-                nonzero_index = list(np.nonzero(vector_ij)[0])
-                feat_nonzero = [data.processed_features[l] for l in nonzero_index]
-                if len(nonzero_index) > 2:
-                    continue
-                elif len(nonzero_index) == 2:
-                    if any(item in data.cat_enc_cols for item in feat_nonzero):
-                        A.append((i,j))
-                elif len(nonzero_index) == 1:
-                    if any(item in data.ordinal for item in feat_nonzero):
-                        if np.isclose(np.abs(vector_ij[nonzero_index]), data.feat_step[feat_nonzero], atol=toler).any():
-                            A.append((i,j))
-                    elif any(item in data.continuous for item in feat_nonzero):
-                        max_val, min_val = float(max(max(centroids_array[:,nonzero_index]), max(justifiers_array[:,nonzero_index]))), float(min(min(centroids_array[:,nonzero_index]), min(justifiers_array[:,nonzero_index])))
-                        values = self.continuous_feat_values(nonzero_index, min_val, max_val, data)
-                        try:
-                            value_node_i_idx = int(np.where(np.isclose(values, node_i[nonzero_index]))[0])
-                            if value_node_i_idx > 0:
-                                value_node_i_idx_inf = value_node_i_idx - 1
-                                value_node_i_idx_sup = value_node_i_idx
-                            else:
-                                value_node_i_idx_inf = value_node_i_idx
-                                value_node_i_idx_sup = value_node_i_idx + 1
-                            if value_node_i_idx < len(values) - 1:
-                                value_node_i_idx_inf = value_node_i_idx
-                                value_node_i_idx_sup = value_node_i_idx + 1
-                            else:
-                                value_node_i_idx_inf = value_node_i_idx -1
-                                value_node_i_idx_sup = value_node_i_idx
-                        except:
-                            if node_i[nonzero_index] < values[0]:
-                                value_node_i_idx_inf, value_node_i_idx_sup = 0, 0
-                            elif node_i[nonzero_index] > values[-1]:
-                                value_node_i_idx_inf, value_node_i_idx_sup = len(values) - 1, len(values) - 1
-                            for k in range(len(values) - 1):
-                                if node_i[nonzero_index] <= values[k+1] and node_i[nonzero_index] >= values[k]:
-                                    value_node_i_idx_inf, value_node_i_idx_sup = k, k+1  
-                        close_node_j_values = [values[value_node_i_idx_inf], values[value_node_i_idx_sup]]
-                        if any(np.isclose(node_j[nonzero_index], close_node_j_values)):
-                            A.append((i,j))
-                    elif any(item in data.binary for item in feat_nonzero):
-                        if np.isclose(np.abs(vector_ij[nonzero_index]), [0,1], atol=toler).any():
-                            A.append((i,j))
-        return A
+        eta = {}
+        for k in range(1, len(all_nodes) + 1):
+            sum_eta = 0
+            for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
+                cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
+                for instance_idx in cluster_instances_list:
+                    instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
+                    node_k = all_nodes[k-1]
+                    sum_eta += verify_feasibility(instance, node_k, data)
+            eta[k] = sum_eta
+        return eta
+
+    # def get_all_adjacency(self, data, all_nodes):
+    #     """
+    #     Method that outputs the adjacency matrix required for optimization
+    #     """
+    #     toler = 0.00001
+    #     centroids_array = np.array([self.cluster.filtered_centroids_list[i].normal_x for i in range(len(self.cluster.filtered_centroids_list))])
+    #     justifiers_array = np.array(self.train_cf)
+    #     A = tuplelist()
+    #     for i in range(1, len(all_nodes) + 1):
+    #         node_i = all_nodes[i - 1]
+    #         for j in range(i + 1, len(all_nodes) + 1):
+    #             node_j = all_nodes[j - 1]
+    #             vector_ij = node_j - node_i
+    #             nonzero_index = list(np.nonzero(vector_ij)[0])
+    #             feat_nonzero = [data.processed_features[l] for l in nonzero_index]
+    #             if len(nonzero_index) > 2:
+    #                 continue
+    #             elif len(nonzero_index) == 2:
+    #                 if any(item in data.cat_enc_cols for item in feat_nonzero):
+    #                     A.append((i,j))
+    #             elif len(nonzero_index) == 1:
+    #                 if any(item in data.ordinal for item in feat_nonzero):
+    #                     if np.isclose(np.abs(vector_ij[nonzero_index]), data.feat_step[feat_nonzero], atol=toler).any():
+    #                         A.append((i,j))
+    #                 elif any(item in data.continuous for item in feat_nonzero):
+    #                     max_val, min_val = float(max(max(centroids_array[:,nonzero_index]), max(justifiers_array[:,nonzero_index]))), float(min(min(centroids_array[:,nonzero_index]), min(justifiers_array[:,nonzero_index])))
+    #                     values = self.continuous_feat_values(nonzero_index, min_val, max_val, data)
+    #                     try:
+    #                         value_node_i_idx = int(np.where(np.isclose(values, node_i[nonzero_index]))[0])
+    #                         if value_node_i_idx > 0:
+    #                             value_node_i_idx_inf = value_node_i_idx - 1
+    #                             value_node_i_idx_sup = value_node_i_idx
+    #                         else:
+    #                             value_node_i_idx_inf = value_node_i_idx
+    #                             value_node_i_idx_sup = value_node_i_idx + 1
+    #                         if value_node_i_idx < len(values) - 1:
+    #                             value_node_i_idx_inf = value_node_i_idx
+    #                             value_node_i_idx_sup = value_node_i_idx + 1
+    #                         else:
+    #                             value_node_i_idx_inf = value_node_i_idx -1
+    #                             value_node_i_idx_sup = value_node_i_idx
+    #                     except:
+    #                         if node_i[nonzero_index] < values[0]:
+    #                             value_node_i_idx_inf, value_node_i_idx_sup = 0, 0
+    #                         elif node_i[nonzero_index] > values[-1]:
+    #                             value_node_i_idx_inf, value_node_i_idx_sup = len(values) - 1, len(values) - 1
+    #                         for k in range(len(values) - 1):
+    #                             if node_i[nonzero_index] <= values[k+1] and node_i[nonzero_index] >= values[k]:
+    #                                 value_node_i_idx_inf, value_node_i_idx_sup = k, k+1  
+    #                     close_node_j_values = [values[value_node_i_idx_inf], values[value_node_i_idx_sup]]
+    #                     if any(np.isclose(node_j[nonzero_index], close_node_j_values)):
+    #                         A.append((i,j))
+    #                 elif any(item in data.binary for item in feat_nonzero):
+    #                     if np.isclose(np.abs(vector_ij[nonzero_index]), [0,1], atol=toler).any():
+    #                         A.append((i,j))
+    #     return A
     
     def continuous_feat_values(self, i, min_val, max_val, data):
         """
@@ -288,7 +306,7 @@ class Graph:
         """
         sorted_feat_i = list(np.sort(data.transformed_train_np[:,i][(data.transformed_train_np[:,i] >= min_val) & (data.transformed_train_np[:,i] <= max_val)]))
         value = list(np.unique(sorted_feat_i))
-        if len(value) <= 20:
+        if len(value) <= 10:
             if min_val not in value:
                 value = [min_val] + value
             if max_val not in value:
