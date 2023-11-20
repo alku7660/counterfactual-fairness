@@ -22,15 +22,16 @@ epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feat
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 clustering_metric = 'complete' # Clustering metric used
-percentage_close_train_cf = 0.1
+percentage_close_train_cf = 0.05
 dist = 'L1_L0'
 lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 likelihood_factors = [0.5] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
 # t = 100 # Number of preselected close NN Training Counterfactuals
 # k = 10
-alphas =  [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-betas = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-gammas = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+alphas =  [0.97, 0.01, 0.01, 0.01]
+betas = [0.01, 0.97, 0.01, 0.01]
+gammas = [0.01, 0.01, 0.97, 0.01]
+deltas = [0.01, 0.01, 0.01, 0.97]
 np.random.seed(seed_int)
 
 if __name__=='__main__':
@@ -49,22 +50,23 @@ if __name__=='__main__':
                     for alpha in alphas:
                         for beta in betas:
                             for gamma in gammas:
-                                print(f'---------------------------------------')
-                                print(f'                    Dataset: {data_str}')
-                                print(f'        Train dataset shape: {data.train_df.shape}')
-                                print(f'         Test dataset shape: {data.false_undesired_test_df.shape}')
-                                print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
-                                print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
-                                print(f'                   lagrange: {lagrange}')
-                                print(f'          likelihood factor: {likelihood_factor}')
-                                print(f'                      alpha: {alpha}')
-                                print(f'                       beta: {beta}')
-                                print(f'                      gamma: {gamma}')
-                                print(f'---------------------------------------')
-                                counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagrange, likelihood_factor, alpha, beta, gamma, type=dist, graph=graph_obj)
-                                cf_evaluator.add_cf_data(counterfactual, lagrange)
-                                print(f'---------------------------')
-                                print(f'  DONE: {data_str}, lagrange: {lagrange}, likelihood: {likelihood_factor}, alpha: {alpha}, beta: {beta}, gamma: {gamma}')
+                                for delta in deltas:
+                                    print(f'---------------------------------------')
+                                    print(f'                    Dataset: {data_str}')
+                                    print(f'        Train dataset shape: {data.train_df.shape}')
+                                    print(f'         Test dataset shape: {data.false_undesired_test_df.shape}')
+                                    print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
+                                    print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
+                                    print(f'                   lagrange: {lagrange}')
+                                    print(f'          likelihood factor: {likelihood_factor}')
+                                    print(f'                      alpha: {alpha}')
+                                    print(f'                       beta: {beta}')
+                                    print(f'                      gamma: {gamma}')
+                                    print(f'---------------------------------------')
+                                    counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagrange, likelihood_factor, alpha, beta, gamma, delta, type=dist, graph=graph_obj)
+                                    cf_evaluator.add_cf_data(counterfactual, lagrange)
+                                    print(f'---------------------------')
+                                    print(f'  DONE: {data_str}, lagrange: {lagrange}, likelihood: {likelihood_factor}, alpha: {alpha}, beta: {beta}, gamma: {gamma}, delta: {delta}')
                     print(f'---------------------------')
         elif methods_to_run[0] == 'ares':
             counterfactual = Counterfactual(data, model, methods_to_run[0], clusters_obj, lagranges[0], likelihood_factors[0], alphas[0], betas[0], gammas[0], type=dist)

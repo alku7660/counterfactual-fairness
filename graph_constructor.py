@@ -20,7 +20,7 @@ class Graph:
         self.train_cf = self.find_train_cf(data, model, type)
         # self.train_cf = self.nn_list(data)
         self.epsilon = self.get_epsilon(data, dist=type)
-        self.feat_possible_values, self.all_nodes, self.C, self.W, self.CW, self.F, self.A, self.rho, self.eta = self.construct_graph(data, model, type)
+        self.feat_possible_values, self.all_nodes, self.C, self.W, self.CW, self.F, self.rho, self.eta = self.construct_graph(data, model, type)
     
     def find_train_cf(self, data, model, type, extra_search=False):
         """
@@ -98,7 +98,7 @@ class Graph:
         print(f'Obtained all Likelihood parameter')
         eta = self.get_all_effectiveness(data, all_nodes)
         print(f'Obtained all effectiveness parameter')
-        return feat_possible_values, all_nodes, C, W, CW, F, A, rho, eta
+        return feat_possible_values, all_nodes, C, W, CW, F, rho, eta
     
     def get_feat_possible_values(self, data, obj=None, points=None):
         """
@@ -232,15 +232,20 @@ class Graph:
         Outputs the counterfactual effectiveness parameter for all nodes (including the training CFs)
         """
         eta = {}
+        len_cluster_instances = 0
+        for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
+            cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
+            len_cluster_instances += len(cluster_instances_list)
         for k in range(1, len(all_nodes) + 1):
             sum_eta = 0
+            node_k = all_nodes[k-1]
             for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
                 cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
                 for instance_idx in cluster_instances_list:
                     instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
-                    node_k = all_nodes[k-1]
                     sum_eta += verify_feasibility(instance, node_k, data)
-            eta[k] = sum_eta
+            eta[k] = sum_eta/len_cluster_instances
+            print(f'Highest eta value: {np.max(list(eta.values()))}')
         return eta
 
     # def get_all_adjacency(self, data, all_nodes):
@@ -345,9 +350,12 @@ class Graph:
         """
         rho = {}
         distance = distance_matrix(all_nodes, data.transformed_train_np, p=1)
-        gaussian_kernel = np.exp(-distance/self.epsilon)**2 
+        gaussian_kernel = np.exp(-(distance/self.epsilon)**2)
+        sum_gaussian_kernel_col = np.sum(gaussian_kernel, axis=1)
+        max_sum_gaussian_kernel_col = np.max(sum_gaussian_kernel_col)
+        min_sum_gaussian_kernel_col = np.min(sum_gaussian_kernel_col)
         for i in range(1, len(all_nodes) + 1):
-            rho[i] = np.sum(gaussian_kernel, axis=1)[i-1]
+            rho[i] = (sum_gaussian_kernel_col[i-1] - min_sum_gaussian_kernel_col)/(max_sum_gaussian_kernel_col - min_sum_gaussian_kernel_col)
         return rho
             
 

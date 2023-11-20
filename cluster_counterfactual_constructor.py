@@ -9,7 +9,7 @@ from ares import ARES
 
 class Counterfactual:
 
-    def __init__(self, data, model, method, cluster, lagrange, likelihood_factor=0.2, alpha=1, beta=1, gamma=1, type='L1_L0', graph=None):
+    def __init__(self, data, model, method, cluster, lagrange, likelihood_factor=0.2, alpha=1, beta=1, gamma=1, delta=1, type='L1_L0', graph=None):
         self.data = data
         self.model = model
         self.method = method
@@ -17,7 +17,7 @@ class Counterfactual:
         self.type = type
         self.lagrange = lagrange
         self.likelihood_factor = likelihood_factor
-        self.alpha, self.beta, self.gamma = alpha, beta, gamma
+        self.alpha, self.beta, self.gamma, self.delta = alpha, beta, gamma, delta
         # self.t = t
         # self.k = k
         self.graph = graph

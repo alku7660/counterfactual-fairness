@@ -590,7 +590,7 @@ class Evaluator():
         upper_tri_distance = distance[np.triu_indices(len(data.transformed_train_np), k = 1)]
         return np.std(upper_tri_distance, ddof=1) 
 
-    def get_likelihood(self, data, cfs, dist='euclidean'):
+    def get_likelihood(self, data, cfs):
         """
         Extracts the likelihood of all the nodes obtained
         """
@@ -598,11 +598,33 @@ class Evaluator():
         cfs_keys = list(cfs.keys())
         cfs_np = np.array([cfs[i].values[0] for i in cfs.keys()])
         distance = distance_matrix(cfs_np, data.transformed_train_np, p=1)
-        gaussian_kernel = np.exp(-distance/self.epsilon)**2 
+        gaussian_kernel = np.exp(-(distance/self.epsilon)**2)
+        sum_gaussian_kernel_col = np.sum(gaussian_kernel, axis=1)
         for cf_key_idx in range(len(cfs_keys)):
             cf_key = cfs_keys[cf_key_idx]
-            rho[cf_key] = np.sum(gaussian_kernel, axis=1)[cf_key_idx-1]
+            rho[cf_key] = sum_gaussian_kernel_col[cf_key_idx]
         return rho
+    
+    def get_effectiveness(self, data, cfs):
+        """
+        Extracts the effectiveness of all the nodes obtained
+        """
+        eta = {}
+        len_cluster_instances = 0
+        for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
+            cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
+            len_cluster_instances += len(cluster_instances_list)
+        for k in range(1, len(all_nodes) + 1):
+            sum_eta = 0
+            node_k = all_nodes[k-1]
+            for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
+                cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
+                for instance_idx in cluster_instances_list:
+                    instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
+                    sum_eta += verify_feasibility(instance, node_k, data)
+            eta[k] = sum_eta/len_cluster_instances
+            print(f'Highest eta value: {np.max(list(eta.values()))}')
+        return eta
 
     def prepare_groups_clusters_analysis(self):
         """
@@ -702,16 +724,20 @@ class Evaluator():
         penalize_instance = sorted_train_x[-1][0]
         return penalize_instance
 
-    def add_cf_data(self, counterfactual, lagrange, method):
+    def add_cf_data(self, counterfactual, lagrange):
         """
         DESCRIPTION:            Stores the cluster CF and obtains all the performance measures for the cluster counterfactual 
         OUTPUT: (None: stored as class attributes)
         """
         cols = ['lagrange','likelihood','alpha','beta','gamma','feature','feat_value','instance_idx','centroid_idx','normal_centroid','centroid',
-                'normal_cf','cf','cf_proximity','cf_feasibility','mean_likelihood','cf_time','model_status','obj_val']
+                'normal_cf','cf','cf_proximity','cf_feasibility','likelihood', 'effectiveness', 'cf_time','model_status','obj_val']
         nodes_solution_idx = counterfactual.cf_method.nodes_solution
-        mean_likelihood = np.mean([counterfactual.graph.rho[node] for node in nodes_solution_idx])
+        centroid_node_solution = counterfactual.cf_method.centroid_nodes_solution
+        # mean_likelihood = np.mean([counterfactual.graph.rho[node] for node in nodes_solution_idx])
         for c_idx in range(len(counterfactual.cluster.filtered_centroids_list)):
+            node = centroid_node_solution[c_idx + 1]
+            likelihood = counterfactual.graph.rho[node]
+            effectiveness = counterfactual.graph.eta[c_idx + 1]
             centroid = counterfactual.cluster.filtered_centroids_list[c_idx]
             original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[0], columns=counterfactual.data.features)
             normal_centroid_cf = counterfactual.cf_method.normal_x_cf[c_idx + 1]
@@ -727,7 +753,7 @@ class Evaluator():
                 cf_feasibility = verify_feasibility(instance, normal_centroid_cf, counterfactual.data)
                 data_list = [lagrange, counterfactual.likelihood_factor, counterfactual.alpha, counterfactual.beta, counterfactual.gamma,
                              centroid.feat, centroid.feat_val, instance_idx, centroid.centroid_idx, centroid.normal_x, centroid.x,
-                             normal_centroid_cf, original_cf, cf_proximity, cf_feasibility, mean_likelihood, counterfactual.cf_method.run_time, 
+                             normal_centroid_cf, original_cf, cf_proximity, cf_feasibility, likelihood, effectiveness, counterfactual.cf_method.run_time, 
                              counterfactual.cf_method.model_status, counterfactual.cf_method.obj_val]
                 data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
                 self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
@@ -738,12 +764,12 @@ class Evaluator():
         OUTPUT: (None: stored as class attributes)
         """ 
         cols = ['lagrange','likelihood','alpha','beta','gamma','feature','feat_value','instance_idx','centroid_idx','normal_centroid','centroid',
-                'normal_cf','cf','cf_proximity','cf_feasibility','mean_likelihood','cf_time','model_status','obj_val']
+                'normal_cf','cf','cf_proximity','cf_feasibility','likelihood','effectiveness','cf_time','model_status','obj_val']
         data = counterfactual.data
         cfs = counterfactual.cf_method.normal_x_cf
         run_time = counterfactual.cf_method.run_time
         rho = self.get_likelihood(data, cfs)
-        mean_likelihood = np.mean([rho[cf] for cf in rho.keys()])
+        eta = self.get_effectiveness(data, cfs)
         lagrange = counterfactual.lagrange
         for idx in range(len(counterfactual.cf_method.best_recourse_df)):
             instance = counterfactual.cf_method.best_recourse_df.iloc[idx]
@@ -766,6 +792,6 @@ class Evaluator():
             cf_feasibility = verify_feasibility(normal_x, normal_cf, data)
             data_list = [lagrange, counterfactual.likelihood_factor, counterfactual.alpha, counterfactual.beta, 
                          counterfactual.gamma, feat, feat_val, instance_idx, instance_idx, normal_x, x, normal_cf, 
-                         original_cf, cf_proximity, cf_feasibility, mean_likelihood, run_time, 2, 'NA']
+                         original_cf, cf_proximity, cf_feasibility, likelihood, effectiveness, run_time, 2, 'NA']
             data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
             self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
