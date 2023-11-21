@@ -14,7 +14,7 @@ class FOCE_OPTIMIZE:
     def __init__(self, counterfactual):
         self.cluster = counterfactual.cluster
         self.ioi_label = self.cluster.undesired_class
-        self.lagrange = counterfactual.lagrange
+        # self.lagrange = counterfactual.lagrange
         self.alpha, self.beta, self.gamma, self.delta = counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta
         self.graph = counterfactual.graph
         start_time = time.time()
@@ -63,8 +63,8 @@ class FOCE_OPTIMIZE:
         """
         FairJUICE algorithm
         """
-        normal_x_cf, nodes_solution, model_status, obj_val = self.do_optimize_all(counterfactual)
-        return normal_x_cf, nodes_solution, model_status, obj_val 
+        normal_x_cf, nodes_solution, centroid_nodes_solution, model_status, obj_val = self.do_optimize_all(counterfactual)
+        return normal_x_cf, nodes_solution, centroid_nodes_solution, model_status, obj_val 
 
     def do_optimize_all(self, counterfactual):
         """
@@ -175,7 +175,7 @@ class FOCE_OPTIMIZE:
             print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
             print(f'Solution:')
             obj_val = opt_model.ObjVal
-            sol_x, nodes_solution = {}, []
+            sol_x, nodes_solution, centroid_nodes_solution = {}, [], {}
             for c in set_Centroids:
                 time.sleep(0.25)
                 for i in G.nodes:

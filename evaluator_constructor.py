@@ -154,7 +154,7 @@ class Evaluator():
         self.desired_class = 1 - self.undesired_class
         self.n_feat = n_feat
         self.cf_df = pd.DataFrame()
-        self.cluster_obj = cluster_obj
+        self.cluster = cluster_obj
         self.epsilon = self.calculate_epsilon(data_obj)
 
     def search_desired_class_penalize(self, x, data):
@@ -617,11 +617,12 @@ class Evaluator():
         for cf_key in list(cfs.keys()):
             sum_eta = 0
             cf_k = cfs[cf_key]
+            cf_k_df = pd.DataFrame(data=cf_k, index=[cf_key], columns=data.processed_features)
             for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
                 cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
                 for instance_idx in cluster_instances_list:
                     instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
-                    sum_eta += verify_feasibility(instance, cf_k, data)
+                    sum_eta += verify_feasibility(instance, cf_k_df, data)
             eta[cf_key] = sum_eta/len_cluster_instances
             print(f'Highest eta value: {np.max(list(eta.values()))}')
         return eta
@@ -729,7 +730,7 @@ class Evaluator():
         DESCRIPTION:            Stores the cluster CF and obtains all the performance measures for the cluster counterfactual 
         OUTPUT: (None: stored as class attributes)
         """
-        cols = ['Method','alpha','beta','gamma','feature','feat_value','Sensitive group','instance_idx','centroid_idx','normal_centroid','centroid',
+        cols = ['Method','alpha','beta','gamma','delta','feature','feat_value','Sensitive group','instance_idx','centroid_idx','normal_centroid','centroid',
                 'normal_cf','cf','Distance','Feasibility','Likelihood','Effectiveness','Time','model_status','obj_val']
         nodes_solution_idx = counterfactual.cf_method.nodes_solution
         centroid_node_solution = counterfactual.cf_method.centroid_nodes_solution
@@ -764,7 +765,7 @@ class Evaluator():
         DESCRIPTION: Stores the results for the ARES method in the evaluation object
         OUTPUT: (None: stored as class attributes)
         """ 
-        cols = ['Method','alpha','beta','gamma','feature','feat_value','Sensitive group','instance_idx','centroid_idx','normal_centroid','centroid',
+        cols = ['Method','alpha','beta','gamma','delta','feature','feat_value','Sensitive group','instance_idx','centroid_idx','normal_centroid','centroid',
                 'normal_cf','cf','Distance','Feasibility','Likelihood','Effectiveness','Time','model_status','obj_val']
         data = counterfactual.data
         cfs = counterfactual.cf_method.normal_x_cf
