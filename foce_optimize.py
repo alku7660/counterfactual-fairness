@@ -181,6 +181,7 @@ class FOCE_OPTIMIZE:
                 for i in G.nodes:
                     if cf[c, i].x > 0.1:
                         sol_x[c] = self.graph.all_nodes[i - 1]
+                        centroid_nodes_solution[c] = i
                         if i not in nodes_solution:
                             nodes_solution.append(i)
                         print(f'cf{c, i}: {cf[c, i].x}')

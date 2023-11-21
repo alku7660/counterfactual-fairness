@@ -9,14 +9,14 @@ from ares import ARES
 
 class Counterfactual:
 
-    def __init__(self, data, model, method, cluster, lagrange, likelihood_factor=0.2, alpha=1, beta=1, gamma=1, delta=1, type='L1_L0', graph=None):
+    def __init__(self, data, model, method, cluster, alpha=1, beta=1, gamma=1, delta=1, type='L1_L0', graph=None):
         self.data = data
         self.model = model
         self.method = method
         self.cluster = cluster
         self.type = type
-        self.lagrange = lagrange
-        self.likelihood_factor = likelihood_factor
+        # self.lagrange = lagrange
+        # self.likelihood_factor = likelihood_factor
         self.alpha, self.beta, self.gamma, self.delta = alpha, beta, gamma, delta
         # self.t = t
         # self.k = k
@@ -34,15 +34,15 @@ class Counterfactual:
     def select_cf_method(self):
         """
         Selects the method to find the counterfactual and stores it in "normal_x_cf"
-        ['nn','mo','ft','rt','gs','face','dice','cchvae','juice','ijuice','fijuice_like_constraint','fijuice_like_optimize','ares']
+        ['FOCE','ARES']
         """
-        if self.method == 'fijuice':
-            cf_method = FIJUICE(self)
-        if self.method == 'fijuice_like_constraint':
-            cf_method = FOCE_CONSTRAINT(self)
-        if self.method == 'fijuice_like_optimize':
+        # if self.method == 'fijuice':
+        #     cf_method = FIJUICE(self)
+        # if self.method == 'fijuice_like_constraint':
+        #     cf_method = FOCE_CONSTRAINT(self)
+        if 'FOCE' in self.method:
             cf_method = FOCE_OPTIMIZE(self)
-        if self.method == 'ares':
+        if self.method == 'ARES':
             cf_method = ARES(self)
         # elif self.method == 'nn':
         #     cf_method = NN(self)

@@ -17,8 +17,8 @@ from matplotlib.ticker import FormatStrFormatter
 from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
-# import seaborn as sns
-from fairness_clusters import datasets, methods_to_run, lagranges, likelihood_factors, alphas, betas, gammas
+import seaborn as sns
+from fairness_clusters import datasets, methods_to_run, lagranges, likelihood_factors, alphas, betas, gammas, major_weight, minor_weight 
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
     """
@@ -145,10 +145,18 @@ def get_metric_names(metrics):
     """
     metric_dict = {}
     for i in metrics:
+        # if i == 'proximity':
+        #     metric_dict[i] = 'Burden (Lower is better)'
+        # elif i == 'sparsity':
+        #     metric_dict[i] = 'Sparsity (Higher is better)'
         if i == 'proximity':
-            metric_dict[i] = 'Burden (Lower is better)'
-        elif i == 'sparsity':
-            metric_dict[i] = 'Sparsity (Higher is better)'
+            metric_dict[i] = 'Distance'
+        elif i == 'likelihood':
+            metric_dict[i] = 'Likelihood'
+        elif i == 'deviation':
+            metric_dict[i] = 'Fairness'
+        elif i == 'effectiveness':
+            metric_dict[i] = 'Effectiveness'
     return metric_dict
 
 def get_methods_names(methods):
@@ -197,6 +205,10 @@ def get_methods_names(methods):
             method_dict[i] = 'JUICES'
         elif i == 'mutable-jce_spar':
             method_dict[i] = 'Mutable JUICES'
+        elif i == 'foce_like_optimize':
+            method_dict[i] = 'FOCE'
+        elif i == 'ares':
+            method_dict[i] = 'ARES'
     return method_dict
 
 def attainable_cf_plot(datasets, methods_to_run):
@@ -1257,6 +1269,121 @@ def plot_centroids_cfs_ablation_alpha_beta_gamma(data_str):
     fig.suptitle(dataset)
     plt.savefig(f'{results_cf_plots_dir}{data_str}_{method_str}_alpha_beta_gamma_ablation.pdf', format='pdf')
 
+# def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_dict):
+#     """
+#     DESCRIPTION:        Obtains the accuracy weighted burden for each method and each dataset
+
+#     INPUT:
+#     datasets:           Names of the datasets
+#     methods:            Names of the methods
+#     metric:             Metric used (proximity, likelihood, effectiveness, variance)
+#     colors_dict:        Dictionary of colors to be used per feature
+
+#     OUTPUT: (None: plot stored)
+#     """
+#     methods_names = get_methods_names(methods)
+#     dataset_names = get_data_names(datasets)
+#     metric_names = get_metric_names([metric])
+#     metric_str = metric_names[metric]
+#     fig, ax = plt.subplots(nrows=len(datasets), ncols=len(methods), sharex=False, sharey=False, figsize=(8,13))
+#     for dataset_idx in range(len(datasets)):
+#         data_str = datasets[dataset_idx]
+
+
+
+#         for method_idx in range(len(methods)):
+#             method_str = methods[method_idx]
+#             eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
+#             protected_feat = eval_obj.feat_protected
+#             protected_feat_keys = list(protected_feat.keys())
+#             original_x_df = pd.concat(eval_obj.original_x.values(), axis=0)
+#             proximity_df = pd.DataFrame.from_dict(eval_obj.cf_proximity, orient='index', columns=['proximity'])
+#             nawb_list = []
+#             feat_list = []
+#             colors_list = []
+#             for feat_idx in range(len(protected_feat_keys)):
+#                 feat = protected_feat_keys[feat_idx]
+#                 feat_unique_val = eval_obj.desired_ground_truth_test_df[feat].unique()
+#                 len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
+#                 for feat_val_idx in range(len(feat_unique_val)):
+#                     feat_val_instances_idx = idx_feat_values[feat_val_idx]
+#                     feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_val_idx],2)]
+#                     total_ground_truth_feat_val = np.sum(eval_obj.desired_ground_truth_test_df[feat] == feat_unique_val[feat_val_idx])
+#                     total_false_undesired_feat_val = np.sum(eval_obj.false_undesired_test_df[feat] == feat_unique_val[feat_val_idx])
+#                     fnr = total_false_undesired_feat_val/total_ground_truth_feat_val
+#                     feat_method_data_values = proximity_df.loc[feat_val_instances_idx, 'proximity'].values
+#                     mean_burden = np.mean(feat_method_data_values)
+#                     nawb = fnr*mean_burden*100/len(eval_obj.data_cols)
+#                     if feat in ['isMale','isMarried']:
+#                         feat_val_name = feat+': '+feat_val_name
+#                     nawb_list.append(nawb)
+#                     feat_list.append(feat_val_name)
+#                     colors_list.append(colors_dict[feat_val_name])
+#             ax[dataset_idx, method_idx].bar(x=feat_list,height=nawb_list,color=colors_list)
+#             ax[dataset_idx, method_idx].set_xticklabels(feat_list, rotation = 30, ha='right')
+#             ax[dataset_idx, method_idx].axes.xaxis.set_visible(False)
+#             ax[dataset_idx, method_idx].yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+#     legend_handles = create_handles_awb(colors_dict)
+#     fig.subplots_adjust(wspace=0.1, hspace=0.1)
+#     for i in range(len(datasets)):
+#         ax[i,0].set_ylabel(dataset_names[datasets[i]])
+#     for j in range(len(methods)):
+#         ax[0,j].set_title(methods_names[methods[j]])
+#     fig.suptitle('Normalized Accuracy Weighted Burden ($NAWB_s$) (%)')
+#     fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.00), ncol=6, fancybox=True, shadow=True, handles=legend_handles, prop={'size': 10})
+#     plt.subplots_adjust(left=0.09,
+#                     bottom=0.08,
+#                     right=0.975,
+#                     top=0.94,
+#                     wspace=0.25,
+#                     hspace=0.1)
+#     plt.savefig(results_cf_plots_dir+'normal_awb.pdf',format='pdf',dpi=400)
+
+def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_dict):
+    """
+    DESCRIPTION:        Obtains the accuracy weighted burden for each method and each dataset
+
+    INPUT:
+    datasets:           Names of the datasets
+    methods:            Names of the methods
+    metric:             Metric used (proximity, likelihood, deviation, effectiveness)
+    colors_dict:        Dictionary of colors to be used per feature
+
+    OUTPUT: (None: plot stored)
+    """
+
+    # methods_names = get_methods_names(methods)
+    # dataset_names = get_data_names(datasets)
+    # metric_names = get_metric_names([metric])
+    # metric_str = metric_names[metric]
+    fig, ax = plt.subplots(nrows=len(datasets), ncols=3)
+    for dataset_idx in range(len(datasets)):
+        data_str = datasets[dataset_idx]
+        eval_foce_proximity_df = load_obj(f'{data_str}_foce_proximity_cluster_eval.pkl').cf_df
+        eval_foce_likelihood_df = load_obj(f'{data_str}_foce_likelihood_cluster_eval.pkl').cf_df
+        eval_foce_deviation_df = load_obj(f'{data_str}_foce_deviation_cluster_eval.pkl').cf_df
+        eval_foce_effectiveness_df = load_obj(f'{data_str}_foce_effectiveness_cluster_eval.pkl').cf_df
+        eval_ares_df = load_obj(f'{data_str}_ares_cluster_eval.pkl').cf_df
+        all_df = pd.concat((eval_foce_proximity_df, eval_foce_likelihood_df, eval_foce_deviation_df, eval_foce_effectiveness_df, eval_ares_df), axis=0)
+        ax[dataset_idx, 0] = sns.boxplot(x=all_df['Method'], y=all_df['Distance'], hue=all_df['Sensitive group'])
+        ax[dataset_idx, 1] = sns.boxplot(x=all_df['Method'], y=all_df['Likelihood'], hue=all_df['Sensitive group'])
+        ax[dataset_idx, 2] = sns.boxplot(x=all_df['Method'], y=all_df['Effectiveness'], hue=all_df['Sensitive group'])
+    # legend_handles = create_handles_awb(colors_dict)
+    # fig.subplots_adjust(wspace=0.1, hspace=0.1)
+    # for i in range(len(datasets)):
+    #     ax[i,0].set_ylabel(dataset_names[datasets[i]])
+    # for j in range(len(methods)):
+    #     ax[0,j].set_title(methods_names[methods[j]])
+    fig.suptitle('Performance of FOCE and ARES')
+    # fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.00), ncol=6, fancybox=True, shadow=True, handles=legend_handles, prop={'size': 10})
+    plt.subplots_adjust(left=0.09,
+                    bottom=0.08,
+                    right=0.975,
+                    top=0.94,
+                    wspace=0.25,
+                    hspace=0.1)
+    plt.savefig(results_cf_plots_dir+'all_datasets_all_methods.pdf',format='pdf',dpi=400)
+
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
 colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','Non-white':'dimgray',
                '<25':'thistle','25-60':'violet','>60':'purple','<18':'green','>=18':'yellow','Single':'peachpuff',
@@ -1264,6 +1391,7 @@ colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','N
                'isMale: True':'lightcoral','isMale: False':'firebrick','Other':'lightgreen','HS':'limegreen',
                'University':'green','Graduate':'darkgreen','African-American':'orangered','Caucasian':'coral'}
 mean_prop = dict(marker='D', markeredgecolor='firebrick', markerfacecolor='firebrick', markersize=2)
+metric = 'proximity'
 
 # method_box_plot(datasets, methods_to_run, 'proximity', colors_list)
 # fnr_plot(datasets, colors_dict)
@@ -1279,6 +1407,7 @@ mean_prop = dict(marker='D', markeredgecolor='firebrick', markerfacecolor='fireb
 # burden_groups_cf_bar(datasets, 'NN')
 # plot_centroids_cf_proximity()
 # plot_centroids_cfs_ablation_lagrange_likelihood()
-plot_centroids_cfs_ablation_alpha_beta_gamma('oulad')
+# plot_centroids_cfs_ablation_alpha_beta_gamma('oulad')
+proximity_all_datasets_all_methods_plot(datasets, methods_to_run, metric, colors_dict)
 
 
