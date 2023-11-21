@@ -21,15 +21,11 @@ class Counterfactual:
         # self.t = t
         # self.k = k
         self.graph = graph
-        if self.graph is not None:
-            self.rho_min = self.calculate_rho_min()
-        else:
-            self.rho_min = None
         self.cf_method = self.select_cf_method()
 
-    def calculate_rho_min(self):
-        rho_min = (max(self.graph.rho.values()) - min(self.graph.rho.values()))*self.likelihood_factor + min(self.graph.rho.values())
-        return rho_min
+    # def calculate_rho_min(self):
+    #     rho_min = (max(self.graph.rho.values()) - min(self.graph.rho.values()))*self.likelihood_factor + min(self.graph.rho.values())
+    #     return rho_min
 
     def select_cf_method(self):
         """
