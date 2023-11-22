@@ -14,7 +14,7 @@ from sklearn.metrics import f1_score
 from support import save_obj
 
 datasets = ['synthetic_athlete','german'] # 'german','dutch','compass','oulad','synthetic_athlete'
-methods_to_run = ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES'] # ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES']
+methods_to_run = ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e'] # ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -64,6 +64,8 @@ if __name__=='__main__':
                 alpha, beta, gamma, delta = minor_weight, minor_weight, major_weight, minor_weight
             elif method == 'FOCE_e':
                 alpha, beta, gamma, delta = minor_weight, minor_weight, minor_weight, major_weight
+            else:
+                alpha, beta, gamma, delta = minor_weight, minor_weight, minor_weight, minor_weight
             counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta, type=dist, graph=graph_obj)
             if method == 'ARES':
                 cf_evaluator.add_cf_data_ares(counterfactual)

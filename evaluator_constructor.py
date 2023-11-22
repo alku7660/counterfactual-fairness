@@ -617,12 +617,12 @@ class Evaluator():
         for cf_key in list(cfs.keys()):
             sum_eta = 0
             cf_k = cfs[cf_key]
-            cf_k_df = pd.DataFrame(data=cf_k, index=[cf_key], columns=data.processed_features)
+            cf_k = cf_k.values[0]
             for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
                 cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
                 for instance_idx in cluster_instances_list:
                     instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
-                    sum_eta += verify_feasibility(instance, cf_k_df, data)
+                    sum_eta += verify_feasibility(instance, cf_k, data)
             eta[cf_key] = sum_eta/len_cluster_instances
             print(f'Highest eta value: {np.max(list(eta.values()))}')
         return eta
@@ -748,13 +748,14 @@ class Evaluator():
             original_cf = original_cf.values
             print(f'Original Centroid ({centroid.feat}: {centroid.feat_val}): {original_centroid}')
             print(f'      Original CF: {original_cf}')
-            sensitive_group = f'{centroid.feat}: {centroid.feat_val}'
+            feat_val_name = counterfactual.data.feat_protected[centroid.feat][np.round(float(centroid.feat_val),2)] 
+            sensitive_group = f'{centroid.feat}: {feat_val_name}'
             for instance_idx in cluster_instances_list:
                 instance = counterfactual.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
                 cf_proximity = distance_calculation(instance, normal_centroid_cf, counterfactual.data, counterfactual.type)
                 cf_feasibility = verify_feasibility(instance, normal_centroid_cf, counterfactual.data)
                 data_list = [counterfactual.method, counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta,
-                             centroid.feat, centroid.feat_val, sensitive_group, instance_idx, centroid.centroid_idx, centroid.normal_x, centroid.x,
+                             centroid.feat, feat_val_name, sensitive_group, instance_idx, centroid.centroid_idx, centroid.normal_x, centroid.x,
                              normal_centroid_cf, original_cf, cf_proximity, cf_feasibility, likelihood, effectiveness, counterfactual.cf_method.run_time, 
                              counterfactual.cf_method.model_status, counterfactual.cf_method.obj_val]
                 data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
@@ -772,7 +773,6 @@ class Evaluator():
         run_time = counterfactual.cf_method.run_time
         rho = self.get_likelihood(data, cfs)
         eta = self.get_effectiveness(data, cfs)
-        lagrange = counterfactual.lagrange
         for idx in range(len(counterfactual.cf_method.best_recourse_df)):
             instance = counterfactual.cf_method.best_recourse_df.iloc[idx]
             instance_idx = instance['x_idx']
@@ -783,7 +783,7 @@ class Evaluator():
             normal_x = data.transformed_test_df.loc[instance_idx].values
             q_c_c_prime = instance['best_q_c_c_prime']
             q, c, c_prime = q_c_c_prime[0], q_c_c_prime[1], q_c_c_prime[2]
-            feat, feat_val = q.split('_')[0], int(q.split('_')[1])
+            feat, feat_val = q.split('_')[0], int(float(q.split('_')[1]))
             feat_val_name = counterfactual.data.feat_protected[feat][np.round(float(feat_val),2)] 
             q = q if isinstance(q,str) else list(q) 
             c = c if isinstance(c,str) else list(c) 

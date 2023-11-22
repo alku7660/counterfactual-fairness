@@ -1359,10 +1359,10 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
     fig, ax = plt.subplots(nrows=len(datasets), ncols=3)
     for dataset_idx in range(len(datasets)):
         data_str = datasets[dataset_idx]
-        eval_foce_proximity_df = load_obj(f'{data_str}_foce_proximity_cluster_eval.pkl').cf_df
-        eval_foce_likelihood_df = load_obj(f'{data_str}_foce_likelihood_cluster_eval.pkl').cf_df
-        eval_foce_deviation_df = load_obj(f'{data_str}_foce_deviation_cluster_eval.pkl').cf_df
-        eval_foce_effectiveness_df = load_obj(f'{data_str}_foce_effectiveness_cluster_eval.pkl').cf_df
+        eval_foce_proximity_df = load_obj(f'{data_str}_FOCE_dist_cluster_eval.pkl').cf_df
+        eval_foce_likelihood_df = load_obj(f'{data_str}_FOCE_l_cluster_eval.pkl').cf_df
+        eval_foce_deviation_df = load_obj(f'{data_str}_FOCE_dev_cluster_eval.pkl').cf_df
+        eval_foce_effectiveness_df = load_obj(f'{data_str}_FOCE_e_cluster_eval.pkl').cf_df
         eval_ares_df = load_obj(f'{data_str}_ares_cluster_eval.pkl').cf_df
         all_df = pd.concat((eval_foce_proximity_df, eval_foce_likelihood_df, eval_foce_deviation_df, eval_foce_effectiveness_df, eval_ares_df), axis=0)
         ax[dataset_idx, 0] = sns.boxplot(x=all_df['Method'], y=all_df['Distance'], hue=all_df['Sensitive group'])
