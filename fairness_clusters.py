@@ -14,7 +14,7 @@ from sklearn.metrics import f1_score
 from support import save_obj
 
 datasets = ['synthetic_athlete','german'] # 'german','dutch','compass','oulad','synthetic_athlete'
-methods_to_run = ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e'] # ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES']
+methods_to_run = ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES'] # ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -48,14 +48,14 @@ if __name__=='__main__':
         print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
         print(f'---------------------------------------')
         clusters_obj = Clusters(data, model, metric=clustering_metric)
-        cf_evaluator = Evaluator(data, n_feat, methods_to_run[0], clusters_obj)
-        cf_evaluator.add_fairness_measures(data, model)
-        cf_evaluator.add_fnr_data(data)
         if any('FOCE' in x for x in methods_to_run):
             graph_obj = Graph(data, model, clusters_obj, dist, percentage=percentage_close_train_cf)
         else:
             graph_obj = None
         for method in methods_to_run:
+            cf_evaluator = Evaluator(data, n_feat, methods_to_run[0], clusters_obj)
+            cf_evaluator.add_fairness_measures(data, model)
+            cf_evaluator.add_fnr_data(data)
             if method == 'FOCE_dist':
                 alpha, beta, gamma, delta = major_weight, minor_weight, minor_weight, minor_weight
             elif method == 'FOCE_l':
