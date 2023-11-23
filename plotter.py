@@ -17,8 +17,9 @@ from matplotlib.ticker import FormatStrFormatter
 from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
-import seaborn as sns
 from fairness_clusters import datasets, methods_to_run, lagranges, likelihood_factors, alphas, betas, gammas, major_weight, minor_weight 
+import seaborn as sns
+# sns.set_style("whitegrid")
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
     """
@@ -1353,35 +1354,70 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
     """
 
     # methods_names = get_methods_names(methods)
-    # dataset_names = get_data_names(datasets)
+    dataset_names = get_data_names(datasets)
     # metric_names = get_metric_names([metric])
     # metric_str = metric_names[metric]
-    fig, ax = plt.subplots(nrows=len(datasets), ncols=3)
+    fig, axes = plt.subplots(nrows=len(datasets), ncols=3)
     for dataset_idx in range(len(datasets)):
         data_str = datasets[dataset_idx]
+        data_name = dataset_names[data_str]
         eval_foce_proximity_df = load_obj(f'{data_str}_FOCE_dist_cluster_eval.pkl').cf_df
         eval_foce_likelihood_df = load_obj(f'{data_str}_FOCE_l_cluster_eval.pkl').cf_df
         eval_foce_deviation_df = load_obj(f'{data_str}_FOCE_dev_cluster_eval.pkl').cf_df
         eval_foce_effectiveness_df = load_obj(f'{data_str}_FOCE_e_cluster_eval.pkl').cf_df
         eval_ares_df = load_obj(f'{data_str}_ares_cluster_eval.pkl').cf_df
         all_df = pd.concat((eval_foce_proximity_df, eval_foce_likelihood_df, eval_foce_deviation_df, eval_foce_effectiveness_df, eval_ares_df), axis=0)
-        ax[dataset_idx, 0] = sns.boxplot(x=all_df['Method'], y=all_df['Distance'], hue=all_df['Sensitive group'])
-        ax[dataset_idx, 1] = sns.boxplot(x=all_df['Method'], y=all_df['Likelihood'], hue=all_df['Sensitive group'])
-        ax[dataset_idx, 2] = sns.boxplot(x=all_df['Method'], y=all_df['Effectiveness'], hue=all_df['Sensitive group'])
+        b0 = sns.boxplot(x=all_df['Method'], y=all_df['Distance'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 0])
+        b1 = sns.boxplot(x=all_df['Method'], y=all_df['Likelihood'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 1])
+        b2 = sns.boxplot(x=all_df['Method'], y=all_df['Effectiveness'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 2])
+        num_handles = len(all_df['Sensitive group'].unique())
+        b0.legend([], [], frameon=False)
+        # plt.setp(b0.get_legend().get_texts(), fontsize='5')
+        # b1.legend([], [], frameon=False)
+        b1.legend([], [], frameon=False)
+        b2.legend(bbox_to_anchor=(1.01,1), frameon=False, prop={'size': 6}) #
+        b0.set(xlabel=None)
+        b1.set(xlabel=None)
+        b2.set(xlabel=None)
+        b0.set(ylabel=data_name)
+        b1.set(ylabel=None)
+        b2.set(ylabel=None)
+        if dataset_idx == 0:
+            b0.set_xticklabels([])
+            b1.set_xticklabels([])
+            b2.set_xticklabels([])
+            b0.set_title(f'Distance')
+            b1.set_title(f'Likelihood')
+            b2.set_title(f'Effectiveness')
+        if dataset_idx == len(datasets) - 1:
+            b0.set_xticklabels([])
+            b1.set_xticklabels([])
+            b2.set_xticklabels([])
+        
     # legend_handles = create_handles_awb(colors_dict)
-    # fig.subplots_adjust(wspace=0.1, hspace=0.1)
+    fig.subplots_adjust(left=0.09,
+                    bottom=0.08,
+                    right=0.85,
+                    top=0.875,
+                    wspace=0.25,
+                    hspace=0.1)
+    # plt.subplots_adjust(left=0.09,
+    #                 bottom=0.08,
+    #                 right=0.8,
+    #                 top=0.95,
+    #                 wspace=0.25,
+    #                 hspace=0.1)
     # for i in range(len(datasets)):
     #     ax[i,0].set_ylabel(dataset_names[datasets[i]])
     # for j in range(len(methods)):
     #     ax[0,j].set_title(methods_names[methods[j]])
     fig.suptitle('Performance of FOCE and ARES')
-    # fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.00), ncol=6, fancybox=True, shadow=True, handles=legend_handles, prop={'size': 10})
-    plt.subplots_adjust(left=0.09,
-                    bottom=0.08,
-                    right=0.975,
-                    top=0.94,
-                    wspace=0.25,
-                    hspace=0.1)
+    # plt.subplots_adjust(left=0.09,
+    #                 bottom=0.08,
+    #                 right=0.975,
+    #                 top=0.8,
+    #                 wspace=0.25,
+    #                 hspace=0.1)
     plt.savefig(results_cf_plots_dir+'all_datasets_all_methods.pdf',format='pdf',dpi=400)
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
