@@ -600,9 +600,11 @@ class Evaluator():
         distance = distance_matrix(cfs_np, data.transformed_train_np, p=1)
         gaussian_kernel = np.exp(-(distance/self.epsilon)**2)
         sum_gaussian_kernel_col = np.sum(gaussian_kernel, axis=1)
+        max_sum_gaussian_kernel_col = np.max(sum_gaussian_kernel_col)
+        min_sum_gaussian_kernel_col = np.min(sum_gaussian_kernel_col)
         for cf_key_idx in range(len(cfs_keys)):
             cf_key = cfs_keys[cf_key_idx]
-            rho[cf_key] = sum_gaussian_kernel_col[cf_key_idx]
+            rho[cf_key] = (sum_gaussian_kernel_col[cf_key_idx] - min_sum_gaussian_kernel_col)/(max_sum_gaussian_kernel_col - min_sum_gaussian_kernel_col)
         return rho
     
     def get_effectiveness(self, data, cfs):
@@ -758,7 +760,7 @@ class Evaluator():
                              centroid.feat, feat_val_name, sensitive_group, instance_idx, centroid.centroid_idx, centroid.normal_x, centroid.x,
                              normal_centroid_cf, original_cf, cf_proximity, cf_feasibility, likelihood, effectiveness, counterfactual.cf_method.run_time, 
                              counterfactual.cf_method.model_status, counterfactual.cf_method.obj_val]
-                data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
+                data_df = pd.DataFrame(data=[data_list], index=[len(self.cf_df)], columns=cols)
                 self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
 
     def add_cf_data_ares(self, counterfactual):
@@ -797,5 +799,5 @@ class Evaluator():
             data_list = ['ARES', counterfactual.alpha, counterfactual.beta, counterfactual.gamma, 
                          counterfactual.delta, feat, feat_val_name, sensitive_group, instance_idx, instance_idx, normal_x, x, normal_cf, 
                          original_cf, cf_proximity, cf_feasibility, rho[instance_idx], eta[instance_idx], run_time, 2, 'NA']
-            data_df = pd.DataFrame(data=np.array(data_list).reshape(1,-1), index=[len(self.cf_df)], columns=cols)
+            data_df = pd.DataFrame(data=[data_list], index=[len(self.cf_df)], columns=cols)
             self.cf_df = pd.concat((self.cf_df, data_df),axis=0)

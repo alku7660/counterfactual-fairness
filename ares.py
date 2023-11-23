@@ -317,7 +317,7 @@ class ARES:
         Obtains all the best recourses for all FN instances
         """
         counter = 1
-        set_instances = self.fn_instances.index[:8]
+        set_instances = self.fn_instances.index
         for x_fn_idx in set_instances:
             start_time = time.time()
             x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T

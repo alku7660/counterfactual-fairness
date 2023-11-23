@@ -206,9 +206,15 @@ def get_methods_names(methods):
             method_dict[i] = 'JUICES'
         elif i == 'mutable-jce_spar':
             method_dict[i] = 'Mutable JUICES'
-        elif i == 'foce_like_optimize':
-            method_dict[i] = 'FOCE'
-        elif i == 'ares':
+        elif i == 'FOCE_dist':
+            method_dict[i] = r'$F_{dist}$'
+        elif i == 'FOCE_l':
+            method_dict[i] = r'$F_{like}$'
+        elif i == 'FOCE_dev':
+            method_dict[i] = r'$F_{dev}$'
+        elif i == 'FOCE_e':
+            method_dict[i] = r'$F_{eff}$'
+        elif i == 'ARES':
             method_dict[i] = 'ARES'
     return method_dict
 
@@ -1353,7 +1359,7 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
     OUTPUT: (None: plot stored)
     """
 
-    # methods_names = get_methods_names(methods)
+    methods_names = get_methods_names(methods)
     dataset_names = get_data_names(datasets)
     # metric_names = get_metric_names([metric])
     # metric_str = metric_names[metric]
@@ -1390,10 +1396,10 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
             b1.set_title(f'Likelihood')
             b2.set_title(f'Effectiveness')
         if dataset_idx == len(datasets) - 1:
-            b0.set_xticklabels([])
-            b1.set_xticklabels([])
-            b2.set_xticklabels([])
-        
+            xticklabels = [methods_names['FOCE_dist'], methods_names['FOCE_l'], methods_names['FOCE_dev'], methods_names['FOCE_e'], methods_names['ARES']]
+            b0.set_xticklabels(xticklabels, rotation = 45)
+            b1.set_xticklabels(xticklabels, rotation = 45)
+            b2.set_xticklabels(xticklabels, rotation = 45)
     # legend_handles = create_handles_awb(colors_dict)
     fig.subplots_adjust(left=0.09,
                     bottom=0.08,
