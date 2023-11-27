@@ -47,7 +47,8 @@ class Dataset:
         self.train_df, self.test_df, self.train_target, self.test_target = train_test_split(self.df, self.df[self.label_name], train_size=self.train_fraction, random_state=self.seed)
         self.train_df, self.train_target = self.balance_train_data()
         self.bin_cat_ord_enc = self.all_one_hot_encode(self.train_df)
-        self.discretizer = self.train_discretizer(self.train_df)
+        if len(self.continuous) > 0:
+            self.discretizer = self.train_discretizer(self.train_df)
         self.discretized_train_df = self.discretize_df(self.train_df)
         self.discretized_test_df = self.discretize_df(self.test_df)
         self.bin_enc, self.cat_enc, self.bin_cat_enc, self.scaler = self.encoder_scaler_fit()
@@ -117,8 +118,12 @@ class Dataset:
         Obtains a fully-one-hot-encoded version of the input df (DataFrame) for the apriori algorithm
         """
         cont_df = df[self.continuous]
-        discretized_cont_df = self.discretize_continuous_feat(cont_df)
+        if len(self.continuous) > 0:
+            discretized_cont_df = self.discretize_continuous_feat(cont_df)
+        else:
+            discretized_cont_df = pd.DataFrame()
         bin_cat_ord_df = df[self.binary + self.categorical + self.ordinal]
+        bin_cat_ord_df = bin_cat_ord_df.round(0).astype(int)
         discretized_bin_cat_ord_np = self.bin_cat_ord_enc.transform(bin_cat_ord_df)
         bin_cat_ord_cols = self.bin_cat_ord_enc.get_feature_names_out(self.binary + self.categorical + self.ordinal)
         discretized_bin_cat_ord_df = pd.DataFrame(index=df.index, data=discretized_bin_cat_ord_np.toarray(), columns=bin_cat_ord_cols)
@@ -129,11 +134,17 @@ class Dataset:
         """
         Performs a the inverse operation of the discretization of the df (uses the encoder and discretizer)
         """
-        encoded_continuous_cols = self.discretizer.get_feature_names_out(self.continuous)
+        if len(self.continuous) > 0:
+            encoded_continuous_cols = self.discretizer.get_feature_names_out(self.continuous)
+        else:
+            encoded_continuous_cols = []
         bin_cat_ord_cols = self.bin_cat_ord_enc.get_feature_names_out(self.binary + self.categorical + self.ordinal)
         cont_encoded_df = encoded_df[encoded_continuous_cols]
         bin_cat_ord_encoded_df = encoded_df[bin_cat_ord_cols]
-        cont_np = self.discretizer.inverse_transform(cont_encoded_df)
+        if len(self.continuous) > 0:
+            cont_np = self.discretizer.inverse_transform(cont_encoded_df)
+        else:
+            cont_np = []
         cont_df = pd.DataFrame(index=encoded_df.index, data=cont_np, columns=self.continuous)
         bin_cat_ord_np = self.bin_cat_ord_enc.inverse_transform(bin_cat_ord_encoded_df)
         bin_cat_ord_df = pd.DataFrame(index=encoded_df.index, data=bin_cat_ord_np, columns=self.binary + self.categorical + self.ordinal)

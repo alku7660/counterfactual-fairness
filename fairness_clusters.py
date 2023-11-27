@@ -13,8 +13,8 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['synthetic_athlete','german'] # 'german','dutch','compass','oulad','synthetic_athlete'
-methods_to_run = ['ARES'] # ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES']
+datasets = ['oulad'] # 'german','dutch','compass','oulad','synthetic_athlete'
+methods_to_run = ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES'] # ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -22,13 +22,13 @@ epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feat
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 clustering_metric = 'complete' # Clustering metric used
-percentage_close_train_cf = 0.05
+percentage_close_train_cf = 0.01 # 'german 0.05','dutch 0.05','compass 0.05','oulad 0.01','synthetic_athlete 0.05'
 dist = 'L1_L0'
 lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 likelihood_factors = [0.5] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5] This is used to calculate a minimum rho admitted for each CF found
 # t = 100 # Number of preselected close NN Training Counterfactuals
 # k = 10
-major_weight, minor_weight = 0.97, 0.01
+major_weight, minor_weight = 1.00, 0.00
 alphas =  [major_weight, minor_weight, minor_weight, minor_weight]
 betas = [minor_weight, major_weight, minor_weight, minor_weight]
 gammas = [minor_weight, minor_weight, major_weight, minor_weight]

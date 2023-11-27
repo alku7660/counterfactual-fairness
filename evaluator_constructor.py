@@ -768,7 +768,7 @@ class Evaluator():
         DESCRIPTION: Stores the results for the ARES method in the evaluation object
         OUTPUT: (None: stored as class attributes)
         """ 
-        cols = ['Method','alpha','beta','gamma','delta','feature','feat_value','Sensitive group','instance_idx','centroid_idx','normal_centroid','centroid',
+        cols = ['Method','alpha','beta','gamma','delta','feature','feat_value','Sensitive group','q_c_c_prime','instance_idx','centroid_idx','normal_centroid','centroid',
                 'normal_cf','cf','Distance','Feasibility','Likelihood','Effectiveness','Time','model_status','obj_val']
         data = counterfactual.data
         cfs = counterfactual.cf_method.normal_x_cf
@@ -797,7 +797,7 @@ class Evaluator():
             cf_feasibility = verify_feasibility(normal_x, normal_cf, data)
             sensitive_group = f'{feat}: {feat_val_name}'
             data_list = ['ARES', counterfactual.alpha, counterfactual.beta, counterfactual.gamma, 
-                         counterfactual.delta, feat, feat_val_name, sensitive_group, instance_idx, instance_idx, normal_x, x, normal_cf, 
+                         counterfactual.delta, feat, feat_val_name, sensitive_group, q_c_c_prime, instance_idx, instance_idx, normal_x, x, normal_cf, 
                          original_cf, cf_proximity, cf_feasibility, rho[instance_idx], eta[instance_idx], run_time, 2, 'NA']
             data_df = pd.DataFrame(data=[data_list], index=[len(self.cf_df)], columns=cols)
             self.cf_df = pd.concat((self.cf_df, data_df),axis=0)

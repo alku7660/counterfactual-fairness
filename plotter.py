@@ -9,7 +9,7 @@ import matplotlib
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 import matplotlib.pyplot as plt
-plt.rcParams.update({'font.size': 12})
+plt.rcParams.update({'font.size': 8})
 from matplotlib.lines import Line2D
 from matplotlib import colors
 from matplotlib import cm
@@ -1373,10 +1373,9 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
         eval_foce_effectiveness_df = load_obj(f'{data_str}_FOCE_e_cluster_eval.pkl').cf_df
         eval_ares_df = load_obj(f'{data_str}_ares_cluster_eval.pkl').cf_df
         all_df = pd.concat((eval_foce_proximity_df, eval_foce_likelihood_df, eval_foce_deviation_df, eval_foce_effectiveness_df, eval_ares_df), axis=0)
-        b0 = sns.boxplot(x=all_df['Method'], y=all_df['Distance'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 0])
-        b1 = sns.boxplot(x=all_df['Method'], y=all_df['Likelihood'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 1])
-        b2 = sns.boxplot(x=all_df['Method'], y=all_df['Effectiveness'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 2])
-        num_handles = len(all_df['Sensitive group'].unique())
+        b0 = sns.barplot(x=all_df['Method'], y=all_df['Distance'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 0], errwidth=0.5, capsize=0.1)
+        b1 = sns.barplot(x=all_df['Method'], y=all_df['Likelihood'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 1], errwidth=0.5, capsize=0.1)
+        b2 = sns.barplot(x=all_df['Method'], y=all_df['Effectiveness'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 2], errwidth=0.5, capsize=0.1)
         b0.legend([], [], frameon=False)
         # plt.setp(b0.get_legend().get_texts(), fontsize='5')
         # b1.legend([], [], frameon=False)
@@ -1389,23 +1388,24 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
         b1.set(ylabel=None)
         b2.set(ylabel=None)
         if dataset_idx == 0:
+            b0.set_title(f'Distance (lower is better)')
+            b1.set_title(f'Likelihood (higher is better)')
+            b2.set_title(f'Effectiveness (higher is better)')
+        if dataset_idx < len(datasets)-1:
             b0.set_xticklabels([])
             b1.set_xticklabels([])
             b2.set_xticklabels([])
-            b0.set_title(f'Distance')
-            b1.set_title(f'Likelihood')
-            b2.set_title(f'Effectiveness')
         if dataset_idx == len(datasets) - 1:
             xticklabels = [methods_names['FOCE_dist'], methods_names['FOCE_l'], methods_names['FOCE_dev'], methods_names['FOCE_e'], methods_names['ARES']]
             b0.set_xticklabels(xticklabels, rotation = 45)
             b1.set_xticklabels(xticklabels, rotation = 45)
             b2.set_xticklabels(xticklabels, rotation = 45)
     # legend_handles = create_handles_awb(colors_dict)
-    fig.subplots_adjust(left=0.09,
+    fig.subplots_adjust(left=0.075,
                     bottom=0.08,
-                    right=0.85,
-                    top=0.875,
-                    wspace=0.25,
+                    right=0.8,
+                    top=0.9,
+                    wspace=0.3,
                     hspace=0.1)
     # plt.subplots_adjust(left=0.09,
     #                 bottom=0.08,
