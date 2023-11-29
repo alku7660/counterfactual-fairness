@@ -29,6 +29,8 @@ class FACTS:
         self.cluster = counterfactual.cluster
         self.model = model
         self.discretized_train_df = data.discretized_train_df
+        self.train_target = data.train_target
+        self.undesired_discretized_train_df, self.desired_discretized_train_df = self.get_undesired_desired_discretized_train_df
         self.discretized_test_df = data.discretized_test_df
         self.transformed_test_df = data.transformed_test_df
         self.transformed_test_np = data.transformed_test_np
@@ -37,7 +39,9 @@ class FACTS:
         self.protected_groups = data.feat_protected
         start_time = time.time()
         self.sensitive_groups = self.get_sensitive_groups()
-        self.apriori_df = self.get_fpgrowth_df()
+        self.fpgrowth_df = self.get_fpgrowth_df()
+        self.fpgrowth_per_feat = self.get_common_fpgrowth_per_sensitive_feature()
+        self.actions_fpgrowth_set = self.get_actions_fpgrowth_set()
         self.recourse_predicates_per_group = self.get_recourse_predicates_per_sensitive_group()
         self.fn_instances = self.get_fn_instances()
         self.coverage_dict = self.preallocate_all_group_predicate_R()
@@ -53,9 +57,15 @@ class FACTS:
         end_time = time.time()
         self.run_time = end_time - start_time
 
+    def get_undesired_desired_discretized_train_df(self):
+        """
+        Obtains the undesired class and desired class training dataset
+        """
+        return self.discretized_train_df[self.train_target == self.undesired_class], self.discretized_train_df[self.train_target == 1 - self.undesired_class]
+
     def get_fpgrowth_df(self):
         """
-        Obtains the fpgrowth conjunction predicates from the frequent itemsets from the apriori algorithm, as explained in:
+        Obtains the fpgrowth conjunction predicates from the frequent itemsets from the fpgrowth algorithm, as explained in:
         Kavouras, L., Tsopelas, K., Giannopoulos, G., Sacharidis, D., Psaroudaki, E., Theologitis, N., ... & Emiris, I. (2023). Fairness Aware Counterfactuals for Subgroups. arXiv preprint arXiv:2306.14978.
         """
         frequent_subgroups_per_sensitive_group = {}
@@ -64,9 +74,40 @@ class FACTS:
             sensitive_feat_groups = {}
             for sensitive_group in sensitive_groups_dict.keys():
                 column = f'{sensitive_feat}_{int(sensitive_group)}'
-                instances_sensitive_group = self.discretized_train_df[self.discretized_train_df[column] == 1]
+                instances_sensitive_group = self.undesired_discretized_train_df[self.undesired_discretized_train_df[column] == 1]
+                instances_sensitive_group = instances_sensitive_group.drop(column)
                 fpgrowth_sensitive_group_df = fpgrowth(instances_sensitive_group, min_support=0.01, use_colnames=True)
-        return fpgrowth_df
+                sensitive_feat_groups[sensitive_group] = fpgrowth_sensitive_group_df
+            frequent_subgroups_per_sensitive_group[sensitive_feat] = sensitive_feat_groups
+        return frequent_subgroups_per_sensitive_group
+
+    def get_common_fpgrowth_per_sensitive_feature(self):
+        """
+        Obtains the sensitive groups that are common among the sensitive groups for each of the sensitive features found in the dataset
+        """
+        common_frequent_subgroups_per_sensitive_feat = {}
+        for sensitive_feat in self.protected_groups.keys():
+            sensitive_subgroups_dict = self.fpgrowth_df[sensitive_feat]
+            all_frequent_itemsets_sensitive_feat = pd.DataFrame()
+            for sensitive_group in sensitive_subgroups_dict.keys():
+                fp_growth_sensitive_group_df = sensitive_subgroups_dict[sensitive_group]
+                all_frequent_itemsets_sensitive_feat = pd.concat((all_frequent_itemsets_sensitive_feat, fp_growth_sensitive_group_df))
+            value_counts_sensitive_feature_subgroups = all_frequent_itemsets_sensitive_feat['itemsets'].value_counts()
+            common_sensitive_groups_feat = value_counts_sensitive_feature_subgroups[value_counts_sensitive_feature_subgroups.iloc[:,-1] == len(sensitive_subgroups_dict.keys())]['itemsets']
+            common_frequent_subgroups_per_sensitive_feat[sensitive_feat] = common_sensitive_groups_feat
+        return common_frequent_subgroups_per_sensitive_feat
+
+    def get_actions_fpgrowth_set(self):
+        """
+        Obtains actions from the unaffected training set
+        """
+        filtered_fpgrowth_actions_df = pd.DataFrame()
+        fpgrowth_actions_df = fpgrowth(self.desired_discretized_train_df, min_support=0.01, use_colnames=True)
+        for sensitive_feat in self.fpgrowth_per_feat.keys():
+            common_frequent_subgroups_per_sensitive_feat_df = self.fpgrowth_per_feat[sensitive_feat]
+            fpgrowth_actions_with_subgroups_from_feat = common_frequent_subgroups_per_sensitive_feat_df.loc[common_frequent_subgroups_per_sensitive_feat_df.isin(fpgrowth_actions_df['itemsets'])]
+            filtered_fpgrowth_actions_df =pd.concat((filtered_fpgrowth_actions_df, fpgrowth_actions_with_subgroups_from_feat))
+        return filtered_fpgrowth_actions_df
 
     def get_sensitive_groups(self):
         """
