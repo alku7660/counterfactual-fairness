@@ -1369,10 +1369,10 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
         data_name = dataset_names[data_str]
         eval_foce_proximity_df = load_obj(f'{data_str}_FOCE_dist_cluster_eval.pkl').cf_df
         eval_foce_likelihood_df = load_obj(f'{data_str}_FOCE_l_cluster_eval.pkl').cf_df
-        eval_foce_deviation_df = load_obj(f'{data_str}_FOCE_dev_cluster_eval.pkl').cf_df
+        # eval_foce_deviation_df = load_obj(f'{data_str}_FOCE_dev_cluster_eval.pkl').cf_df
         eval_foce_effectiveness_df = load_obj(f'{data_str}_FOCE_e_cluster_eval.pkl').cf_df
         eval_ares_df = load_obj(f'{data_str}_ares_cluster_eval.pkl').cf_df
-        all_df = pd.concat((eval_foce_proximity_df, eval_foce_likelihood_df, eval_foce_deviation_df, eval_foce_effectiveness_df, eval_ares_df), axis=0)
+        all_df = pd.concat((eval_foce_proximity_df, eval_foce_likelihood_df, eval_foce_effectiveness_df, eval_ares_df), axis=0)
         b0 = sns.barplot(x=all_df['Method'], y=all_df['Distance'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 0], errwidth=0.5, capsize=0.1)
         b1 = sns.barplot(x=all_df['Method'], y=all_df['Likelihood'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 1], errwidth=0.5, capsize=0.1)
         b2 = sns.barplot(x=all_df['Method'], y=all_df['Effectiveness'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 2], errwidth=0.5, capsize=0.1)
@@ -1396,7 +1396,7 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
             b1.set_xticklabels([])
             b2.set_xticklabels([])
         if dataset_idx == len(datasets) - 1:
-            xticklabels = [methods_names['FOCE_dist'], methods_names['FOCE_l'], methods_names['FOCE_dev'], methods_names['FOCE_e'], methods_names['ARES']]
+            xticklabels = [methods_names['FOCE_dist'], methods_names['FOCE_l'], methods_names['FOCE_e'], methods_names['ARES']]
             b0.set_xticklabels(xticklabels, rotation = 45)
             b1.set_xticklabels(xticklabels, rotation = 45)
             b2.set_xticklabels(xticklabels, rotation = 45)
