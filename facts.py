@@ -108,6 +108,8 @@ class FACTS:
             fpgrowth_actions_with_subgroups_from_feat = common_frequent_subgroups_per_sensitive_feat_df.loc[common_frequent_subgroups_per_sensitive_feat_df.isin(fpgrowth_actions_df['itemsets'])]
             filtered_fpgrowth_actions_df =pd.concat((filtered_fpgrowth_actions_df, fpgrowth_actions_with_subgroups_from_feat))
         return filtered_fpgrowth_actions_df
+    
+    
 
     def get_sensitive_groups(self):
         """
