@@ -97,19 +97,142 @@ class FACTS:
             common_frequent_subgroups_per_sensitive_feat[sensitive_feat] = common_sensitive_groups_feat
         return common_frequent_subgroups_per_sensitive_feat
 
+    def remove_sensitive_feature_itemsets(self, itemsets):
+        """
+        Removes the sensitive feature from the itemsets series
+        """
+        itemsets = list(itemsets)
+        itemsets = [list(itemset) for itemset in itemsets]
+        sensitive_feat_list = list(self.fpgrowth_per_feat.keys())
+        for itemset in itemsets:
+            for feat in itemset:
+                if any(sensitive_feat in feat for sensitive_feat in sensitive_feat_list):
+                    itemset.remove(feat)
+        itemsets = pd.Series(itemsets)
+        return itemsets
+
     def get_actions_fpgrowth_set(self):
         """
         Obtains actions from the unaffected training set
         """
         filtered_fpgrowth_actions_df = pd.DataFrame()
         fpgrowth_actions_df = fpgrowth(self.desired_discretized_train_df, min_support=0.01, use_colnames=True)
+        fpgrowth_actions_srs = self.remove_sensitive_feature_itemsets(fpgrowth_actions_df['itemsets'])
         for sensitive_feat in self.fpgrowth_per_feat.keys():
             common_frequent_subgroups_per_sensitive_feat_df = self.fpgrowth_per_feat[sensitive_feat]
-            fpgrowth_actions_with_subgroups_from_feat = common_frequent_subgroups_per_sensitive_feat_df.loc[common_frequent_subgroups_per_sensitive_feat_df.isin(fpgrowth_actions_df['itemsets'])]
-            filtered_fpgrowth_actions_df =pd.concat((filtered_fpgrowth_actions_df, fpgrowth_actions_with_subgroups_from_feat))
+            fpgrowth_actions_to_subgroups = common_frequent_subgroups_per_sensitive_feat_df.loc[common_frequent_subgroups_per_sensitive_feat_df.isin(fpgrowth_actions_srs)]
+            filtered_fpgrowth_actions_df =pd.concat((filtered_fpgrowth_actions_df, fpgrowth_actions_to_subgroups))
         return filtered_fpgrowth_actions_df
     
+    def get_instances_idx_belonging_to_subgroup(self, subgroup):
+        """
+        Obtains the instances indices in the false negatives belonging to a given subgroup
+        """
+        subgroup_instances_idx = []
+        for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
+            cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
+            for instance_idx in cluster_instances_list:
+                instance = self.discretized_test_df.loc[instance_idx]
+                instance_feat_values = [int(instance[feat].values) for feat in subgroup]
+                if instance_feat_values == [1]*len(subgroup):
+                    subgroup_instances_idx.append(instance_idx)
+        return subgroup_instances_idx
     
+    def get_instances_with_idx(self, idx_list):
+        """
+        Obtains the instances in discretized form according to a list of indices
+        """
+        instances_group = self.discretized_test_df.loc[idx_list]
+        return instances_group
+    
+    def get_x_discretized_prime_from_discretized_x(self, action, x):
+        """
+        Transforms x to x_prime using the action given
+        """
+        x_prime = copy.deepcopy(x)
+        len_action = 1 if isinstance(action, str) else len(action)
+        x_prime[action] = [1]*len_action
+        return x_prime
+
+    def transform_to_normal_x(self, x, data):
+        """
+        Transforms an instance x from discretized form to normal x form 
+        """
+        x_original = data.decode_df(x)
+        x_transformed = data.transform_data(x_original)
+        return x_transformed
+
+    def adjust_continuous_feat_normal_x_prime(self, x_prime, x_transformed, action, data):
+        """
+        Adjusts x_prime continuous features to normal values if not changed by the action given
+        """
+        x_prime_transformed = self.transform_to_normal_x(x_prime, data)
+        len_action = len(action)
+        for cont_feat in data.continuous:
+            action_feat = [action.split('_')[0]] if len_action == 1 else [i.split('_') for i in action]
+            if cont_feat not in action_feat:
+                x_prime_transformed[cont_feat] = x_transformed[cont_feat].values
+        return x_prime_transformed
+    
+    x_pred = model.model.predict(x_transformed.values)
+    x_prime_pred = model.model.predict(x_prime_transformed.values)
+    if x_pred == data.undesired_class and x_prime_pred != data.undesired_class:
+        correctness_q_c_c_prime = 1
+    else:
+        correctness_q_c_c_prime = 0
+
+    def verify_same_cost_subgroup_action(self, subgroup_instances, action, data):
+        """
+        Verifies the same cost for all instances in a subgroup for the given action
+        """
+        cost_instances = []
+        for x in subgroup_instances:
+            x_transformed = data.transformed_test_df.loc[x.index,:]
+            x_prime = self.get_x_discretized_prime_from_discretized_x(action, x)
+            x_prime_normal = self.transform_to_normal_x(x_prime, data)
+            cost = distance_calculation(np.array(x_transformed), np.array(x_prime_normal), data, type='L1_L0')
+            cost_instances.append(cost)
+        return len(set(cost_instances)) == 1
+
+    def get_same_cost_actions_per_subgroup(self, data):
+        """
+        Obtains the subset of actions that have the same cost for all individuals in each subgroup, and that mention at least 1 feature mentioned and at least 1 different feature value.
+        """
+        action_per_subgroup_dict = {}
+        for sensitive_feat in self.protected_groups.keys():
+            subgroups = list(self.fpgrowth_per_feat[sensitive_feat])
+            for subgroup in subgroups:
+                subgroup_feat = [subgroup.split('_')[0]] if len(subgroup) == 1 else [i.split('_') for i in subgroup]
+                subgroup_instances_idx = self.get_instances_idx_belonging_to_subgroup(subgroup)
+                subgroup_instances = self.get_instances_with_idx(subgroup_instances_idx)
+                for action in self.actions_fpgrowth_set:
+                    action_feat = [action.split('_')[0]] if len(action) == 1 else [i.split('_') for i in action]
+                    if subgroup.sort() != action.sort() and any(x in subgroup_feat for x in action_feat): 
+                        if self.verify_same_cost_subgroup_action(subgroup_instances, action, data):
+                            action_per_subgroup_dict[subgroup] = action
+        return action_per_subgroup_dict
+
+    def estimate_effectiveness_per_action_per_sensitive_group(self):
+        """
+        Estimates the effectiveness of each of the actions towards 
+        """
+        eta = {}
+        len_cluster_instances = 0
+        for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
+            cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
+            len_cluster_instances += len(cluster_instances_list)
+        for cf_key in list(cfs.keys()):
+            sum_eta = 0
+            cf_k = cfs[cf_key]
+            cf_k = cf_k.values[0]
+            for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
+                cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
+                for instance_idx in cluster_instances_list:
+                    instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
+                    sum_eta += verify_feasibility(instance, cf_k, data)
+            eta[cf_key] = sum_eta/len_cluster_instances
+            print(f'Highest eta value: {np.max(list(eta.values()))}')
+        return eta
 
     def get_sensitive_groups(self):
         """
@@ -290,14 +413,6 @@ class FACTS:
                                     else:
                                         continue
         return correctness_dict, feat_change_dict
-
-    def transform_to_normal_x(self, x, data):
-        """
-        Transforms an instance x from discretized form to normal x form 
-        """
-        x_original = data.decode_df(x)
-        x_transformed = data.transform_data(x_original)
-        return x_transformed
 
     def results_recourse_rules_x(self, recourse_rules_x, x, data, model):
         """
