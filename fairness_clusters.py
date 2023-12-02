@@ -13,7 +13,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['adult'] # 'german','dutch','compass','oulad','synthetic_athlete'
+datasets = ['student'] # 'german','dutch','compass','oulad','synthetic_athlete','bank','law','student'
 methods_to_run = ['FOCE_dist','FOCE_l','FOCE_e','ARES'] # ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -22,7 +22,7 @@ epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feat
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 clustering_metric = 'complete' # Clustering metric used
-percentage_close_train_cf = 0.0005 # 'german 0.05','dutch 0.05','compass 0.05','oulad 0.01','synthetic_athlete 0.05', 'adult 0.0005'
+percentage_close_train_cf = 0.01 # 'german 0.05','dutch 0.05','compass 0.05','oulad 0.01','synthetic_athlete 0.05', 'adult 0.00005', 'bank 0.001', 'law 0.0001'
 dist = 'L1_L0'
 lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 likelihood_factors = [0.5] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5] This is used to calculate a minimum rho admitted for each CF found
