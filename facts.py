@@ -86,7 +86,8 @@ class FACTS:
                 fp_growth_sensitive_group_df = sensitive_subgroups_dict[sensitive_group]
                 all_frequent_itemsets_sensitive_feat = pd.concat((all_frequent_itemsets_sensitive_feat, fp_growth_sensitive_group_df))
             value_counts_sensitive_feature_subgroups = all_frequent_itemsets_sensitive_feat['itemsets'].value_counts()
-            common_sensitive_groups_feat = value_counts_sensitive_feature_subgroups[value_counts_sensitive_feature_subgroups == len(sensitive_subgroups_dict.keys())].index
+            list_subgroups = value_counts_sensitive_feature_subgroups[value_counts_sensitive_feature_subgroups == len(sensitive_subgroups_dict.keys())].index.to_list()
+            common_sensitive_groups_feat = pd.Series(list_subgroups)
             common_frequent_subgroups_per_sensitive_feat[sensitive_feat] = common_sensitive_groups_feat
         return common_frequent_subgroups_per_sensitive_feat
 
@@ -114,7 +115,7 @@ class FACTS:
         for sensitive_feat in self.fpgrowth_per_feat.keys():
             common_frequent_subgroups_per_sensitive_feat_df = self.fpgrowth_per_feat[sensitive_feat]
             fpgrowth_actions_to_subgroups = common_frequent_subgroups_per_sensitive_feat_df.loc[common_frequent_subgroups_per_sensitive_feat_df.isin(fpgrowth_actions_srs)]
-            filtered_fpgrowth_actions_df =pd.concat((filtered_fpgrowth_actions_df, fpgrowth_actions_to_subgroups))
+            filtered_fpgrowth_actions_df = pd.concat((filtered_fpgrowth_actions_df, fpgrowth_actions_to_subgroups))
         return filtered_fpgrowth_actions_df
     
     def get_instances_idx_belonging_to_subgroup(self, subgroup):
