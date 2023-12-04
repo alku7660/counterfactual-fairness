@@ -45,7 +45,7 @@ class FACTS:
         self.subgroup_same_cost_actions = self.get_same_cost_actions_per_subgroup(data)
         self.effectiveness_df = self.estimate_effectiveness_per_action_per_sensitive_group(self, data, model)
         self.best_effectiveness_df = self.select_best_action_per_subgroup()
-        self.normal_x_cf = self.get_cfs_all_fn_instances(data)
+        self.normal_x_cf, self.actions_x = self.get_cfs_all_fn_instances(data)
         end_time = time.time()
         self.run_time = end_time - start_time
 
