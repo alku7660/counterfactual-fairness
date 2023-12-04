@@ -1,0 +1,47 @@
+name: base
+channels:
+  - gurobi
+  - https://conda.anaconda.org/gurobi
+  - defaults
+dependencies:
+  - gurobi=9.5.2
+  - matplotlib=3.8.0
+  - numba=0.58.0
+  - numexpr=2.8.7
+  - numpy-base=1.24.3
+  - numpydoc=1.5.0
+  - pandas=1.5.3
+  - scikit-learn=1.3.0
+  - scipy=1.11.3
+  - seaborn=0.12.2
+  - xlsxwriter=3.1.1
+  - yaml=0.2.5
+  - pip:
+      - absl-py==1.4.0
+      - astunparse==1.6.3
+      - dice-ml==0.9
+      - flatbuffers==23.5.26
+      - gast==0.4.0
+      - google-auth==2.19.1
+      - google-auth-oauthlib==1.0.0
+      - google-pasta==0.2.0
+      - grpcio==1.54.2
+      - jax==0.4.11
+      - keras==2.12.0
+      - libclang==16.0.0
+      - ml-dtypes==0.1.0
+      - numpy==1.22.0
+      - oauthlib==3.2.2
+      - opt-einsum==3.3.0
+      - protobuf==4.23.2
+      - pysmt==0.8.0
+      - requests-oauthlib==1.3.1
+      - tensorboard==2.12.3
+      - tensorboard-data-server==0.7.0
+      - tensorflow==2.12.0
+      - tensorflow-estimator==2.12.0
+      - tensorflow-intel==2.12.0
+      - tensorflow-io-gcs-filesystem==0.31.0
+      - termcolor==2.3.0
+      - torch==1.7.1
+prefix: C:\Users\aleja\anaconda3
