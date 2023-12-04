@@ -69,6 +69,8 @@ if __name__=='__main__':
             counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta, type=dist, graph=graph_obj)
             if method == 'ARES':
                 cf_evaluator.add_cf_data_ares(counterfactual)
+            elif method == 'FACTS':
+                cf_evaluator.add_cf_data_facts(counterfactual)
             else:
                 cf_evaluator.add_cf_data(counterfactual)
             print(f'---------------------------')

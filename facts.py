@@ -30,7 +30,8 @@ class FACTS:
         self.model = model
         self.discretized_train_df = data.discretized_train_df
         self.train_target = data.train_target
-        self.undesired_discretized_train_df, self.desired_discretized_train_df = self.get_undesired_desired_discretized_train_df
+        self.undesired_class = data.undesired_class
+        self.undesired_discretized_train_df, self.desired_discretized_train_df = self.get_undesired_desired_discretized_train_df()
         self.discretized_test_df = data.discretized_test_df
         self.transformed_test_df = data.transformed_test_df
         self.transformed_test_np = data.transformed_test_np
@@ -67,7 +68,7 @@ class FACTS:
             for sensitive_group in sensitive_groups_dict.keys():
                 column = f'{sensitive_feat}_{int(sensitive_group)}'
                 instances_sensitive_group = self.undesired_discretized_train_df[self.undesired_discretized_train_df[column] == 1]
-                instances_sensitive_group = instances_sensitive_group.drop(column)
+                instances_sensitive_group = instances_sensitive_group.drop(column, axis=1)
                 fpgrowth_sensitive_group_df = fpgrowth(instances_sensitive_group, min_support=0.01, use_colnames=True)
                 sensitive_feat_groups[sensitive_group] = fpgrowth_sensitive_group_df
             frequent_subgroups_per_sensitive_group[sensitive_feat] = sensitive_feat_groups
@@ -85,7 +86,7 @@ class FACTS:
                 fp_growth_sensitive_group_df = sensitive_subgroups_dict[sensitive_group]
                 all_frequent_itemsets_sensitive_feat = pd.concat((all_frequent_itemsets_sensitive_feat, fp_growth_sensitive_group_df))
             value_counts_sensitive_feature_subgroups = all_frequent_itemsets_sensitive_feat['itemsets'].value_counts()
-            common_sensitive_groups_feat = value_counts_sensitive_feature_subgroups[value_counts_sensitive_feature_subgroups.iloc[:,-1] == len(sensitive_subgroups_dict.keys())]['itemsets']
+            common_sensitive_groups_feat = value_counts_sensitive_feature_subgroups[value_counts_sensitive_feature_subgroups == len(sensitive_subgroups_dict.keys())].index
             common_frequent_subgroups_per_sensitive_feat[sensitive_feat] = common_sensitive_groups_feat
         return common_frequent_subgroups_per_sensitive_feat
 
