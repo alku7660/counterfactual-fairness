@@ -6,6 +6,7 @@ from fijuice import FIJUICE
 from foce_constraint import FOCE_CONSTRAINT
 from foce_optimize import FOCE_OPTIMIZE
 from ares import ARES
+from facts import FACTS
 
 class Counterfactual:
 
@@ -40,6 +41,8 @@ class Counterfactual:
             cf_method = FOCE_OPTIMIZE(self)
         if self.method == 'ARES':
             cf_method = ARES(self)
+        if self.method == 'FACTS':
+            cf_method = FACTS(self)
         # elif self.method == 'nn':
         #     cf_method = NN(self)
         # elif self.method == 'mo':

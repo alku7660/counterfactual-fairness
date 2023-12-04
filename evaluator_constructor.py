@@ -801,3 +801,42 @@ class Evaluator():
                          original_cf, cf_proximity, cf_feasibility, rho[instance_idx], eta[instance_idx], run_time, 2, 'NA']
             data_df = pd.DataFrame(data=[data_list], index=[len(self.cf_df)], columns=cols)
             self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
+
+    def add_cf_data_facts(self, counterfactual):
+        """
+        DESCRIPTION: Stores the results for the FACTS method in the evaluation object
+        OUTPUT: (None: stored as class attributes)
+        """ 
+        cols = ['Method','alpha','beta','gamma','delta','feature','feat_value','Sensitive group','q_c_c_prime','instance_idx','centroid_idx','normal_centroid','centroid',
+                'normal_cf','cf','Distance','Feasibility','Likelihood','Effectiveness','Time','model_status','obj_val']
+        data = counterfactual.data
+        cfs = counterfactual.cf_method.normal_x_cf
+        run_time = counterfactual.cf_method.run_time
+        rho = self.get_likelihood(data, cfs)
+        eta = self.get_effectiveness(data, cfs)
+        for idx in range(len(counterfactual.cf_method.best_recourse_df)):
+            instance = counterfactual.cf_method.best_recourse_df.iloc[idx]
+            instance_idx = instance['x_idx']
+            if isinstance(instance_idx,str):
+                continue
+            else:
+                x = data.test_df.loc[instance_idx].values
+            normal_x = data.transformed_test_df.loc[instance_idx].values
+            q_c_c_prime = instance['best_q_c_c_prime']
+            q, c, c_prime = q_c_c_prime[0], q_c_c_prime[1], q_c_c_prime[2]
+            feat, feat_val = q.split('_')[0], int(float(q.split('_')[1]))
+            feat_val_name = counterfactual.data.feat_protected[feat][np.round(float(feat_val),2)] 
+            q = q if isinstance(q,str) else list(q) 
+            c = c if isinstance(c,str) else list(c) 
+            c_prime = c_prime if isinstance(c_prime,str) else list(c_prime)
+            normal_cf_df = cfs[instance_idx]
+            normal_cf = normal_cf_df.values[0]
+            original_cf = self.inverse_transform_original(normal_cf_df).values
+            cf_proximity = distance_calculation(normal_x, normal_cf, data, counterfactual.type)
+            cf_feasibility = verify_feasibility(normal_x, normal_cf, data)
+            sensitive_group = f'{feat}: {feat_val_name}'
+            data_list = ['ARES', counterfactual.alpha, counterfactual.beta, counterfactual.gamma, 
+                         counterfactual.delta, feat, feat_val_name, sensitive_group, q_c_c_prime, instance_idx, instance_idx, normal_x, x, normal_cf, 
+                         original_cf, cf_proximity, cf_feasibility, rho[instance_idx], eta[instance_idx], run_time, 2, 'NA']
+            data_df = pd.DataFrame(data=[data_list], index=[len(self.cf_df)], columns=cols)
+            self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
