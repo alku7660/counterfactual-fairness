@@ -266,7 +266,7 @@ class FACTS:
         """
         Gets the counterfactuals, based on the best actions, for the given subgroups and for each instance
         """
-        cfs_dict = dict()
+        cfs_dict, action_dict = dict(), dict()
         for row in self.best_effectiveness_df:
             subgroup, action = row['subgroup'], row['action']
             subgroup_instances_idx = self.get_instances_idx_belonging_to_subgroup(subgroup)
@@ -278,7 +278,8 @@ class FACTS:
                 x_prime_normal = self.transform_to_normal_x(x_discretized_prime, data)
                 x_prime_normal = self.adjust_continuous_feat_normal_x_prime(x_prime_normal, x_transformed, action, data)
                 cfs_dict[idx] = x_prime_normal
-        return cfs_dict
+                action_dict[idx] = action
+        return cfs_dict, action_dict
 
     def get_sensitive_groups(self):
         """
