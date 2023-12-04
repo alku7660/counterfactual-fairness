@@ -1,4 +1,4 @@
-name: base
+name: fairness
 channels:
   - gurobi
   - https://conda.anaconda.org/gurobi
