@@ -102,20 +102,54 @@ class FACTS:
             for feat in itemset:
                 if any(sensitive_feat in feat for sensitive_feat in sensitive_feat_list):
                     itemset.remove(feat)
+        itemsets = [i for i in itemsets if len(i) > 0]
         itemsets = pd.Series(itemsets)
         return itemsets
+    
+    def turn_subgroup_df_into_feat_value_list(self, subgroup_df):
+        """
+        Turns subgroup_df into a list of tuples containing the feature name and the value of the actions
+        """
+        list_features_subgroups, list_values_subgroups = list(), list()
+        for row in subgroup_df:
+            row = list(row)
+            if len(row) == 1:
+                feat_split, val_split = [row[0].split('_')[0]], [row[0].split('_')[1]]
+            else:
+                feat_split, val_split = [i.split('_')[0] for i in row], [i.split('_')[1] for i in row]
+            list_features_subgroups.append(feat_split)
+            list_values_subgroups.append(val_split)
+        return list_features_subgroups, list_values_subgroups
 
     def get_actions_fpgrowth_set(self):
         """
         Obtains actions from the unaffected training set
         """
         filtered_fpgrowth_actions_df = pd.DataFrame()
+        filtered_fpgrowth_actions_list = list()
         fpgrowth_actions_df = fpgrowth(self.desired_discretized_train_df, min_support=0.01, use_colnames=True)
         fpgrowth_actions_srs = self.remove_sensitive_feature_itemsets(fpgrowth_actions_df['itemsets'])
+        count = 0
         for sensitive_feat in self.fpgrowth_per_feat.keys():
             common_frequent_subgroups_per_sensitive_feat_df = self.fpgrowth_per_feat[sensitive_feat]
-            fpgrowth_actions_to_subgroups = common_frequent_subgroups_per_sensitive_feat_df.loc[common_frequent_subgroups_per_sensitive_feat_df.isin(fpgrowth_actions_srs)]
-            filtered_fpgrowth_actions_df = pd.concat((filtered_fpgrowth_actions_df, fpgrowth_actions_to_subgroups))
+            list_features_subgroups, list_values_subgroups = self.turn_subgroup_df_into_feat_value_list(common_frequent_subgroups_per_sensitive_feat_df)
+            for action_list in fpgrowth_actions_srs:
+                action = action_list[0] if len(action_list) == 1 else action_list
+                action_feat = [action.split('_')[0]] if isinstance(action,str) else [i.split('_')[0] for i in action]
+                action_value = [action.split('_')[1]] if isinstance(action,str) else [i.split('_')[1] for i in action]
+                for idx in range(len(list_features_subgroups)):
+                    row_feat, row_val = list_features_subgroups[idx], list_values_subgroups[idx]
+                    idx_where_subgroup_is_in_action = [ind for ind, example in enumerate(action_feat) if example in row_feat]
+                    idx_where_action_is_in_subgroup = [ind for ind, example in enumerate(row_feat) if example in action_feat]
+                    value_where_action_is_in_subgroup = [int(float(row_val[i])) for i in idx_where_action_is_in_subgroup]
+                    value_where_subgroup_is_in_action = [int(float(action_value[i])) for i in idx_where_subgroup_is_in_action]
+                    if value_where_action_is_in_subgroup != value_where_subgroup_is_in_action:
+                        if action_list not in filtered_fpgrowth_actions_list:
+                            count += 1
+                            filtered_fpgrowth_actions_list.append(action_list)
+                            print(f'Count: {count} / Value_action_in_subgroup: {value_where_action_is_in_subgroup} / Value_subgroup_in_action: {value_where_subgroup_is_in_action} / Comparison: {value_where_action_is_in_subgroup != value_where_subgroup_is_in_action}')
+        filtered_fpgrowth_actions_df = pd.Series(filtered_fpgrowth_actions_list)
+        print(f'Length: {len(filtered_fpgrowth_actions_df)}')
         return filtered_fpgrowth_actions_df
     
     def get_instances_idx_belonging_to_subgroup(self, subgroup):
@@ -126,7 +160,7 @@ class FACTS:
         for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
             cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
             for instance_idx in cluster_instances_list:
-                instance = self.discretized_test_df.loc[instance_idx]
+                instance = self.discretized_test_df.loc[instance_idx].to_frame().T
                 instance_feat_values = [int(instance[feat].values) for feat in subgroup]
                 if instance_feat_values == [1]*len(subgroup):
                     subgroup_instances_idx.append(instance_idx)
@@ -143,7 +177,7 @@ class FACTS:
         """
         Get all the columns with the feature given as input parameter
         """
-        columns_list = [col for col in self.discretized_test_df.columns if feat in col]
+        columns_list = [col for col in self.discretized_test_df.columns if col.split('_')[0] in feat]
         return columns_list
 
     def get_x_discretized_prime_from_discretized_x(self, action, x):
@@ -151,7 +185,7 @@ class FACTS:
         Transforms x to x_prime using the action given
         """
         x_prime = copy.deepcopy(x)
-        action_feat = [action.split('_')[0]] if len_action == 1 else [i.split('_') for i in action]
+        action_feat = [action.split('_')[0]] if isinstance(action,str) else [i.split('_')[0] for i in action]
         len_action = 1 if isinstance(action, str) else len(action)
         columns_with_feat = self.get_all_columns_with_feat(action_feat)
         x_prime[columns_with_feat] = [0]*len(columns_with_feat)
@@ -171,9 +205,8 @@ class FACTS:
         Adjusts x_prime continuous features to normal values if not changed by the action given
         """
         x_prime_transformed = self.transform_to_normal_x(x_prime, data)
-        len_action = len(action)
         for cont_feat in data.continuous:
-            action_feat = [action.split('_')[0]] if len_action == 1 else [i.split('_') for i in action]
+            action_feat = [action.split('_')[0]] if isinstance(action,str) else [i.split('_') for i in action]
             if cont_feat not in action_feat:
                 x_prime_transformed[cont_feat] = x_transformed[cont_feat].values
         return x_prime_transformed
@@ -183,10 +216,11 @@ class FACTS:
         Verifies the same cost for all instances in a subgroup for the given action
         """
         cost_instances = []
-        for x in subgroup_instances:
+        for _, x in subgroup_instances.iterrows():
+            x = x.to_frame().T
             x_transformed = data.transformed_test_df.loc[x.index,:]
             x_prime = self.get_x_discretized_prime_from_discretized_x(action, x)
-            x_prime_normal = self.transform_to_normal_x(x_prime, data)
+            x_prime_normal = self.adjust_continuous_feat_normal_x_prime(x_prime, x_transformed, action, data)
             cost = distance_calculation(np.array(x_transformed), np.array(x_prime_normal), data, type='L1_L0')
             cost_instances.append(cost)
         return len(set(cost_instances)) == 1
@@ -199,16 +233,16 @@ class FACTS:
         for sensitive_feat in self.protected_groups.keys():
             subgroups = list(self.fpgrowth_per_feat[sensitive_feat])
             for subgroup in subgroups:
-                subgroup_feat = [subgroup.split('_')[0]] if len(subgroup) == 1 else [i.split('_') for i in subgroup]
                 subgroup_instances_idx = self.get_instances_idx_belonging_to_subgroup(subgroup)
                 subgroup_instances = self.get_instances_with_idx(subgroup_instances_idx)
                 same_cost_actions_list = []
+                counter = 0
                 for action in self.actions_fpgrowth_set:
-                    action_feat = [action.split('_')[0]] if len(action) == 1 else [i.split('_') for i in action]
-                    if subgroup.sort() != action.sort() and any(x in subgroup_feat for x in action_feat): 
-                        if self.verify_same_cost_subgroup_action(subgroup_instances, action, data):
-                            same_cost_actions_list.append(action)
-                    action_per_subgroup_dict[subgroup] = same_cost_actions_list
+                    counter += 1
+                    print(f'Analyzing sensitive feature: {sensitive_feat}, Subgroup: {subgroup}, Action: {action}. Current length {len(same_cost_actions_list)}/{counter}. Total actions to analyze: {len(self.actions_fpgrowth_set)}')
+                    if self.verify_same_cost_subgroup_action(subgroup_instances, action, data):
+                        same_cost_actions_list.append(action)
+                action_per_subgroup_dict[subgroup] = same_cost_actions_list
         return action_per_subgroup_dict
 
     def calculate_action_effectiveness(self, subgroup, sensitive_group, action, data, model):
