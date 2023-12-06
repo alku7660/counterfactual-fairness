@@ -25,6 +25,7 @@ clustering_metric = 'complete' # Clustering metric used
 percentage_close_train_cf = 0.01 # 'german 0.05','dutch 0.05','compass 0.05','oulad 0.01','synthetic_athlete 0.05', 'adult 0.00005', 'bank 0.001', 'law 0.0001'
 dist = 'L1_L0'
 lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+support_th = 0.1
 likelihood_factors = [0.5] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5] This is used to calculate a minimum rho admitted for each CF found
 # t = 100 # Number of preselected close NN Training Counterfactuals
 # k = 10
@@ -66,7 +67,7 @@ if __name__=='__main__':
                 alpha, beta, gamma, delta = minor_weight, minor_weight, minor_weight, major_weight
             else:
                 alpha, beta, gamma, delta = minor_weight, minor_weight, minor_weight, minor_weight
-            counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta, type=dist, graph=graph_obj)
+            counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta, type=dist, graph=graph_obj, support_th=support_th)
             if method == 'ARES':
                 cf_evaluator.add_cf_data_ares(counterfactual)
             elif method == 'FACTS':

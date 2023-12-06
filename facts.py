@@ -26,6 +26,7 @@ class FACTS:
     def __init__(self, counterfactual) -> None:
         data = counterfactual.data
         model = counterfactual.model
+        self.support_th = counterfactual.support_th
         self.cluster = counterfactual.cluster
         self.model = model
         self.discretized_train_df = data.discretized_train_df
@@ -44,7 +45,7 @@ class FACTS:
         self.fpgrowth_per_feat = self.get_common_fpgrowth_per_sensitive_feature()
         self.actions_fpgrowth_set = self.get_actions_fpgrowth_set()
         self.subgroup_same_cost_actions = self.get_same_cost_actions_per_subgroup(data)
-        self.effectiveness_df = self.estimate_effectiveness_per_action_per_sensitive_group(self, data, model)
+        self.effectiveness_df = self.estimate_effectiveness_per_action_per_sensitive_group(data, model)
         self.best_effectiveness_df = self.select_best_action_per_subgroup()
         self.normal_x_cf, self.actions_x = self.get_cfs_all_fn_instances(data)
         end_time = time.time()
@@ -69,7 +70,7 @@ class FACTS:
                 column = f'{sensitive_feat}_{int(sensitive_group)}'
                 instances_sensitive_group = self.undesired_discretized_train_df[self.undesired_discretized_train_df[column] == 1]
                 instances_sensitive_group = instances_sensitive_group.drop(column, axis=1)
-                fpgrowth_sensitive_group_df = fpgrowth(instances_sensitive_group, min_support=0.01, use_colnames=True)
+                fpgrowth_sensitive_group_df = fpgrowth(instances_sensitive_group, min_support=self.support_th, use_colnames=True)
                 sensitive_feat_groups[sensitive_group] = fpgrowth_sensitive_group_df
             frequent_subgroups_per_sensitive_group[sensitive_feat] = sensitive_feat_groups
         return frequent_subgroups_per_sensitive_group
@@ -128,7 +129,7 @@ class FACTS:
         """
         filtered_fpgrowth_actions_df1 = pd.DataFrame()
         filtered_fpgrowth_actions_list1 = list()
-        fpgrowth_actions_df = fpgrowth(self.desired_discretized_train_df, min_support=0.01, use_colnames=True)
+        fpgrowth_actions_df = fpgrowth(self.desired_discretized_train_df, min_support=self.support_th, use_colnames=True)
         fpgrowth_actions_srs = self.remove_sensitive_feature_itemsets(fpgrowth_actions_df['itemsets'])
         print(f'Length fpgrowth_actions_srs {len(fpgrowth_actions_srs)}')
         count = 0
@@ -261,7 +262,8 @@ class FACTS:
         subgroup_instances_df = self.get_instances_with_idx(subgroup_instances_idx)
         subgroup_instances_sensitive_group_df = subgroup_instances_df.loc[subgroup_instances_df[sensitive_group] == 1]
         effective = 0
-        for x in subgroup_instances_sensitive_group_df:
+        for _, x in subgroup_instances_sensitive_group_df.iterrows():
+            x = x.to_frame().T
             normal_x = self.transformed_test_df.loc[x.index,:]
             x_prime = self.get_x_discretized_prime_from_discretized_x(action, x)
             x_prime_normal = self.adjust_continuous_feat_normal_x_prime(x_prime, normal_x, action, data)
@@ -287,7 +289,7 @@ class FACTS:
                 for action in actions_list:
                     count += 1
                     effectiveness = self.calculate_action_effectiveness(subgroup, sensitive_group, action, data, model)
-                    effectiveness_row = pd.DataFrame(data=[subgroup, sensitive_group, action, effectiveness], index = [count], columns=cols)
+                    effectiveness_row = pd.DataFrame(data=[[subgroup, sensitive_group, action, effectiveness]], index = [count], columns=cols)
                     effectiveness_df = pd.concat((effectiveness_df, effectiveness_row))
         effectiveness_df.sort_values('effectiveness', ascending=False)
         return effectiveness_df
@@ -301,7 +303,8 @@ class FACTS:
         unique_subgroups = self.effectiveness_df['subgroup'].unique()
         for unique_subgroup in unique_subgroups:
             subgroup_effectiveness_df = self.effectiveness_df[self.effectiveness_df['subgroup'] == unique_subgroup]
-            best_effectiveness_for_subgroup = subgroup_effectiveness_df.iloc[0,:]
+            subgroup_effectiveness_df.sort_values('effectiveness',ascending=False)
+            best_effectiveness_for_subgroup = subgroup_effectiveness_df.iloc[0,:].to_frame().T
             best_effectiveness_action_df = pd.concat((best_effectiveness_action_df, best_effectiveness_for_subgroup))
         return best_effectiveness_action_df
 
@@ -310,15 +313,17 @@ class FACTS:
         Gets the counterfactuals, based on the best actions, for the given subgroups and for each instance
         """
         cfs_dict, action_dict = dict(), dict()
-        for row in self.best_effectiveness_df:
-            subgroup, action = row['subgroup'], row['action']
+        for _, row in self.best_effectiveness_df.iterrows():
+            row = row.to_frame().T
+            subgroup, action = row['subgroup'], list(row['action'])[0]
             subgroup_instances_idx = self.get_instances_idx_belonging_to_subgroup(subgroup)
             subgroup_instances_df = self.get_instances_with_idx(subgroup_instances_idx)
-            for subgroup_instance in subgroup_instances_df:
-                idx = subgroup_instance.index
+            for _, subgroup_instance in subgroup_instances_df.iterrows():
+                subgroup_instance = subgroup_instance.to_frame().T
+                idx = subgroup_instance.index[0]
                 x_transformed = self.transformed_test_df.loc[subgroup_instance.index,:]
                 x_discretized_prime = self.get_x_discretized_prime_from_discretized_x(action, subgroup_instance)
-                x_prime_normal = self.adjust_continuous_feat_normal_x_prime(x_prime_normal, x_transformed, action, data)
+                x_prime_normal = self.adjust_continuous_feat_normal_x_prime(x_discretized_prime, x_transformed, action, data)
                 cfs_dict[idx] = x_prime_normal
                 action_dict[idx] = action
         return cfs_dict, action_dict

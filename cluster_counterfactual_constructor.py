@@ -10,12 +10,13 @@ from facts import FACTS
 
 class Counterfactual:
 
-    def __init__(self, data, model, method, cluster, alpha=1, beta=1, gamma=1, delta=1, type='L1_L0', graph=None):
+    def __init__(self, data, model, method, cluster, alpha=1, beta=1, gamma=1, delta=1, type='L1_L0', graph=None, support_th=0.01):
         self.data = data
         self.model = model
         self.method = method
         self.cluster = cluster
         self.type = type
+        self.support_th = support_th
         # self.lagrange = lagrange
         # self.likelihood_factor = likelihood_factor
         self.alpha, self.beta, self.gamma, self.delta = alpha, beta, gamma, delta
