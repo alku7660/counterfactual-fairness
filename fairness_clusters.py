@@ -13,7 +13,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['german','synthetic_athlete','compass'] # 'german','dutch','compass','oulad','synthetic_athlete','bank','law','student'
+datasets = ['german','synthetic_athlete','compass'] # 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','disease
 methods_to_run = ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS'] # ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -35,12 +35,11 @@ gammas = [minor_weight, minor_weight, major_weight, minor_weight]
 deltas = [minor_weight, minor_weight, minor_weight, major_weight]
 np.random.seed(seed_int)
 
-
 def percentage_close_train(dataset):
     """
     Selects the appropriate percentage per dataset for the close CF
     """
-    if dataset in ['german','dutch','compass','synthetic_athlete','heart','student']:
+    if dataset in ['german','dutch','compass','synthetic_athlete','synthetic_disease','heart','student']:
         percentage_close_train_cf = 0.05
     elif dataset in ['oulad']:
         percentage_close_train_cf = 0.01
