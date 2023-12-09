@@ -41,7 +41,7 @@ class FACTS:
         self.protected_groups = data.feat_protected
         start_time = time.time()
         self.sensitive_groups = self.get_sensitive_groups()
-        self.fpgrowth_df = self.get_fpgrowth_df()
+        self.fpgrowth_df = self.get_fpgrowth_df(data)
         self.fpgrowth_per_feat = self.get_common_fpgrowth_per_sensitive_feature()
         self.actions_fpgrowth_set = self.get_actions_fpgrowth_set()
         self.subgroup_same_cost_actions = self.get_same_cost_actions_per_subgroup(data)
@@ -57,7 +57,7 @@ class FACTS:
         """
         return self.discretized_train_df[self.train_target == self.undesired_class], self.discretized_train_df[self.train_target == 1 - self.undesired_class]
 
-    def get_fpgrowth_df(self):
+    def get_fpgrowth_df(self, data):
         """
         Obtains the fpgrowth conjunction predicates from the frequent itemsets from the fpgrowth algorithm, as explained in:
         Kavouras, L., Tsopelas, K., Giannopoulos, G., Sacharidis, D., Psaroudaki, E., Theologitis, N., ... & Emiris, I. (2023). Fairness Aware Counterfactuals for Subgroups. arXiv preprint arXiv:2306.14978.
@@ -67,7 +67,10 @@ class FACTS:
             sensitive_groups_dict = self.protected_groups[sensitive_feat]
             sensitive_feat_groups = {}
             for sensitive_group in sensitive_groups_dict.keys():
-                column = f'{sensitive_feat}_{int(sensitive_group)}'
+                if sensitive_feat in data.continuous:
+                    column = f'{sensitive_feat}_{sensitive_group}'
+                else:
+                    column = f'{sensitive_feat}_{int(sensitive_group)}'
                 instances_sensitive_group = self.undesired_discretized_train_df[self.undesired_discretized_train_df[column] == 1]
                 instances_sensitive_group = instances_sensitive_group.drop(column, axis=1)
                 fpgrowth_sensitive_group_df = fpgrowth(instances_sensitive_group, min_support=self.support_th, use_colnames=True)
@@ -273,7 +276,10 @@ class FACTS:
                 effective += 1
             else:
                 effective += 0
-        effectiveness = effective/len(subgroup_instances_sensitive_group_df)
+        if len(subgroup_instances_sensitive_group_df) > 0:
+            effectiveness = effective/len(subgroup_instances_sensitive_group_df)
+        else:
+            effectiveness = 0
         return effectiveness
 
     def estimate_effectiveness_per_action_per_sensitive_group(self, data, model):
@@ -316,6 +322,7 @@ class FACTS:
         for _, row in self.best_effectiveness_df.iterrows():
             row = row.to_frame().T
             subgroup, action = row['subgroup'], list(row['action'])[0]
+            subgroup = list(subgroup.iloc[0])
             subgroup_instances_idx = self.get_instances_idx_belonging_to_subgroup(subgroup)
             subgroup_instances_df = self.get_instances_with_idx(subgroup_instances_idx)
             for _, subgroup_instance in subgroup_instances_df.iterrows():

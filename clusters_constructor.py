@@ -157,4 +157,5 @@ class Clusters:
                     filtered_clusters_list.append(clusters)
                     filtered_centroid_obj_list.append(centroid)
                     group_dict[centroid_idx] = f'{feat}:{feat_val}'
+        print(f'Clustered lists {filtered_clusters_list}')
         return filtered_clusters_list, filtered_centroid_obj_list, group_dict

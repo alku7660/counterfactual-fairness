@@ -13,8 +13,8 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['synthetic_athlete'] # 'german','dutch','compass','oulad','synthetic_athlete','bank','law','student'
-methods_to_run = ['FACTS'] # ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES','FACTS']
+datasets = ['german','synthetic_athlete','compass'] # 'german','dutch','compass','oulad','synthetic_athlete','bank','law','student'
+methods_to_run = ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS'] # ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -22,10 +22,9 @@ epsilon_ft = 0.01          # Epsilon corresponding to the rate of change in feat
 seed_int = 54321           # Seed integer value
 only_undesired_cf = 1      # Find counterfactuals only for negative (bad) class factuals
 clustering_metric = 'complete' # Clustering metric used
-percentage_close_train_cf = 0.01 # 'german 0.05','dutch 0.05','compass 0.05','oulad 0.01','synthetic_athlete 0.05', 'adult 0.00005', 'bank 0.001', 'law 0.0001'
 dist = 'L1_L0'
 lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-support_th = 0.1
+support_th = 0.01
 likelihood_factors = [0.5] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5] This is used to calculate a minimum rho admitted for each CF found
 # t = 100 # Number of preselected close NN Training Counterfactuals
 # k = 10
@@ -36,8 +35,24 @@ gammas = [minor_weight, minor_weight, major_weight, minor_weight]
 deltas = [minor_weight, minor_weight, minor_weight, major_weight]
 np.random.seed(seed_int)
 
+
+def percentage_close_train(dataset):
+    """
+    Selects the appropriate percentage per dataset for the close CF
+    """
+    if dataset in ['german','dutch','compass','synthetic_athlete','heart','student']:
+        percentage_close_train_cf = 0.05
+    elif dataset in ['oulad']:
+        percentage_close_train_cf = 0.01
+    elif dataset in ['bank','law','credit']:
+        percentage_close_train_cf = 0.001
+    elif dataset in ['adult','kdd_census','diabetes']:
+        percentage_close_train_cf = 0.0001
+    return percentage_close_train_cf
+
 if __name__=='__main__':
     for data_str in datasets:
+        percentage_close_train_cf = percentage_close_train(data_str)
         data = load_dataset(data_str, train_fraction, seed_int, step)
         model = Model(data)
         data.undesired_test(model)

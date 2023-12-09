@@ -216,6 +216,8 @@ def get_methods_names(methods):
             method_dict[i] = r'$F_{eff}$'
         elif i == 'ARES':
             method_dict[i] = 'ARES'
+        elif i == 'FACTS':
+            method_dict[i] = 'FACTS'
     return method_dict
 
 def attainable_cf_plot(datasets, methods_to_run):
@@ -1372,13 +1374,12 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
         # eval_foce_deviation_df = load_obj(f'{data_str}_FOCE_dev_cluster_eval.pkl').cf_df
         eval_foce_effectiveness_df = load_obj(f'{data_str}_FOCE_e_cluster_eval.pkl').cf_df
         eval_ares_df = load_obj(f'{data_str}_ares_cluster_eval.pkl').cf_df
-        all_df = pd.concat((eval_foce_proximity_df, eval_foce_likelihood_df, eval_foce_effectiveness_df, eval_ares_df), axis=0)
+        eval_facts_df = load_obj(f'{data_str}_facts_cluster_eval.pkl').cf_df
+        all_df = pd.concat((eval_foce_proximity_df, eval_foce_likelihood_df, eval_foce_effectiveness_df, eval_ares_df, eval_facts_df), axis=0)
         b0 = sns.barplot(x=all_df['Method'], y=all_df['Distance'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 0], errwidth=0.5, capsize=0.1)
         b1 = sns.barplot(x=all_df['Method'], y=all_df['Likelihood'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 1], errwidth=0.5, capsize=0.1)
         b2 = sns.barplot(x=all_df['Method'], y=all_df['Effectiveness'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 2], errwidth=0.5, capsize=0.1)
         b0.legend([], [], frameon=False)
-        # plt.setp(b0.get_legend().get_texts(), fontsize='5')
-        # b1.legend([], [], frameon=False)
         b1.legend([], [], frameon=False)
         b2.legend(bbox_to_anchor=(1.01,1), frameon=False, prop={'size': 6}) #
         b0.set(xlabel=None)
@@ -1396,34 +1397,17 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
             b1.set_xticklabels([])
             b2.set_xticklabels([])
         if dataset_idx == len(datasets) - 1:
-            xticklabels = [methods_names['FOCE_dist'], methods_names['FOCE_l'], methods_names['FOCE_e'], methods_names['ARES']]
+            xticklabels = [methods_names['FOCE_dist'], methods_names['FOCE_l'], methods_names['FOCE_e'], methods_names['ARES'], methods_names['FACTS']]
             b0.set_xticklabels(xticklabels, rotation = 45)
             b1.set_xticklabels(xticklabels, rotation = 45)
             b2.set_xticklabels(xticklabels, rotation = 45)
-    # legend_handles = create_handles_awb(colors_dict)
     fig.subplots_adjust(left=0.075,
                     bottom=0.08,
                     right=0.8,
                     top=0.9,
                     wspace=0.3,
                     hspace=0.1)
-    # plt.subplots_adjust(left=0.09,
-    #                 bottom=0.08,
-    #                 right=0.8,
-    #                 top=0.95,
-    #                 wspace=0.25,
-    #                 hspace=0.1)
-    # for i in range(len(datasets)):
-    #     ax[i,0].set_ylabel(dataset_names[datasets[i]])
-    # for j in range(len(methods)):
-    #     ax[0,j].set_title(methods_names[methods[j]])
-    fig.suptitle('Performance of FOCE and ARES')
-    # plt.subplots_adjust(left=0.09,
-    #                 bottom=0.08,
-    #                 right=0.975,
-    #                 top=0.8,
-    #                 wspace=0.25,
-    #                 hspace=0.1)
+    fig.suptitle('Performance of FOCE, ARES and FACTS')
     plt.savefig(results_cf_plots_dir+'all_datasets_all_methods.pdf',format='pdf',dpi=400)
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']

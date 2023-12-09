@@ -813,7 +813,7 @@ class Evaluator():
         cfs = counterfactual.cf_method.normal_x_cf
         actions = counterfactual.cf_method.actions_x
         run_time = counterfactual.cf_method.run_time
-        effectiveness_df = counterfactual.best_effectiveness_df
+        effectiveness_df = counterfactual.cf_method.best_effectiveness_df
         rho = self.get_likelihood(data, cfs)
         eta = self.get_effectiveness(data, cfs)
         for c_idx in range(len(counterfactual.cluster.filtered_centroids_list)):

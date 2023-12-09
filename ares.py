@@ -26,6 +26,7 @@ class ARES:
         data = counterfactual.data
         model = counterfactual.model
         self.cluster = counterfactual.cluster
+        self.support_th = counterfactual.support_th
         self.model = model
         self.discretized_train_df = data.discretized_train_df
         self.discretized_test_df = data.discretized_test_df
@@ -57,7 +58,7 @@ class ARES:
         Obtains the apriori conjunction predicates from the frequent itemsets from the apriori algorithm, as explained in:
         Rawal, Kaivalya, and Himabindu Lakkaraju. "Beyond individualized recourse: Interpretable and interactive summaries of actionable recourses." Advances in Neural Information Processing Systems 33 (2020): 12187-12198.
         """
-        apriori_df = apriori(self.discretized_train_df, min_support=0.01, use_colnames=True)
+        apriori_df = apriori(self.discretized_train_df, min_support=self.support_th, use_colnames=True)
         return apriori_df
 
     def get_sensitive_groups(self):

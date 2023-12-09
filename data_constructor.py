@@ -110,6 +110,7 @@ class Dataset:
         """
         bin_cat_ord_enc = OneHotEncoder(dtype=np.uint8, handle_unknown='ignore')
         bin_cat_ord_df = df[self.binary + self.categorical + self.ordinal]
+        bin_cat_ord_df = bin_cat_ord_df.round(0).astype(int)
         bin_cat_ord_enc.fit(bin_cat_ord_df)
         return bin_cat_ord_enc
 
