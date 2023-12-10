@@ -14,7 +14,7 @@ from sklearn.metrics import f1_score
 from support import save_obj
 
 datasets = ['german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'] # 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
-methods_to_run = ['ARES','FACTS'] # ['FOCE_dist','FOCE_l','FOCE_dev','FOCE_e','ARES','FACTS']
+methods_to_run = ['ARES','FACTS'] # ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
