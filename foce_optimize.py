@@ -12,6 +12,7 @@ from scipy.stats import norm
 class FOCE_OPTIMIZE:
 
     def __init__(self, counterfactual):
+        self.percentage = counterfactual.graph.percentage
         self.cluster = counterfactual.cluster
         self.ioi_label = self.cluster.undesired_class
         # self.lagrange = counterfactual.lagrange
