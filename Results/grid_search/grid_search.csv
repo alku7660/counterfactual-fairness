@@ -27,3 +27,5 @@ oulad,mlp,"[{'activation': 'logistic', 'hidden_layer_sizes': (100, 10), 'solver'
 oulad,rf,"[{'max_depth': 5, 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 100}]",0.644719803
 law,mlp,"[{'activation': 'tanh', 'hidden_layer_sizes': (50, 1), 'solver': 'adam'}]",0.818974224
 law,rf,"[{'max_depth': 10, 'min_samples_leaf': 1, 'min_samples_split': 10, 'n_estimators': 200}]",0.817364054
+heart,mlp,"[{'activation': 'tanh', 'hidden_layer_sizes': (100, 5), 'solver': 'sgd'}]",0.818012587
+heart,rf,"[{'max_depth': 5, 'min_samples_leaf': 5, 'min_samples_split': 5, 'n_estimators': 50}]",0.831562882
