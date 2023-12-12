@@ -290,13 +290,14 @@ class FACTS:
         effectiveness_df = pd.DataFrame(columns=cols)
         count = 0
         for subgroup in self.subgroup_same_cost_actions.keys():
+            count += 1
             actions_list = self.subgroup_same_cost_actions[subgroup]
             for sensitive_group in self.sensitive_groups:
                 for action in actions_list:
-                    count += 1
                     effectiveness = self.calculate_action_effectiveness(subgroup, sensitive_group, action, data, model)
                     effectiveness_row = pd.DataFrame(data=[[subgroup, sensitive_group, action, effectiveness]], index = [count], columns=cols)
                     effectiveness_df = pd.concat((effectiveness_df, effectiveness_row))
+            print(f'Estimated effectiveness of subgroup actions in: {subgroup}. Total subgroups analyzed for actions effectiveness: {count}/{len(self.subgroup_same_cost_actions.keys())}')
         effectiveness_df.sort_values('effectiveness', ascending=False)
         return effectiveness_df
 

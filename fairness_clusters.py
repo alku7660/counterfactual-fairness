@@ -13,7 +13,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'] # 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
+datasets = ['german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'] # 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
 methods_to_run = ['ARES','FACTS'] # ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -52,9 +52,9 @@ def support_threshold(dataset):
     """
     Selects the appropriate support threshold
     """
-    if dataset in ['german','compass','synthetic_athlete','synthetic_disease','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes']:
+    if dataset in ['compass','synthetic_athlete','synthetic_disease','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes']:
         support_th = 0.01
-    elif dataset in ['dutch']:
+    elif dataset in ['dutch','german']:
         support_th = 0.05
     elif dataset in []:
         support_th = 0.001
