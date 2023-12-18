@@ -124,7 +124,10 @@ class Dataset:
         else:
             discretized_cont_df = pd.DataFrame()
         bin_cat_ord_df = df[self.binary + self.categorical + self.ordinal]
-        bin_cat_ord_df = bin_cat_ord_df.round(0).astype(int)
+        try:
+            bin_cat_ord_df = bin_cat_ord_df.round(0).astype(int)
+        except:
+            bin_cat_ord_df = bin_cat_ord_df
         discretized_bin_cat_ord_np = self.bin_cat_ord_enc.transform(bin_cat_ord_df)
         bin_cat_ord_cols = self.bin_cat_ord_enc.get_feature_names_out(self.binary + self.categorical + self.ordinal)
         discretized_bin_cat_ord_df = pd.DataFrame(index=df.index, data=discretized_bin_cat_ord_np.toarray(), columns=bin_cat_ord_cols)
