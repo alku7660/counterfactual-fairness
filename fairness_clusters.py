@@ -13,8 +13,8 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['student'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.2 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
-methods_to_run = ['FACTS'] # ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS']
+datasets = ['oulad','bank','law','credit','adult'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
+methods_to_run = ['ARES','FACTS'] # ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -38,28 +38,32 @@ def percentage_close_train(dataset):
     """
     Selects the appropriate percentage per dataset for the close CF
     """
-    if dataset in ['german','dutch','compass','synthetic_athlete','synthetic_disease','heart','student']:
+    if dataset in ['german','dutch','compass','synthetic_athlete','heart']:
         percentage_close_train_cf = 0.05
-    elif dataset in ['oulad']:
+    elif dataset in ['student']:
         percentage_close_train_cf = 0.01
-    elif dataset in ['bank','law','credit']:
+    elif dataset in ['law']:
         percentage_close_train_cf = 0.001
-    elif dataset in ['adult','kdd_census','diabetes']:
+    elif dataset in ['bank','credit']:
+        percentage_close_train_cf = 0.0002
+    elif dataset in ['adult','diabetes']:
         percentage_close_train_cf = 0.0001
+    elif dataset in ['kdd_census']:
+        percentage_close_train_cf = 0.00005
     return percentage_close_train_cf
 
 def support_threshold(dataset):
     """
     Selects the appropriate support threshold
     """
-    if dataset in ['compass','synthetic_athlete','synthetic_disease','heart','oulad','bank','law','credit','adult','kdd_census','diabetes']:
+    if dataset in ['compass','synthetic_athlete','synthetic_disease','heart','bank','law','credit','adult','kdd_census','diabetes']:
         support_th = 0.01
     elif dataset in ['german']:
         support_th = 0.05
-    elif dataset in ['dutch']:
+    elif dataset in ['dutch','oulad']:
         support_th = 0.1
     elif dataset in ['student']:
-        support_th = 0.2
+        support_th = 0.4
     return support_th
 
 if __name__=='__main__':
