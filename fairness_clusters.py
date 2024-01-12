@@ -13,8 +13,8 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['oulad','bank','law','credit','adult'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
-methods_to_run = ['ARES','FACTS'] # ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS']
+datasets = ['bank','law','credit','adult'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
+methods_to_run = ['FACTS'] # ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -56,12 +56,14 @@ def support_threshold(dataset):
     """
     Selects the appropriate support threshold
     """
-    if dataset in ['compass','synthetic_athlete','synthetic_disease','heart','bank','law','credit','adult','kdd_census','diabetes']:
+    if dataset in ['compass','synthetic_athlete','synthetic_disease','heart','credit','adult','kdd_census','diabetes']:
         support_th = 0.01
     elif dataset in ['german']:
         support_th = 0.05
-    elif dataset in ['dutch','oulad']:
+    elif dataset in ['dutch','oulad','law']:
         support_th = 0.1
+    elif dataset in ['bank','law']:
+        support_th = 0.25
     elif dataset in ['student']:
         support_th = 0.4
     return support_th

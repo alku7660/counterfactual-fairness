@@ -396,7 +396,10 @@ class ARES:
             centroid = self.cluster.filtered_centroids_list[c_idx]
             original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[f'c_{c_idx}'], columns=data.features)
             x = data.discretize_df(original_centroid)
-            q_c_c_prime = self.best_recourse_df[self.best_recourse_df['x_idx'] == idx]['best_q_c_c_prime'][0]
+            if len(self.best_recourse_df[self.best_recourse_df['x_idx'] == idx]['best_q_c_c_prime']) == 0:
+                continue
+            else:
+                q_c_c_prime = self.best_recourse_df[self.best_recourse_df['x_idx'] == idx]['best_q_c_c_prime'][0]
             c_prime = q_c_c_prime[-1]
             c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
             len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
