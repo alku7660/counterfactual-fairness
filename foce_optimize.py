@@ -135,8 +135,8 @@ class FOCE_OPTIMIZE:
 
         # for c in set_Centroids:
         #     opt_model.addConstr(gp.quicksum(self.graph.rho[i]*cf[c, i] for i in G.nodes) >= counterfactual.rho_min)
-            
-        def fairness_objective(cf, C, W, CW, centroids_idx, nodes_idx):
+        
+        def calculate_s_dist(cf, C, W, CW, centroids_idx, nodes_idx):
             var = 0
             mean_value = cf.prod(CW)
             c_idx_checked = []
@@ -159,10 +159,24 @@ class FOCE_OPTIMIZE:
                     c_idx_checked.extend(c_idx_sensitive_group_list)
             return var
 
+        def calculate_s_like(cf, rho, centroids_idx, nodes_idx):
+            c_like = gp.quicksum(cf[c, i]*rho[i] for i in nodes_idx for c in set_Centroids)/len(centroids_idx)
+            s_like = gp.quicksum((cf[c, i]*rho[i] - c_like)^2 for i in nodes_idx for c in set_Centroids)/len(centroids_idx)
+            
+        def calculate_s_eff(cf, eta, centroids_idx, nodes_idx):
+            c_eff = gp.quicksum(cf[c, i]*eta[i] for i in nodes_idx for c in set_Centroids)/len(centroids_idx)
+            s_eff = gp.quicksum((cf[c, i]*eta[i] - c_eff)^2 for i in nodes_idx for c in set_Centroids)/len(centroids_idx)
+
+        def fairness_objective(cf, C, W, CW, rho, eta, centroids_idx, nodes_idx):
+            s_dist = calculate_s_dist(cf, C, W, CW, centroids_idx, nodes_idx)
+            s_like = calculate_s_like(cf, rho, centroids_idx, nodes_idx)
+            s_eff = calculate_s_eff(cf, eta, centroids_idx, nodes_idx)
+            return s_dist + s_like + s_eff
+
         opt_model.setObjective(cf.prod(self.graph.CW)*self.alpha
                                - gp.quicksum(cf[c, i]*self.graph.rho[i] for i in G.nodes for c in set_Centroids)*self.beta
-                               + fairness_objective(cf, self.graph.C, self.graph.W, self.graph.CW, set_Centroids, G.nodes)*self.gamma
-                               - gp.quicksum(cf[c, i]*self.graph.eta[i] for i in G.nodes for c in set_Centroids)*self.delta, GRB.MINIMIZE)
+                               - gp.quicksum(cf[c, i]*self.graph.eta[i] for i in G.nodes for c in set_Centroids)*self.gamma
+                               + fairness_objective(cf, self.graph.C, self.graph.W, self.graph.CW, self.graph.rho, self.graph.eta, set_Centroids, G.nodes)*self.delta, GRB.MINIMIZE)
             
         """
         OPTIMIZATION AND RESULTS

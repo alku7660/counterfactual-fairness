@@ -95,9 +95,9 @@ if __name__=='__main__':
                 alpha, beta, gamma, delta = major_weight, minor_weight, minor_weight, minor_weight
             elif method == 'FOCE_l':
                 alpha, beta, gamma, delta = minor_weight, major_weight, minor_weight, minor_weight
-            elif method == 'FOCE_dev':
-                alpha, beta, gamma, delta = minor_weight, minor_weight, major_weight, minor_weight
             elif method == 'FOCE_e':
+                alpha, beta, gamma, delta = minor_weight, minor_weight, major_weight, minor_weight
+            elif method == 'FOCE_dev':
                 alpha, beta, gamma, delta = minor_weight, minor_weight, minor_weight, major_weight
             else:
                 alpha, beta, gamma, delta = minor_weight, minor_weight, minor_weight, minor_weight
