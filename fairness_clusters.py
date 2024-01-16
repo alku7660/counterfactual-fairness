@@ -14,7 +14,7 @@ from sklearn.metrics import f1_score
 from support import save_obj
 
 datasets = ['synthetic_athlete','compass','german','student'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
-methods_to_run = ['FOCE_dev'] # ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS']
+methods_to_run = ['FOCE_dev_dist','FOCE_dev_like','FOCE_dev_eff'] # ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -92,16 +92,20 @@ if __name__=='__main__':
             cf_evaluator.add_fairness_measures(data, model)
             cf_evaluator.add_fnr_data(data)
             if method == 'FOCE_dist':
-                alpha, beta, gamma, delta = major_weight, minor_weight, minor_weight, minor_weight
+                alpha, beta, gamma, delta1, delta2, delta3 = major_weight, minor_weight, minor_weight, minor_weight, minor_weight, minor_weight
             elif method == 'FOCE_l':
-                alpha, beta, gamma, delta = minor_weight, major_weight, minor_weight, minor_weight
+                alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, major_weight, minor_weight, minor_weight, minor_weight, minor_weight
             elif method == 'FOCE_e':
-                alpha, beta, gamma, delta = minor_weight, minor_weight, major_weight, minor_weight
-            elif method == 'FOCE_dev':
-                alpha, beta, gamma, delta = minor_weight, minor_weight, minor_weight, major_weight
+                alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, major_weight, minor_weight, minor_weight, minor_weight
+            elif method == 'FOCE_dev_dist':
+                alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, major_weight, minor_weight, minor_weight
+            elif method == 'FOCE_dev_like':
+                alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, minor_weight, major_weight, minor_weight
+            elif method == 'FOCE_dev_eff':
+                alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, minor_weight, minor_weight, major_weight
             else:
-                alpha, beta, gamma, delta = minor_weight, minor_weight, minor_weight, minor_weight
-            counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta, type=dist, graph=graph_obj, support_th=support_th)
+                alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, minor_weight, minor_weight, minor_weight
+            counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta1, delta2, delta3, type=dist, graph=graph_obj, support_th=support_th)
             if method == 'ARES':
                 cf_evaluator.add_cf_data_ares(counterfactual)
             elif method == 'FACTS':

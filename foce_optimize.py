@@ -16,7 +16,7 @@ class FOCE_OPTIMIZE:
         self.cluster = counterfactual.cluster
         self.ioi_label = self.cluster.undesired_class
         # self.lagrange = counterfactual.lagrange
-        self.alpha, self.beta, self.gamma, self.delta = counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta
+        self.alpha, self.beta, self.gamma, self.delta1, self.delta2, self.delta3 = counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta1, counterfactual.delta2, counterfactual.delta3
         self.graph = counterfactual.graph
         start_time = time.time()
         self.normal_x_cf, self.nodes_solution, self.centroid_nodes_solution, self.model_status, self.obj_val = self.Foce(counterfactual)
@@ -170,15 +170,24 @@ class FOCE_OPTIMIZE:
             return s_eff
 
         def fairness_objective(cf, C, W, CW, rho, eta, centroids_idx, nodes_idx):
-            s_dist = calculate_s_dist(cf, C, W, CW, centroids_idx, nodes_idx)
-            s_like = calculate_s_like(cf, rho, centroids_idx, nodes_idx)
-            s_eff = calculate_s_eff(cf, eta, centroids_idx, nodes_idx)
+            if self.delta1 == 1:
+                s_dist = calculate_s_dist(cf, C, W, CW, centroids_idx, nodes_idx)
+            else:
+                s_dist = 0
+            if self.delta2 == 1:
+                s_like = calculate_s_like(cf, rho, centroids_idx, nodes_idx)
+            else:
+                s_like = 0
+            if self.delta3 == 1:
+                s_eff = calculate_s_eff(cf, eta, centroids_idx, nodes_idx)
+            else:
+                s_eff = 0
             return s_dist + s_like + s_eff
 
         opt_model.setObjective(cf.prod(self.graph.CW)*self.alpha
                                - gp.quicksum(cf[c, i]*self.graph.rho[i] for i in G.nodes for c in set_Centroids)*self.beta
                                - gp.quicksum(cf[c, i]*self.graph.eta[i] for i in G.nodes for c in set_Centroids)*self.gamma
-                               + fairness_objective(cf, self.graph.C, self.graph.W, self.graph.CW, self.graph.rho, self.graph.eta, set_Centroids, G.nodes)*self.delta, GRB.MINIMIZE)
+                               + fairness_objective(cf, self.graph.C, self.graph.W, self.graph.CW, self.graph.rho, self.graph.eta, set_Centroids, G.nodes), GRB.MINIMIZE)
             
         """
         OPTIMIZATION AND RESULTS

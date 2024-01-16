@@ -10,7 +10,7 @@ from facts import FACTS
 
 class Counterfactual:
 
-    def __init__(self, data, model, method, cluster, alpha=1, beta=1, gamma=1, delta=1, type='L1_L0', graph=None, support_th=0.01):
+    def __init__(self, data, model, method, cluster, alpha=1, beta=1, gamma=1, delta1=1, delta2=1, delta3=1, type='L1_L0', graph=None, support_th=0.01):
         self.data = data
         self.model = model
         self.method = method
@@ -19,7 +19,7 @@ class Counterfactual:
         self.support_th = support_th
         # self.lagrange = lagrange
         # self.likelihood_factor = likelihood_factor
-        self.alpha, self.beta, self.gamma, self.delta = alpha, beta, gamma, delta
+        self.alpha, self.beta, self.gamma, self.delta1, self.delta2, self.delta3 = alpha, beta, gamma, delta1, delta2, delta3
         # self.t = t
         # self.k = k
         self.graph = graph
