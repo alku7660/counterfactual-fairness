@@ -170,18 +170,15 @@ class FOCE_OPTIMIZE:
             return s_eff
 
         def fairness_objective(cf, C, W, CW, rho, eta, centroids_idx, nodes_idx):
+            s_dist = 0
+            s_like = 0
+            s_eff = 0
             if self.delta1 == 1:
                 s_dist = calculate_s_dist(cf, C, W, CW, centroids_idx, nodes_idx)
-            else:
-                s_dist = 0
             if self.delta2 == 1:
                 s_like = calculate_s_like(cf, rho, centroids_idx, nodes_idx)
-            else:
-                s_like = 0
             if self.delta3 == 1:
                 s_eff = calculate_s_eff(cf, eta, centroids_idx, nodes_idx)
-            else:
-                s_eff = 0
             return s_dist + s_like + s_eff
 
         opt_model.setObjective(cf.prod(self.graph.CW)*self.alpha
