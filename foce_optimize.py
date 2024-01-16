@@ -161,11 +161,13 @@ class FOCE_OPTIMIZE:
 
         def calculate_s_like(cf, rho, centroids_idx, nodes_idx):
             c_like = gp.quicksum(cf[c, i]*rho[i] for i in nodes_idx for c in set_Centroids)/len(centroids_idx)
-            s_like = gp.quicksum((cf[c, i]*rho[i] - c_like)^2 for i in nodes_idx for c in set_Centroids)/len(centroids_idx)
-            
+            s_like = gp.quicksum((cf[c, i]*rho[i] - c_like)**2 for i in nodes_idx for c in set_Centroids)
+            return s_like
+
         def calculate_s_eff(cf, eta, centroids_idx, nodes_idx):
             c_eff = gp.quicksum(cf[c, i]*eta[i] for i in nodes_idx for c in set_Centroids)/len(centroids_idx)
-            s_eff = gp.quicksum((cf[c, i]*eta[i] - c_eff)^2 for i in nodes_idx for c in set_Centroids)/len(centroids_idx)
+            s_eff = gp.quicksum((cf[c, i]*eta[i] - c_eff)**2 for i in nodes_idx for c in set_Centroids)
+            return s_eff
 
         def fairness_objective(cf, C, W, CW, rho, eta, centroids_idx, nodes_idx):
             s_dist = calculate_s_dist(cf, C, W, CW, centroids_idx, nodes_idx)
