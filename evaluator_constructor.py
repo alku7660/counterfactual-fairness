@@ -732,7 +732,7 @@ class Evaluator():
         DESCRIPTION:            Stores the cluster CF and obtains all the performance measures for the cluster counterfactual 
         OUTPUT: (None: stored as class attributes)
         """
-        cols = ['Method','alpha','beta','gamma','delta','feature','feat_value','Sensitive group','instance_idx','centroid_idx','normal_centroid','centroid',
+        cols = ['Method','alpha','beta','gamma','delta1','delta2','delta3','feature','feat_value','Sensitive group','instance_idx','centroid_idx','normal_centroid','centroid',
                 'normal_cf','cf','Distance','Feasibility','Likelihood','Effectiveness','Time','model_status','obj_val']
         nodes_solution_idx = counterfactual.cf_method.nodes_solution
         centroid_node_solution = counterfactual.cf_method.centroid_nodes_solution
@@ -756,7 +756,7 @@ class Evaluator():
                 instance = counterfactual.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
                 cf_proximity = distance_calculation(instance, normal_centroid_cf, counterfactual.data, counterfactual.type)
                 cf_feasibility = verify_feasibility(instance, normal_centroid_cf, counterfactual.data)
-                data_list = [counterfactual.method, counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta,
+                data_list = [counterfactual.method, counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta1, counterfactual.delta2, counterfactual.delta3,
                              centroid.feat, feat_val_name, sensitive_group, instance_idx, centroid.centroid_idx, centroid.normal_x, centroid.x,
                              normal_centroid_cf, original_cf, cf_proximity, cf_feasibility, likelihood, effectiveness, counterfactual.cf_method.run_time, 
                              counterfactual.cf_method.model_status, counterfactual.cf_method.obj_val]
