@@ -13,8 +13,8 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['compass','german','student'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
-methods_to_run = ['FOCE_dev_dist'] # ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS']
+datasets = ['bank','compass','dutch','german','oulad','student','synthetic_athlete'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
+methods_to_run = ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS'] # ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -42,7 +42,7 @@ def percentage_close_train(dataset):
         percentage_close_train_cf = 0.05
     elif dataset in ['student']:
         percentage_close_train_cf = 0.01
-    elif dataset in ['law']:
+    elif dataset in ['law','oulad']:
         percentage_close_train_cf = 0.001
     elif dataset in ['bank','credit']:
         percentage_close_train_cf = 0.0002
