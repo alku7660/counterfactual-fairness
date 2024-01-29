@@ -8,53 +8,76 @@ from evaluator_constructor import distance_calculation, verify_feasibility
 from nnt import nn_for_juice
 import time
 from scipy.stats import norm
+from graph_constructor import Graph
 
 class FOCE_OPTIMIZE:
 
     def __init__(self, counterfactual):
-        self.percentage = counterfactual.graph.percentage
+        self.percentage = counterfactual.percentage
         self.cluster = counterfactual.cluster
         self.ioi_label = self.cluster.undesired_class
-        # self.lagrange = counterfactual.lagrange
         self.alpha, self.beta, self.gamma, self.delta1, self.delta2, self.delta3 = counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta1, counterfactual.delta2, counterfactual.delta3
-        self.graph = counterfactual.graph
-        start_time = time.time()
-        self.normal_x_cf, self.nodes_solution, self.centroid_nodes_solution, self.model_status, self.obj_val = self.Foce(counterfactual)
-        end_time = time.time()
-        self.run_time = end_time - start_time
+        self.normal_x_cf, self.nodes_solution, self.centroid_nodes_solution, self.model_status, self.obj_val = self.solve_problem(counterfactual)
+    
+    def solve_problem(self, counterfactual):
+        """
+        Generates the solution according to the FOCE algorithms
+        """
+        centroids_dict = self.cluster.centroids_dict
+        centroids_feat_list = list(self.centroids_dict.keys())
+        for feature in centroids_feat_list:
+            graph = Graph(counterfactual.data, counterfactual.model, self.cluster, feature, counterfactual.type, self.percentage)
+            start_time = time.time()
+            self.normal_x_cf, self.nodes_solution, self.centroid_nodes_solution, self.model_status, self.obj_val = self.Foce(counterfactual)
+            end_time = time.time()
+            self.run_time = end_time - start_time
 
-    def find_train_cf(self, data, model, type, extra_search=False):
+    def find_train_specific_feature_val(self, data, feat_val):
         """
-        Finds the set of training observations belonging to, and predicted as, the counterfactual class
+        Finds all the training observations belonging to the feature value of interest
         """
-        train_np = data.transformed_train_np
-        train_target = data.train_target
-        train_pred = model.model.predict(train_np)
+        train_target_df = copy.deepcopy(data.train_df)
+        train_target_df['target'] = data.train_target
+        train_target_feat_val_df = train_target_df[train_target_df[self.feat] == feat_val]
+        target_feat_val = train_target_feat_val_df['target'].values()
+        del train_target_feat_val_df['target']
+        train_feat_val_np = data.transform_data(train_target_feat_val_df)
+        return train_target_feat_val_df, target_feat_val, train_feat_val_np
+
+    def find_train_desired_label(self, train_np, train_target, train_pred, extra_search):
+        """
+        Finds the training instances that have the desired label from either ground truth and/or prediction
+        """
         if not extra_search:
             train_cf = train_np[(train_target != self.ioi_label) & (train_pred != self.ioi_label)]
         else:
             train_cf = train_np[train_target != self.ioi_label]
-        # train_cf_df = pd.DataFrame(columns = ['centroid','feat','feat_val','train_cfs'])
+        return train_cf
+
+    def find_train_cf(self, data, model, type, extra_search=False):
+        """
+        Finds the set of training observations belonging to, and predicted as, the counterfactual class and that belong to the same sensitive group as the centroid (this avoids node generation explosion)
+        """
         sort_train_cf_centroid = []
         for idx in range(len(self.cluster.filtered_centroids_list)):
             c = self.cluster.filtered_centroids_list[idx]
-            # feat = c.feat
-            # feat_val = c.feat_val
-            normal_centroid = c.normal_x
-            # sort_train_cf_centroid = []
-            for i in range(train_cf.shape[0]):
-                if extra_search: 
-                    if verify_feasibility(normal_centroid, train_cf[i], data):
-                        dist = distance_calculation(train_cf[i], normal_centroid, data, type=type)
-                        sort_train_cf_centroid.append((train_cf[i], dist))
-                else:
-                    dist = distance_calculation(train_cf[i], normal_centroid, data, type=type)
-                    sort_train_cf_centroid.append((train_cf[i], dist))
-            # if len(sort_train_cf_centroid) > self.t:
-            # sort_train_cf_centroid = sort_train_cf_centroid[:self.t]
-            # centroid_df_data = pd.DataFrame([[normal_centroid, feat, feat_val, sort_train_cf_centroid]], index=[idx], columns=train_cf_df.columns)
-            # train_cf_df = pd.concat((train_cf_df, centroid_df_data), axis=0)
-        # return train_cf_df
+            feat = c.feat
+            if feat != self.feat:
+                continue
+            else:
+                feat_val = c.feat_val
+                train_feat_val_df, target_feat_val, train_feat_val_np = find_train_specific_feature_val(data, feat_val)
+                train_np_feat_val_pred = model.model.predict(train_np_feat_val)
+                train_desired_label_np = self.find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search)
+                normal_centroid = c.normal_x
+                for i in range(train_desired_label_np.shape[0]):
+                    if extra_search:
+                        if verify_feasibility(normal_centroid, train_desired_label_np[i], data):
+                            dist = distance_calculation(train_desired_label_np[i], normal_centroid, data, type=type)
+                            sort_train_cf_centroid.append((train_desired_label_np[i], dist))
+                    else:
+                        dist = distance_calculation(train_desired_label_np[i], normal_centroid, data, type=type)
+                        sort_train_cf_centroid.append((train_desired_label_np[i], dist))
         sort_train_cf_centroid.sort(key=lambda x: x[1])
         sort_train_cf_centroid = [i[0] for i in sort_train_cf_centroid]
         sort_train_cf_centroid = sort_train_cf_centroid[:int(len(sort_train_cf_centroid)*self.percentage)]
@@ -115,6 +138,7 @@ class FOCE_OPTIMIZE:
         """
         SETS
         """
+        
         set_Centroids = range(1, len(self.cluster.filtered_centroids_list) + 1)               
             
         """

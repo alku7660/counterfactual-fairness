@@ -6,7 +6,6 @@ warnings.filterwarnings("ignore")
 from data_constructor import load_dataset
 from model_constructor import Model
 from clusters_constructor import Clusters
-from graph_constructor import Graph
 from cluster_counterfactual_constructor import Counterfactual
 from evaluator_constructor import Evaluator
 import numpy as np
@@ -68,6 +67,26 @@ def support_threshold(dataset):
         support_th = 0.4
     return support_th
 
+def select_parameters(method):
+    """
+    Selects the parameters according to the type of FOCE method
+    """
+    if method == 'FOCE_dist':
+        alpha, beta, gamma, delta1, delta2, delta3 = major_weight, minor_weight, minor_weight, minor_weight, minor_weight, minor_weight
+    elif method == 'FOCE_l':
+        alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, major_weight, minor_weight, minor_weight, minor_weight, minor_weight
+    elif method == 'FOCE_e':
+        alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, major_weight, minor_weight, minor_weight, minor_weight
+    elif method == 'FOCE_dev_dist':
+        alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, major_weight, minor_weight, minor_weight
+    elif method == 'FOCE_dev_like':
+        alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, minor_weight, major_weight, minor_weight
+    elif method == 'FOCE_dev_eff':
+        alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, minor_weight, minor_weight, major_weight
+    else:
+        alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, minor_weight, minor_weight, minor_weight
+    return alpha, beta, gamma, delta1, delta2, delta3
+
 if __name__=='__main__':
     for data_str in datasets:
         percentage_close_train_cf = percentage_close_train(data_str)
@@ -83,32 +102,19 @@ if __name__=='__main__':
         print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
         print(f'---------------------------------------')
         clusters_obj = Clusters(data, model, metric=clustering_metric)
-        if any('FOCE' in x for x in methods_to_run):
-            graph_obj = Graph(data, model, clusters_obj, dist, percentage=percentage_close_train_cf)
-        else:
-            graph_obj = None
         for method in methods_to_run:
-            cf_evaluator = Evaluator(data, n_feat, methods_to_run[0], clusters_obj)
-            cf_evaluator.add_fairness_measures(data, model)
-            cf_evaluator.add_fnr_data(data)
-            if method == 'FOCE_dist':
-                alpha, beta, gamma, delta1, delta2, delta3 = major_weight, minor_weight, minor_weight, minor_weight, minor_weight, minor_weight
-            elif method == 'FOCE_l':
-                alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, major_weight, minor_weight, minor_weight, minor_weight, minor_weight
-            elif method == 'FOCE_e':
-                alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, major_weight, minor_weight, minor_weight, minor_weight
-            elif method == 'FOCE_dev_dist':
-                alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, major_weight, minor_weight, minor_weight
-            elif method == 'FOCE_dev_like':
-                alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, minor_weight, major_weight, minor_weight
-            elif method == 'FOCE_dev_eff':
-                alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, minor_weight, minor_weight, major_weight
-            else:
-                alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, minor_weight, minor_weight, minor_weight
-            counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta1, delta2, delta3, type=dist, graph=graph_obj, support_th=support_th)
-            if method == 'ARES':
+            if 'FOCE' in method:
+                # graph_obj = Graph(data, model, clusters_obj, feature, dist, percentage=percentage_close_train_cf)
+                cf_evaluator = Evaluator(data, n_feat, methods_to_run[0], clusters_obj)
+                cf_evaluator.add_fairness_measures(data, model)
+                cf_evaluator.add_fnr_data(data)
+                alpha, beta, gamma, delta1, delta2, delta3 = select_parameters(method)
+                counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta1, delta2, delta3, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
+            elif method == 'ARES':
+                graph_obj = None
                 cf_evaluator.add_cf_data_ares(counterfactual)
             elif method == 'FACTS':
+                graph_obj = None
                 cf_evaluator.add_cf_data_facts(counterfactual)
             else:
                 cf_evaluator.add_cf_data(counterfactual)
