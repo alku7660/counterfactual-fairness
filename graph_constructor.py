@@ -18,27 +18,29 @@ class Graph:
         self.percentage = percentage
         self.cluster = cluster
         self.feat = feat
-        self.feature_centroids, self.feature_clusters = self.select_centroids_for_feature()
+        self.feature_centroids, self.feature_clusters, self.feature_groups = self.select_centroids_for_feature()
         self.ioi_label = cluster.undesired_class
         self.train_cf = self.find_train_cf(data, model, type)
         self.epsilon = self.get_epsilon(data, dist=type)
         self.feat_possible_values, self.all_nodes, self.C, self.W, self.CW, self.F, self.rho, self.eta = self.construct_graph(data, model, type)
     
-    def select_centroids_clusters_for_feature(self):
+    def select_centroids_clusters_groups_for_feature(self):
         """
         Selects only the centroids for the feature of interest
         """
-        feature_centroids, feature_clusters = [], []
+        feature_centroids, feature_clusters, feature_groups = [], [], []
         for idx in range(len(self.cluster.filtered_centroids_list)):
             c = self.cluster.filtered_centroids_list[idx]
             cluster_list = self.cluster.filtered_clusters_list[idx]
+            c_group = self.cluster.group_dict[idx + 1] 
             feature = c.feat
             if feature != self.feat:
                 continue
             else:
                 feature_centroids.append(c)
                 feature_clusters.append(cluster_list)
-        return feature_centroids, feature_clusters
+                feature_groups.append(c_group)
+        return feature_centroids, feature_clusters, feature_groups
 
     def find_train_specific_feature_val(self, data, feat_val):
         """

@@ -11,7 +11,7 @@ from scipy.stats import norm
 from graph_constructor import Graph
 import copy
 
-class FOCE_OPTIMIZE:
+class BIGRACE:
 
     def __init__(self, counterfactual):
         self.percentage = counterfactual.percentage
@@ -22,70 +22,19 @@ class FOCE_OPTIMIZE:
     
     def solve_problem(self, counterfactual):
         """
-        Generates the solution according to the FOCE algorithms
+        Generates the solution according to the BIGRACE algorithms
         """
         centroids_feat_list = list(self.cluster.centroids_dict.keys())
         for feature in centroids_feat_list:
             graph = Graph(counterfactual.data, counterfactual.model, self.cluster, feature, counterfactual.type, self.percentage)
             start_time = time.time()
-            self.normal_x_cf, self.nodes_solution, self.centroid_nodes_solution, self.model_status, self.obj_val = self.Foce(counterfactual, graph)
+            self.normal_x_cf, self.nodes_solution, self.centroid_nodes_solution, self.model_status, self.obj_val = self.Bigrace(counterfactual, graph)
             end_time = time.time()
             self.run_time = end_time - start_time
 
-    def find_train_specific_feature_val(self, data, feat_val):
+    def Bigrace(self, counterfactual, graph):
         """
-        Finds all the training observations belonging to the feature value of interest
-        """
-        train_target_df = copy.deepcopy(data.train_df)
-        train_target_df['target'] = data.train_target
-        train_target_feat_val_df = train_target_df[train_target_df[self.feat] == feat_val]
-        target_feat_val = train_target_feat_val_df['target'].values()
-        del train_target_feat_val_df['target']
-        train_feat_val_np = data.transform_data(train_target_feat_val_df)
-        return train_target_feat_val_df, target_feat_val, train_feat_val_np
-
-    def find_train_desired_label(self, train_np, train_target, train_pred, extra_search):
-        """
-        Finds the training instances that have the desired label from either ground truth and/or prediction
-        """
-        if not extra_search:
-            train_cf = train_np[(train_target != self.ioi_label) & (train_pred != self.ioi_label)]
-        else:
-            train_cf = train_np[train_target != self.ioi_label]
-        return train_cf
-
-    def find_train_cf(self, data, model, type, extra_search=False):
-        """
-        Finds the set of training observations belonging to, and predicted as, the counterfactual class and that belong to the same sensitive group as the centroid (this avoids node generation explosion)
-        """
-        sort_train_cf_centroid = []
-        for idx in range(len(self.cluster.filtered_centroids_list)):
-            c = self.cluster.filtered_centroids_list[idx]
-            feat = c.feat
-            if feat != self.feat:
-                continue
-            else:
-                feat_val = c.feat_val
-                train_feat_val_df, target_feat_val, train_feat_val_np = self.find_train_specific_feature_val(data, feat_val)
-                train_np_feat_val_pred = model.model.predict(train_feat_val_np)
-                train_desired_label_np = self.find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search)
-                normal_centroid = c.normal_x
-                for i in range(train_desired_label_np.shape[0]):
-                    if extra_search:
-                        if verify_feasibility(normal_centroid, train_desired_label_np[i], data):
-                            dist = distance_calculation(train_desired_label_np[i], normal_centroid, data, type=type)
-                            sort_train_cf_centroid.append((train_desired_label_np[i], dist))
-                    else:
-                        dist = distance_calculation(train_desired_label_np[i], normal_centroid, data, type=type)
-                        sort_train_cf_centroid.append((train_desired_label_np[i], dist))
-        sort_train_cf_centroid.sort(key=lambda x: x[1])
-        sort_train_cf_centroid = [i[0] for i in sort_train_cf_centroid]
-        sort_train_cf_centroid = sort_train_cf_centroid[:int(len(sort_train_cf_centroid)*self.percentage)]
-        return sort_train_cf_centroid
-
-    def Foce(self, counterfactual, graph):
-        """
-        FairJUICE algorithm
+        BIGRACE algorithm
         """
         normal_x_cf, nodes_solution, centroid_nodes_solution, model_status, obj_val = self.do_optimize_all(counterfactual, graph)
         return normal_x_cf, nodes_solution, centroid_nodes_solution, model_status, obj_val 
@@ -116,30 +65,31 @@ class FOCE_OPTIMIZE:
                         if i not in nodes_solution:
                             nodes_solution.append(i)
             for c_idx in centroids_solved:
+                centroid_idx = graph.feature_centroids[c_idx - 1].centroid_idx
                 centroids_solved_i = dict([(tup, potential_CF[tup]) for tup in list(potential_CF.keys()) if tup[0] == c_idx])
                 _, sol_x_idx = min(centroids_solved_i, key=centroids_solved_i.get)
-                sol_x[c_idx] = self.graph.all_nodes[sol_x_idx - 1]
-                centroid_nodes_solution[c_idx] = sol_x_idx
+                sol_x[centroid_idx] = graph.all_nodes[sol_x_idx - 1]
+                centroid_nodes_solution[centroid_idx] = sol_x_idx
                 if sol_x_idx not in nodes_solution:
                     nodes_solution.append(sol_x_idx)
-            not_centroids_solved = [i for i in range(1, len(self.cluster.filtered_centroids_list) + 1) if i not in centroids_solved]
+            not_centroids_solved = [i for i in range(1, len(graph.feature_centroids) + 1) if i not in centroids_solved]
             for c_idx in not_centroids_solved:
-                centroid_normal_x = self.cluster.filtered_centroids_list[c_idx - 1].normal_x
-                train_cfs = self.find_train_cf(counterfactual.data, counterfactual.model, counterfactual.type, extra_search=True)
+                centroid_normal_x = graph.feature_centroids[c_idx - 1].normal_x
+                centroid_idx = graph.feature_centroids[c_idx - 1].centroid_idx
+                train_cfs = graph.find_train_cf(counterfactual.data, counterfactual.model, counterfactual.type, extra_search=True)
                 for train_cf_idx in range(train_cfs.shape[0]):
                     train_cf = train_cfs[train_cf_idx,:]
                     if verify_feasibility(centroid_normal_x, train_cf, counterfactual.data):
                         cf_instance = train_cf
-                sol_x[c_idx] = cf_instance
+                sol_x[centroid_idx] = cf_instance
                 nodes_solution.append(sol_x_idx)
-                centroid_nodes_solution[c_idx] = sol_x_idx
+                centroid_nodes_solution[centroid_idx] = sol_x_idx
             return sol_x, nodes_solution, centroid_nodes_solution
 
         """
         SETS
         """
-        
-        set_Centroids = range(1, len(self.cluster.filtered_centroids_list) + 1)               
+        set_Centroids = range(1, len(graph.feature_centroids) + 1)               
             
         """
         VARIABLES
@@ -156,22 +106,18 @@ class FOCE_OPTIMIZE:
         
         for c in set_Centroids:
             opt_model.addConstr(gp.quicksum(cf[c, i] for i in G.nodes) == 1)
-
-        # for c in set_Centroids:
-        #     opt_model.addConstr(gp.quicksum(self.graph.rho[i]*cf[c, i] for i in G.nodes) >= counterfactual.rho_min)
         
         def calculate_s_dist(cf, C, W, CW, centroids_idx, nodes_idx):
             var = 0
             mean_value = cf.prod(CW)
             c_idx_checked = []
             c_dist_all = []
-            for c_idx in range(len(centroids_idx)):
-                c = centroids_idx[c_idx]
-                if c in c_idx_checked:
+            for c_idx in centroids_idx:
+                if c_idx in c_idx_checked:
                     continue
                 else:
-                    sensitive_group = self.cluster.group_dict[c]
-                    c_idx_sensitive_group_list = [key for key,val in self.cluster.group_dict.items() if val == sensitive_group]
+                    sensitive_group = graph.feature_groups[c_idx - 1]
+                    c_idx_sensitive_group_list = [i + 1 for i in enumerate(graph.feature_groups) if graph.feature_groups[i] == sensitive_group]
                     sensitive_group_weight = 0
                     for c_idx_feat_val in c_idx_sensitive_group_list:
                         sensitive_group_weight += W[c_idx_feat_val]
@@ -184,13 +130,13 @@ class FOCE_OPTIMIZE:
             return var
 
         def calculate_s_like(cf, rho, centroids_idx, nodes_idx):
-            c_like = gp.quicksum(cf[c, i]*rho[i] for i in nodes_idx for c in set_Centroids)/len(centroids_idx)
-            s_like = gp.quicksum((cf[c, i]*rho[i] - c_like)**2 for i in nodes_idx for c in set_Centroids)
+            c_like = gp.quicksum(cf[c, i]*rho[i] for i in nodes_idx for c in centroids_idx)/len(centroids_idx)
+            s_like = gp.quicksum((cf[c, i]*rho[i] - c_like)**2 for i in nodes_idx for c in centroids_idx)
             return s_like
 
         def calculate_s_eff(cf, eta, centroids_idx, nodes_idx):
-            c_eff = gp.quicksum(cf[c, i]*eta[i] for i in nodes_idx for c in set_Centroids)/len(centroids_idx)
-            s_eff = gp.quicksum((cf[c, i]*eta[i] - c_eff)**2 for i in nodes_idx for c in set_Centroids)
+            c_eff = gp.quicksum(cf[c, i]*eta[i] for i in nodes_idx for c in centroids_idx)/len(centroids_idx)
+            s_eff = gp.quicksum((cf[c, i]*eta[i] - c_eff)**2 for i in nodes_idx for c in centroids_idx)
             return s_eff
 
         def fairness_objective(cf, C, W, CW, rho, eta, centroids_idx, nodes_idx):
@@ -215,7 +161,7 @@ class FOCE_OPTIMIZE:
         """
         opt_model.optimize()
         time.sleep(0.25)
-        if opt_model.status == 3 or len(self.graph.all_nodes) == len(self.graph.train_cf):
+        if opt_model.status == 3 or len(graph.all_nodes) == len(graph.train_cf):
             sol_x, nodes_solution, centroid_nodes_solution = unfeasible_case(self, graph)
             obj_val = 1000
         else:
@@ -227,12 +173,13 @@ class FOCE_OPTIMIZE:
                 time.sleep(0.25)
                 for i in G.nodes:
                     if cf[c, i].x > 0.1:
-                        sol_x[c] = self.graph.all_nodes[i - 1]
-                        centroid_nodes_solution[c] = i
+                        centroid_idx = graph.feature_centroids[c - 1].centroid_idx
+                        sol_x[centroid_idx] = self.graph.all_nodes[i - 1]
+                        centroid_nodes_solution[centroid_idx] = i
                         if i not in nodes_solution:
                             nodes_solution.append(i)
                         print(f'cf{c, i}: {cf[c, i].x}')
-                        print(f'Node {i}: {self.graph.all_nodes[i - 1]}')
-                        print(f'Centroid: {self.cluster.filtered_centroids_list[c - 1].normal_x}')
-                        print(f'Distance: {np.round(self.graph.C[c, i], 5)}')
+                        print(f'Node {i}: {graph.all_nodes[i - 1]}')
+                        print(f'Centroid: {graph.feature_centroids[c - 1].normal_x}')
+                        print(f'Distance: {np.round(graph.C[c, i], 5)}')
         return sol_x, nodes_solution, centroid_nodes_solution, opt_model.status, obj_val
