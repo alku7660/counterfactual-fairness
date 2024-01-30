@@ -1369,13 +1369,15 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
     for dataset_idx in range(len(datasets)):
         data_str = datasets[dataset_idx]
         data_name = dataset_names[data_str]
-        eval_foce_proximity_df = load_obj(f'{data_str}_FOCE_dist_cluster_eval.pkl').cf_df
-        eval_foce_likelihood_df = load_obj(f'{data_str}_FOCE_l_cluster_eval.pkl').cf_df
-        # eval_foce_deviation_df = load_obj(f'{data_str}_FOCE_dev_cluster_eval.pkl').cf_df
-        eval_foce_effectiveness_df = load_obj(f'{data_str}_FOCE_e_cluster_eval.pkl').cf_df
+        eval_bigrace_proximity_df = load_obj(f'{data_str}_BIGRACE_dist_cluster_eval.pkl').cf_df
+        eval_bigrace_likelihood_df = load_obj(f'{data_str}_BIGRACE_l_cluster_eval.pkl').cf_df
+        eval_bigrace_effectiveness_df = load_obj(f'{data_str}_BIGRACE_e_cluster_eval.pkl').cf_df
+        eval_bigrace_dev_dist_df = load_obj(f'{data_str}_BIGRACE_dev_dist_cluster_eval.pkl').cf_df
+        eval_bigrace_dev_like_df = load_obj(f'{data_str}_BIGRACE_dev_like_cluster_eval.pkl').cf_df
+        eval_bigrace_dev_eff_df = load_obj(f'{data_str}_BIGRACE_dev_eff_cluster_eval.pkl').cf_df
         eval_ares_df = load_obj(f'{data_str}_ares_cluster_eval.pkl').cf_df
         eval_facts_df = load_obj(f'{data_str}_facts_cluster_eval.pkl').cf_df
-        all_df = pd.concat((eval_foce_proximity_df, eval_foce_likelihood_df, eval_foce_effectiveness_df, eval_ares_df, eval_facts_df), axis=0)
+        all_df = pd.concat((eval_bigrace_proximity_df, eval_bigrace_likelihood_df, eval_bigrace_effectiveness_df, eval_ares_df, eval_facts_df), axis=0)
         b0 = sns.barplot(x=all_df['Method'], y=all_df['Distance'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 0], errwidth=0.5, capsize=0.1)
         b1 = sns.barplot(x=all_df['Method'], y=all_df['Likelihood'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 1], errwidth=0.5, capsize=0.1)
         b2 = sns.barplot(x=all_df['Method'], y=all_df['Effectiveness'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 2], errwidth=0.5, capsize=0.1)
@@ -1392,12 +1394,12 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
             b0.set_title(f'Distance (lower is better)')
             b1.set_title(f'Likelihood (higher is better)')
             b2.set_title(f'Effectiveness (higher is better)')
-        if dataset_idx < len(datasets)-1:
+        if dataset_idx < len(datasets) - 1:
             b0.set_xticklabels([])
             b1.set_xticklabels([])
             b2.set_xticklabels([])
         if dataset_idx == len(datasets) - 1:
-            xticklabels = [methods_names['FOCE_dist'], methods_names['FOCE_l'], methods_names['FOCE_e'], methods_names['ARES'], methods_names['FACTS']]
+            xticklabels = [methods_names['BIGRACE_dist'], methods_names['BIGRACE_l'], methods_names['BIGRACE_e'], methods_names['ARES'], methods_names['FACTS']]
             b0.set_xticklabels(xticklabels, rotation = 45)
             b1.set_xticklabels(xticklabels, rotation = 45)
             b2.set_xticklabels(xticklabels, rotation = 45)
@@ -1407,7 +1409,7 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
                     top=0.9,
                     wspace=0.3,
                     hspace=0.1)
-    fig.suptitle('Performance of FOCE, ARES and FACTS')
+    fig.suptitle('Performance of BIGRACE, ARES and FACTS')
     plt.savefig(results_cf_plots_dir+'all_datasets_all_methods.pdf',format='pdf',dpi=400)
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']

@@ -12,8 +12,8 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['bank','compass','dutch','german','oulad','student','synthetic_athlete'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
-methods_to_run = ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','ARES','FACTS'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','ARES','FACTS']
+datasets = ['compass','synthetic_athlete'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
+methods_to_run = ['BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -38,17 +38,17 @@ def percentage_close_train(dataset):
     Selects the appropriate percentage per dataset for the close CF
     """
     if dataset in ['german','dutch','compass','synthetic_athlete','heart']:
-        percentage_close_train_cf = 0.05
+        percentage_close_train_cf = 0.1
     elif dataset in ['student']:
-        percentage_close_train_cf = 0.01
+        percentage_close_train_cf = 0.1
     elif dataset in ['law','oulad']:
-        percentage_close_train_cf = 0.001
+        percentage_close_train_cf = 0.01
     elif dataset in ['bank','credit']:
-        percentage_close_train_cf = 0.0002
+        percentage_close_train_cf = 0.1
     elif dataset in ['adult','diabetes']:
-        percentage_close_train_cf = 0.0001
+        percentage_close_train_cf = 0.1
     elif dataset in ['kdd_census']:
-        percentage_close_train_cf = 0.00005
+        percentage_close_train_cf = 0.1
     return percentage_close_train_cf
 
 def support_threshold(dataset):

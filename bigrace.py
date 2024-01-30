@@ -18,7 +18,7 @@ class BIGRACE:
         self.cluster = counterfactual.cluster
         self.ioi_label = self.cluster.undesired_class
         self.alpha, self.beta, self.gamma, self.delta1, self.delta2, self.delta3 = counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta1, counterfactual.delta2, counterfactual.delta3
-        self.normal_x_cf, self.nodes_solution, self.centroid_nodes_solution, self.model_status, self.obj_val = self.solve_problem(counterfactual)
+        self.normal_x_cf, self.nodes_solution, self.centroid_nodes_solution, self.likelihood_dict, self.effectiveness_dict, self.run_time, self.model_status, self.obj_val = self.solve_problem(counterfactual)
     
     def solve_problem(self, counterfactual):
         """
@@ -37,9 +37,9 @@ class BIGRACE:
             effectiveness_dict.update(effectiveness)
             model_status_list.append(model_status)
             obj_val_list.append(obj_val)
-        self.run_time = end_time - start_time
         end_time = time.time()
-        return normal_x_cf_dict, nodes_solution_list, centroid_nodes_solutions_dict, model_status_list, obj_val_list
+        run_time = end_time - start_time
+        return normal_x_cf_dict, nodes_solution_list, centroid_nodes_solutions_dict, likelihood_dict, effectiveness_dict, run_time, model_status_list, obj_val_list
 
     def Bigrace(self, counterfactual, graph):
         """
@@ -63,12 +63,12 @@ class BIGRACE:
             """
             Obtains the feasible justified solution when the problem is unfeasible
             """
-            sol_x, centroids_solved, nodes_solution, centroid_nodes_solution = {}, [], [], {}
+            sol_x, centroids_solved, nodes_solution, centroid_nodes_solution, likelihood, effectiveness = {}, [], [], {}, {}, {}
             potential_CF = {}
             for c_idx in range(1, len(graph.feature_centroids) + 1):
                 for i in range(1, len(graph.all_nodes) + 1):
-                    if self.graph.F[c_idx, i]:
-                        potential_CF[c_idx, i] = self.graph.C[c_idx, i]
+                    if graph.F[c_idx, i]:
+                        potential_CF[c_idx, i] = graph.C[c_idx, i]
                         if c_idx not in centroids_solved:
                             centroids_solved.append(c_idx)
                         if i not in nodes_solution:
@@ -79,6 +79,8 @@ class BIGRACE:
                 _, sol_x_idx = min(centroids_solved_i, key=centroids_solved_i.get)
                 sol_x[centroid_idx] = graph.all_nodes[sol_x_idx - 1]
                 centroid_nodes_solution[centroid_idx] = sol_x_idx
+                likelihood[sol_x_idx] = graph.rho[sol_x_idx]
+                effectiveness[sol_x_idx] = graph.eta[sol_x_idx]
                 if sol_x_idx not in nodes_solution:
                     nodes_solution.append(sol_x_idx)
             not_centroids_solved = [i for i in range(1, len(graph.feature_centroids) + 1) if i not in centroids_solved]
@@ -93,7 +95,9 @@ class BIGRACE:
                 sol_x[centroid_idx] = cf_instance
                 nodes_solution.append(sol_x_idx)
                 centroid_nodes_solution[centroid_idx] = sol_x_idx
-            return sol_x, nodes_solution, centroid_nodes_solution
+                likelihood[sol_x_idx] = graph.rho[sol_x_idx]
+                effectiveness[sol_x_idx] = graph.eta[sol_x_idx]
+            return sol_x, nodes_solution, centroid_nodes_solution, likelihood, effectiveness
 
         """
         SETS
@@ -111,7 +115,7 @@ class BIGRACE:
         """
         for c in set_Centroids:
             for n in G.nodes:
-                opt_model.addConstr(cf[c, n] <= self.graph.F[c, n])
+                opt_model.addConstr(cf[c, n] <= graph.F[c, n])
         
         for c in set_Centroids:
             opt_model.addConstr(gp.quicksum(cf[c, i] for i in G.nodes) == 1)
@@ -126,7 +130,7 @@ class BIGRACE:
                     continue
                 else:
                     sensitive_group = graph.feature_groups[c_idx - 1]
-                    c_idx_sensitive_group_list = [i + 1 for i in enumerate(graph.feature_groups) if graph.feature_groups[i] == sensitive_group]
+                    c_idx_sensitive_group_list = [i[0] + 1 for i in enumerate(graph.feature_groups) if graph.feature_groups[i[0]] == sensitive_group]
                     sensitive_group_weight = 0
                     for c_idx_feat_val in c_idx_sensitive_group_list:
                         sensitive_group_weight += W[c_idx_feat_val]
@@ -160,10 +164,10 @@ class BIGRACE:
                 s_eff = calculate_s_eff(cf, eta, centroids_idx, nodes_idx)
             return s_dist + s_like + s_eff
 
-        opt_model.setObjective(cf.prod(self.graph.CW)*self.alpha
-                               - gp.quicksum(cf[c, i]*self.graph.rho[i] for i in G.nodes for c in set_Centroids)*self.beta
-                               - gp.quicksum(cf[c, i]*self.graph.eta[i] for i in G.nodes for c in set_Centroids)*self.gamma
-                               + fairness_objective(cf, self.graph.C, self.graph.W, self.graph.CW, self.graph.rho, self.graph.eta, set_Centroids, G.nodes), GRB.MINIMIZE)
+        opt_model.setObjective(cf.prod(graph.CW)*self.alpha
+                               - gp.quicksum(cf[c, i]*graph.rho[i] for i in G.nodes for c in set_Centroids)*self.beta
+                               - gp.quicksum(cf[c, i]*graph.eta[i] for i in G.nodes for c in set_Centroids)*self.gamma
+                               + fairness_objective(cf, graph.C, graph.W, graph.CW, graph.rho, graph.eta, set_Centroids, G.nodes), GRB.MINIMIZE)
             
         """
         OPTIMIZATION AND RESULTS
@@ -171,7 +175,7 @@ class BIGRACE:
         opt_model.optimize()
         time.sleep(0.25)
         if opt_model.status == 3 or len(graph.all_nodes) == len(graph.train_cf):
-            sol_x, nodes_solution, centroid_nodes_solution = unfeasible_case(self, graph)
+            sol_x, nodes_solution, centroid_nodes_solution, likelihood, effectiveness = unfeasible_case(self, graph)
             obj_val = 1000
         else:
             print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
@@ -183,7 +187,7 @@ class BIGRACE:
                 for i in G.nodes:
                     if cf[c, i].x > 0.1:
                         centroid_idx = graph.feature_centroids[c - 1].centroid_idx
-                        sol_x[centroid_idx] = self.graph.all_nodes[i - 1]
+                        sol_x[centroid_idx] = graph.all_nodes[i - 1]
                         centroid_nodes_solution[centroid_idx] = i
                         likelihood[i] = graph.rho[i]
                         effectiveness[i] = graph.eta[i]

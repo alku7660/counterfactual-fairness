@@ -18,7 +18,7 @@ class Graph:
         self.percentage = percentage
         self.cluster = cluster
         self.feat = feat
-        self.feature_centroids, self.feature_clusters, self.feature_groups = self.select_centroids_for_feature()
+        self.feature_centroids, self.feature_clusters, self.feature_groups = self.select_centroids_clusters_groups_for_feature()
         self.ioi_label = cluster.undesired_class
         self.train_cf = self.find_train_cf(data, model, type)
         self.epsilon = self.get_epsilon(data, dist=type)
@@ -49,9 +49,9 @@ class Graph:
         train_target_df = copy.deepcopy(data.train_df)
         train_target_df['target'] = data.train_target
         train_target_feat_val_df = train_target_df[train_target_df[self.feat] == feat_val]
-        target_feat_val = train_target_feat_val_df['target'].values()
+        target_feat_val = train_target_feat_val_df['target'].values
         del train_target_feat_val_df['target']
-        train_feat_val_np = data.transform_data(train_target_feat_val_df)
+        train_feat_val_np = data.transform_data(train_target_feat_val_df).values
         return train_target_feat_val_df, target_feat_val, train_feat_val_np
 
     def find_train_desired_label(self, train_np, train_target, train_pred, extra_search):
@@ -69,7 +69,7 @@ class Graph:
         Finds the set of training observations belonging to, and predicted as, the counterfactual class and that belong to the same sensitive group as the centroid (this avoids node generation explosion)
         """
         sort_train_cf_centroid = []
-        for idx in range(self.feature_centroids):
+        for idx in range(len(self.feature_centroids)):
             c = self.feature_centroids[idx]
             feat_val = c.feat_val
             train_feat_val_df, target_feat_val, train_feat_val_np = self.find_train_specific_feature_val(data, feat_val)
