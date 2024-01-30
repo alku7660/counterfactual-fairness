@@ -13,7 +13,7 @@ from sklearn.metrics import f1_score
 from support import save_obj
 
 datasets = ['bank','compass','dutch','german','oulad','student','synthetic_athlete'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
-methods_to_run = ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS'] # ['FOCE_dist','FOCE_l','FOCE_e','ARES','FACTS']
+methods_to_run = ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','ARES','FACTS'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -69,19 +69,19 @@ def support_threshold(dataset):
 
 def select_parameters(method):
     """
-    Selects the parameters according to the type of FOCE method
+    Selects the parameters according to the type of BIGRACE method
     """
-    if method == 'FOCE_dist':
+    if method == 'BIGRACE_dist':
         alpha, beta, gamma, delta1, delta2, delta3 = major_weight, minor_weight, minor_weight, minor_weight, minor_weight, minor_weight
-    elif method == 'FOCE_l':
+    elif method == 'BIGRACE_l':
         alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, major_weight, minor_weight, minor_weight, minor_weight, minor_weight
-    elif method == 'FOCE_e':
+    elif method == 'BIGRACE_e':
         alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, major_weight, minor_weight, minor_weight, minor_weight
-    elif method == 'FOCE_dev_dist':
+    elif method == 'BIGRACE_dev_dist':
         alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, major_weight, minor_weight, minor_weight
-    elif method == 'FOCE_dev_like':
+    elif method == 'BIGRACE_dev_like':
         alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, minor_weight, major_weight, minor_weight
-    elif method == 'FOCE_dev_eff':
+    elif method == 'BIGRACE_dev_eff':
         alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, minor_weight, minor_weight, major_weight
     else:
         alpha, beta, gamma, delta1, delta2, delta3 = minor_weight, minor_weight, minor_weight, minor_weight, minor_weight, minor_weight
@@ -103,7 +103,7 @@ if __name__=='__main__':
         print(f'---------------------------------------')
         clusters_obj = Clusters(data, model, metric=clustering_metric)
         for method in methods_to_run:
-            if 'FOCE' in method:
+            if 'BIGRACE' in method:
                 # graph_obj = Graph(data, model, clusters_obj, feature, dist, percentage=percentage_close_train_cf)
                 cf_evaluator = Evaluator(data, n_feat, methods_to_run[0], clusters_obj)
                 cf_evaluator.add_fairness_measures(data, model)

@@ -734,13 +734,13 @@ class Evaluator():
         """
         cols = ['Method','alpha','beta','gamma','delta1','delta2','delta3','feature','feat_value','Sensitive group','instance_idx','centroid_idx','normal_centroid','centroid',
                 'normal_cf','cf','Distance','Feasibility','Likelihood','Effectiveness','Time','model_status','obj_val']
-        nodes_solution_idx = counterfactual.cf_method.nodes_solution
         centroid_node_solution = counterfactual.cf_method.centroid_nodes_solution
-        # mean_likelihood = np.mean([counterfactual.graph.rho[node] for node in nodes_solution_idx])
+        likelihood_dict = counterfactual.cf_method.likelihood_dict
+        effectiveness_dict = counterfactual.cf_method.effectiveness_dict
         for c_idx in range(len(counterfactual.cluster.filtered_centroids_list)):
             node = centroid_node_solution[c_idx + 1]
-            likelihood = counterfactual.graph.rho[node]
-            effectiveness = counterfactual.graph.eta[node]
+            likelihood = likelihood_dict[node]
+            effectiveness = effectiveness_dict[node]
             centroid = counterfactual.cluster.filtered_centroids_list[c_idx]
             original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[0], columns=counterfactual.data.features)
             normal_centroid_cf = counterfactual.cf_method.normal_x_cf[c_idx + 1]

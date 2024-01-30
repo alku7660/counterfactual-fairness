@@ -4,7 +4,7 @@ from cchvae import CCHVAE
 from ijuice import IJUICE
 from fijuice import FIJUICE
 from foce_constraint import FOCE_CONSTRAINT
-from foce_optimize import FOCE_OPTIMIZE
+from bigrace import BIGRACE
 from ares import ARES
 from facts import FACTS
 
@@ -32,14 +32,14 @@ class Counterfactual:
     def select_cf_method(self):
         """
         Selects the method to find the counterfactual and stores it in "normal_x_cf"
-        ['FOCE','ARES','FACTS']
+        ['BIGRACE','ARES','FACTS']
         """
         # if self.method == 'fijuice':
         #     cf_method = FIJUICE(self)
         # if self.method == 'fijuice_like_constraint':
         #     cf_method = FOCE_CONSTRAINT(self)
-        if 'FOCE' in self.method:
-            cf_method = FOCE_OPTIMIZE(self)
+        if 'BIGRACE' in self.method:
+            cf_method = BIGRACE(self)
         if self.method == 'ARES':
             cf_method = ARES(self)
         if self.method == 'FACTS':

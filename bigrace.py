@@ -24,20 +24,29 @@ class BIGRACE:
         """
         Generates the solution according to the BIGRACE algorithms
         """
+        normal_x_cf_dict, nodes_solution_list, centroid_nodes_solutions_dict, likelihood_dict, effectiveness_dict, model_status_list, obj_val_list = {}, [], {}, {}, {}, [], []
         centroids_feat_list = list(self.cluster.centroids_dict.keys())
+        start_time = time.time()
         for feature in centroids_feat_list:
             graph = Graph(counterfactual.data, counterfactual.model, self.cluster, feature, counterfactual.type, self.percentage)
-            start_time = time.time()
-            self.normal_x_cf, self.nodes_solution, self.centroid_nodes_solution, self.model_status, self.obj_val = self.Bigrace(counterfactual, graph)
-            end_time = time.time()
-            self.run_time = end_time - start_time
+            normal_x_cf, nodes_solution, centroid_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.Bigrace(counterfactual, graph)
+            normal_x_cf_dict.update(normal_x_cf)
+            nodes_solution_list.extend(nodes_solution)
+            centroid_nodes_solutions_dict.update(centroid_nodes_solution)
+            likelihood_dict.update(likelihood)
+            effectiveness_dict.update(effectiveness)
+            model_status_list.append(model_status)
+            obj_val_list.append(obj_val)
+        self.run_time = end_time - start_time
+        end_time = time.time()
+        return normal_x_cf_dict, nodes_solution_list, centroid_nodes_solutions_dict, model_status_list, obj_val_list
 
     def Bigrace(self, counterfactual, graph):
         """
         BIGRACE algorithm
         """
-        normal_x_cf, nodes_solution, centroid_nodes_solution, model_status, obj_val = self.do_optimize_all(counterfactual, graph)
-        return normal_x_cf, nodes_solution, centroid_nodes_solution, model_status, obj_val 
+        normal_x_cf, nodes_solution, centroid_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.do_optimize_all(counterfactual, graph)
+        return normal_x_cf, nodes_solution, centroid_nodes_solution, likelihood, effectiveness, model_status, obj_val 
 
     def do_optimize_all(self, counterfactual, graph):
         """
@@ -168,7 +177,7 @@ class BIGRACE:
             print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
             print(f'Solution:')
             obj_val = opt_model.ObjVal
-            sol_x, nodes_solution, centroid_nodes_solution = {}, [], {}
+            sol_x, nodes_solution, centroid_nodes_solution, likelihood, effectiveness = {}, [], {}, {}, {}
             for c in set_Centroids:
                 time.sleep(0.25)
                 for i in G.nodes:
@@ -176,10 +185,12 @@ class BIGRACE:
                         centroid_idx = graph.feature_centroids[c - 1].centroid_idx
                         sol_x[centroid_idx] = self.graph.all_nodes[i - 1]
                         centroid_nodes_solution[centroid_idx] = i
+                        likelihood[i] = graph.rho[i]
+                        effectiveness[i] = graph.eta[i]
                         if i not in nodes_solution:
                             nodes_solution.append(i)
                         print(f'cf{c, i}: {cf[c, i].x}')
                         print(f'Node {i}: {graph.all_nodes[i - 1]}')
                         print(f'Centroid: {graph.feature_centroids[c - 1].normal_x}')
                         print(f'Distance: {np.round(graph.C[c, i], 5)}')
-        return sol_x, nodes_solution, centroid_nodes_solution, opt_model.status, obj_val
+        return sol_x, nodes_solution, centroid_nodes_solution, likelihood, effectiveness, opt_model.status, obj_val
