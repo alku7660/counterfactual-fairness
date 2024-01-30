@@ -153,7 +153,7 @@ class Clusters:
                     centroid_idx += 1
                     clusters = tuples_clusters[num_idx][0]
                     centroids = tuples_centroids[num_idx][0]
-                    centroid = Centroid(centroid_idx, [centroids], feat_val, feat, data, model)
+                    centroid = Centroid(centroid_idx, [centroids], len(clusters), feat_val, feat, data, model)
                     filtered_clusters_list.append(clusters)
                     filtered_centroid_obj_list.append(centroid)
                     group_dict[centroid_idx] = f'{feat}:{feat_val}'

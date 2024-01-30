@@ -30,8 +30,9 @@ def inverse_transform_original(centroid, data):
 
 class Centroid:
 
-    def __init__(self, centroid_idx, centroid_list, feat_val, feat, data, model) -> None:
+    def __init__(self, centroid_idx, centroid_list, cluster_size, feat_val, feat, data, model) -> None:
         self.centroid_idx = centroid_idx
+        self.cluster_size = cluster_size
         self.feat = feat
         self.feat_val = feat_val
         self.normal_x_df = centroid_list[0]

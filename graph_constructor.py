@@ -10,6 +10,7 @@ from centroid_constructor import inverse_transform_original
 from nnt import nn_for_juice
 import time
 from scipy.stats import norm
+import copy
 
 class Graph:
 
@@ -17,11 +18,28 @@ class Graph:
         self.percentage = percentage
         self.cluster = cluster
         self.feat = feat
+        self.feature_centroids, self.feature_clusters = self.select_centroids_for_feature()
         self.ioi_label = cluster.undesired_class
         self.train_cf = self.find_train_cf(data, model, type)
         self.epsilon = self.get_epsilon(data, dist=type)
         self.feat_possible_values, self.all_nodes, self.C, self.W, self.CW, self.F, self.rho, self.eta = self.construct_graph(data, model, type)
     
+    def select_centroids_clusters_for_feature(self):
+        """
+        Selects only the centroids for the feature of interest
+        """
+        feature_centroids, feature_clusters = [], []
+        for idx in range(len(self.cluster.filtered_centroids_list)):
+            c = self.cluster.filtered_centroids_list[idx]
+            cluster_list = self.cluster.filtered_clusters_list[idx]
+            feature = c.feat
+            if feature != self.feat:
+                continue
+            else:
+                feature_centroids.append(c)
+                feature_clusters.append(cluster_list)
+        return feature_centroids, feature_clusters
+
     def find_train_specific_feature_val(self, data, feat_val):
         """
         Finds all the training observations belonging to the feature value of interest
@@ -49,25 +67,21 @@ class Graph:
         Finds the set of training observations belonging to, and predicted as, the counterfactual class and that belong to the same sensitive group as the centroid (this avoids node generation explosion)
         """
         sort_train_cf_centroid = []
-        for idx in range(len(self.cluster.filtered_centroids_list)):
-            c = self.cluster.filtered_centroids_list[idx]
-            feat = c.feat
-            if feat != self.feat:
-                continue
-            else:
-                feat_val = c.feat_val
-                train_feat_val_df, target_feat_val, train_feat_val_np = find_train_specific_feature_val(data, feat_val)
-                train_np_feat_val_pred = model.model.predict(train_np_feat_val)
-                train_desired_label_np = self.find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search)
-                normal_centroid = c.normal_x
-                for i in range(train_desired_label_np.shape[0]):
-                    if extra_search:
-                        if verify_feasibility(normal_centroid, train_desired_label_np[i], data):
-                            dist = distance_calculation(train_desired_label_np[i], normal_centroid, data, type=type)
-                            sort_train_cf_centroid.append((train_desired_label_np[i], dist))
-                    else:
+        for idx in range(self.feature_centroids):
+            c = self.feature_centroids[idx]
+            feat_val = c.feat_val
+            train_feat_val_df, target_feat_val, train_feat_val_np = self.find_train_specific_feature_val(data, feat_val)
+            train_np_feat_val_pred = model.model.predict(train_feat_val_np)
+            train_desired_label_np = self.find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search)
+            normal_centroid = c.normal_x
+            for i in range(train_desired_label_np.shape[0]):
+                if extra_search:
+                    if verify_feasibility(normal_centroid, train_desired_label_np[i], data):
                         dist = distance_calculation(train_desired_label_np[i], normal_centroid, data, type=type)
                         sort_train_cf_centroid.append((train_desired_label_np[i], dist))
+                else:
+                    dist = distance_calculation(train_desired_label_np[i], normal_centroid, data, type=type)
+                    sort_train_cf_centroid.append((train_desired_label_np[i], dist))
         sort_train_cf_centroid.sort(key=lambda x: x[1])
         sort_train_cf_centroid = [i[0] for i in sort_train_cf_centroid]
         sort_train_cf_centroid = sort_train_cf_centroid[:int(len(sort_train_cf_centroid)*self.percentage)]
@@ -101,7 +115,7 @@ class Graph:
         print(f'Obtained all training CF: {len(self.train_cf)}')
         feat_possible_values = self.get_feat_possible_values(data)
         print(f'Obtained all possible feature values from training CF')
-        graph_nodes = self.get_graph_nodes(model, feat_possible_values)
+        graph_nodes = self.get_graph_nodes(data, model, feat_possible_values)
         all_nodes = self.train_cf + graph_nodes
         print(f'Obtained all possible nodes in the graph: {len(all_nodes)}')
         C, W, CW = self.get_all_costs_weights(data, type, all_nodes)
@@ -119,7 +133,7 @@ class Graph:
         Method that obtains the features possible values
         """
         if obj is None:
-            normal_centroids = self.cluster.filtered_centroids_list
+            normal_centroids = self.feature_centroids
         else:
             normal_centroids = obj
         if points is None:
@@ -187,22 +201,24 @@ class Graph:
                 new_list.extend([j])
         return np.array(new_list)
 
-    def get_graph_nodes(self, model, feat_possible_values):
+    def get_graph_nodes(self, data, model, feat_possible_values):
         """
         Generator that contains all the nodes located in the space between the training CFs and the normal_ioi (all possible, CF-labeled nodes)
         """
         graph_nodes = []
-        for c_idx in range(len(self.cluster.filtered_centroids_list)):
+        for c_idx in range(len(self.feature_centroids)):
             # print(f'Analyzing centroid {c_idx} for graph nodes...')
             for k in range(len(self.train_cf)):
                 print(f'Analyzing centroid {c_idx} and training CF {k} for graph nodes. Current length of nodes: {len(graph_nodes)}')
                 feat_possible_values_k = feat_possible_values[c_idx][k]
+                normal_centroid = self.feature_centroids[c_idx].normal_x
                 permutations = product(*feat_possible_values_k)
                 for i in permutations:
                     perm_i = self.make_array(i)
                     if model.model.predict(perm_i.reshape(1, -1)) != self.ioi_label and \
                         not any(np.array_equal(perm_i, x) for x in graph_nodes) and \
-                        not any(np.array_equal(perm_i, x) for x in self.train_cf):
+                        not any(np.array_equal(perm_i, x) for x in self.train_cf) and \
+                        verify_feasibility(normal_centroid, perm_i, data):
                         graph_nodes.append(perm_i)
         return graph_nodes
     
@@ -212,14 +228,13 @@ class Graph:
         """
         C, W, CW = {}, {}, {}
         clusters_total_instances = 0
-        for c_idx in range(1, len(self.cluster.filtered_centroids_list) + 1):
-            cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
-            clusters_total_instances += len(cluster_instances_list)
-        for c_idx in range(1, len(self.cluster.filtered_centroids_list) + 1):
-            cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
+        for c_idx in range(1, len(self.feature_centroids) + 1):
+            clusters_total_instances += self.feature_centroids[c_idx - 1].cluster_size
+        for c_idx in range(1, len(self.feature_centroids) + 1):
+            cluster_instances_list = self.feature_clusters[c_idx - 1]
             W[c_idx] = len(cluster_instances_list)/clusters_total_instances
             for k in range(1, len(all_nodes) + 1):
-                node_k = all_nodes[k-1]
+                node_k = all_nodes[k - 1]
                 dist_instance_node = 0
                 for instance_idx in cluster_instances_list:
                     instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
@@ -234,10 +249,10 @@ class Graph:
         Outputs the counterfactual feasibility parameter for all graph nodes (including the training CFs) 
         """
         F = {}
-        for c_idx in range(1, len(self.cluster.filtered_centroids_list) + 1):
-            normal_centroid = self.cluster.filtered_centroids_list[c_idx - 1].normal_x
+        for c_idx in range(1, len(self.feature_centroids) + 1):
+            normal_centroid = self.feature_centroids[c_idx - 1].normal_x
             for k in range(1, len(all_nodes) + 1):
-                node_k = all_nodes[k-1]
+                node_k = all_nodes[k - 1]
                 F[c_idx, k] = verify_feasibility(normal_centroid, node_k, data)
         return F
     
@@ -247,14 +262,13 @@ class Graph:
         """
         eta = {}
         len_cluster_instances = 0
-        for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
-            cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
-            len_cluster_instances += len(cluster_instances_list)
+        for c_idx in range(1, len(self.feature_centroids) + 1):
+            len_cluster_instances += self.feature_centroids[c_idx - 1].cluster_size
         for k in range(1, len(all_nodes) + 1):
             sum_eta = 0
-            node_k = all_nodes[k-1]
-            for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
-                cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
+            node_k = all_nodes[k - 1]
+            for c_idx in range(1, len(self.feature_centroids) + 1):
+                cluster_instances_list = self.feature_clusters[c_idx - 1]
                 for instance_idx in cluster_instances_list:
                     instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
                     sum_eta += verify_feasibility(instance, node_k, data)
@@ -262,63 +276,6 @@ class Graph:
             print(f'Highest eta value: {np.max(list(eta.values()))}')
         return eta
 
-    # def get_all_adjacency(self, data, all_nodes):
-    #     """
-    #     Method that outputs the adjacency matrix required for optimization
-    #     """
-    #     toler = 0.00001
-    #     centroids_array = np.array([self.cluster.filtered_centroids_list[i].normal_x for i in range(len(self.cluster.filtered_centroids_list))])
-    #     justifiers_array = np.array(self.train_cf)
-    #     A = tuplelist()
-    #     for i in range(1, len(all_nodes) + 1):
-    #         node_i = all_nodes[i - 1]
-    #         for j in range(i + 1, len(all_nodes) + 1):
-    #             node_j = all_nodes[j - 1]
-    #             vector_ij = node_j - node_i
-    #             nonzero_index = list(np.nonzero(vector_ij)[0])
-    #             feat_nonzero = [data.processed_features[l] for l in nonzero_index]
-    #             if len(nonzero_index) > 2:
-    #                 continue
-    #             elif len(nonzero_index) == 2:
-    #                 if any(item in data.cat_enc_cols for item in feat_nonzero):
-    #                     A.append((i,j))
-    #             elif len(nonzero_index) == 1:
-    #                 if any(item in data.ordinal for item in feat_nonzero):
-    #                     if np.isclose(np.abs(vector_ij[nonzero_index]), data.feat_step[feat_nonzero], atol=toler).any():
-    #                         A.append((i,j))
-    #                 elif any(item in data.continuous for item in feat_nonzero):
-    #                     max_val, min_val = float(max(max(centroids_array[:,nonzero_index]), max(justifiers_array[:,nonzero_index]))), float(min(min(centroids_array[:,nonzero_index]), min(justifiers_array[:,nonzero_index])))
-    #                     values = self.continuous_feat_values(nonzero_index, min_val, max_val, data)
-    #                     try:
-    #                         value_node_i_idx = int(np.where(np.isclose(values, node_i[nonzero_index]))[0])
-    #                         if value_node_i_idx > 0:
-    #                             value_node_i_idx_inf = value_node_i_idx - 1
-    #                             value_node_i_idx_sup = value_node_i_idx
-    #                         else:
-    #                             value_node_i_idx_inf = value_node_i_idx
-    #                             value_node_i_idx_sup = value_node_i_idx + 1
-    #                         if value_node_i_idx < len(values) - 1:
-    #                             value_node_i_idx_inf = value_node_i_idx
-    #                             value_node_i_idx_sup = value_node_i_idx + 1
-    #                         else:
-    #                             value_node_i_idx_inf = value_node_i_idx -1
-    #                             value_node_i_idx_sup = value_node_i_idx
-    #                     except:
-    #                         if node_i[nonzero_index] < values[0]:
-    #                             value_node_i_idx_inf, value_node_i_idx_sup = 0, 0
-    #                         elif node_i[nonzero_index] > values[-1]:
-    #                             value_node_i_idx_inf, value_node_i_idx_sup = len(values) - 1, len(values) - 1
-    #                         for k in range(len(values) - 1):
-    #                             if node_i[nonzero_index] <= values[k+1] and node_i[nonzero_index] >= values[k]:
-    #                                 value_node_i_idx_inf, value_node_i_idx_sup = k, k+1  
-    #                     close_node_j_values = [values[value_node_i_idx_inf], values[value_node_i_idx_sup]]
-    #                     if any(np.isclose(node_j[nonzero_index], close_node_j_values)):
-    #                         A.append((i,j))
-    #                 elif any(item in data.binary for item in feat_nonzero):
-    #                     if np.isclose(np.abs(vector_ij[nonzero_index]), [0,1], atol=toler).any():
-    #                         A.append((i,j))
-    #     return A
-    
     def continuous_feat_values(self, i, min_val, max_val, data):
         """
         Method that defines how to discretize the continuous features
@@ -348,12 +305,6 @@ class Graph:
         """
         Calculates the distance 
         """
-        # distances_list = []
-        # for xi_index in range(len(data.transformed_train_np)-1):
-        #     for xj_index in range(xi_index+1, len(data.transformed_train_np)):
-        #         xi = data.transformed_train_np[xi_index]
-        #         xj = data.transformed_train_np[xj_index]
-        #         distances_list.extend([distance_calculation(xi, xj, data, type=dist)])
         distance = distance_matrix(data.transformed_train_np, data.transformed_train_np, p=1)
         upper_tri_distance = distance[np.triu_indices(len(data.transformed_train_np), k = 1)]
         return np.std(upper_tri_distance, ddof=1) 

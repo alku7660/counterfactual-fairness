@@ -9,6 +9,7 @@ from nnt import nn_for_juice
 import time
 from scipy.stats import norm
 from graph_constructor import Graph
+import copy
 
 class FOCE_OPTIMIZE:
 
@@ -66,8 +67,8 @@ class FOCE_OPTIMIZE:
                 continue
             else:
                 feat_val = c.feat_val
-                train_feat_val_df, target_feat_val, train_feat_val_np = find_train_specific_feature_val(data, feat_val)
-                train_np_feat_val_pred = model.model.predict(train_np_feat_val)
+                train_feat_val_df, target_feat_val, train_feat_val_np = self.find_train_specific_feature_val(data, feat_val)
+                train_np_feat_val_pred = model.model.predict(train_feat_val_np)
                 train_desired_label_np = self.find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search)
                 normal_centroid = c.normal_x
                 for i in range(train_desired_label_np.shape[0]):
