@@ -206,14 +206,18 @@ def get_methods_names(methods):
             method_dict[i] = 'JUICES'
         elif i == 'mutable-jce_spar':
             method_dict[i] = 'Mutable JUICES'
-        elif i == 'FOCE_dist':
-            method_dict[i] = r'$F_{dist}$'
-        elif i == 'FOCE_l':
-            method_dict[i] = r'$F_{like}$'
-        elif i == 'FOCE_dev':
-            method_dict[i] = r'$F_{dev}$'
-        elif i == 'FOCE_e':
-            method_dict[i] = r'$F_{eff}$'
+        elif i == 'BIGRACE_dist':
+            method_dict[i] = r'$BR_{dist}$'
+        elif i == 'BIGRACE_l':
+            method_dict[i] = r'$BR_{like}$'
+        elif i == 'BIGRACE_e':
+            method_dict[i] = r'$BR_{eff}$'
+        elif i == 'BIGRACE_dev_dist':
+            method_dict[i] = r'$BR_{s-dist}$'
+        elif i == 'BIGRACE_dev_like':
+            method_dict[i] = r'$BR_{s-like}$'
+        elif i == 'BIGRACE_dev_eff':
+            method_dict[i] = r'$BR_{s-eff}$'
         elif i == 'ARES':
             method_dict[i] = 'ARES'
         elif i == 'FACTS':
@@ -1377,10 +1381,13 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
         eval_bigrace_dev_eff_df = load_obj(f'{data_str}_BIGRACE_dev_eff_cluster_eval.pkl').cf_df
         eval_ares_df = load_obj(f'{data_str}_ares_cluster_eval.pkl').cf_df
         eval_facts_df = load_obj(f'{data_str}_facts_cluster_eval.pkl').cf_df
-        all_df = pd.concat((eval_bigrace_proximity_df, eval_bigrace_likelihood_df, eval_bigrace_effectiveness_df, eval_ares_df, eval_facts_df), axis=0)
-        b0 = sns.barplot(x=all_df['Method'], y=all_df['Distance'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 0], errwidth=0.5, capsize=0.1)
-        b1 = sns.barplot(x=all_df['Method'], y=all_df['Likelihood'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 1], errwidth=0.5, capsize=0.1)
-        b2 = sns.barplot(x=all_df['Method'], y=all_df['Effectiveness'], hue=all_df['Sensitive group'], ax=axes[dataset_idx, 2], errwidth=0.5, capsize=0.1)
+        # all_df = pd.concat((eval_bigrace_proximity_df, eval_bigrace_likelihood_df, eval_bigrace_effectiveness_df, eval_bigrace_dev_dist_df, eval_bigrace_dev_like_df, eval_bigrace_dev_eff_df, eval_ares_df, eval_facts_df), axis=0)
+        all_distance = pd.concat((eval_bigrace_proximity_df, eval_bigrace_dev_dist_df, eval_ares_df, eval_facts_df), axis=0)
+        all_likelihood = pd.concat((eval_bigrace_likelihood_df, eval_bigrace_dev_like_df, eval_ares_df, eval_facts_df), axis=0)
+        all_effectiveness = pd.concat((eval_bigrace_effectiveness_df, eval_bigrace_dev_eff_df, eval_ares_df, eval_facts_df), axis=0)
+        b0 = sns.barplot(x=all_distance['Method'], y=all_distance['Distance'], hue=all_distance['Sensitive group'], ax=axes[dataset_idx, 0], errwidth=0.5, capsize=0.1)
+        b1 = sns.barplot(x=all_likelihood['Method'], y=all_likelihood['Likelihood'], hue=all_likelihood['Sensitive group'], ax=axes[dataset_idx, 1], errwidth=0.5, capsize=0.1)
+        b2 = sns.barplot(x=all_effectiveness['Method'], y=all_effectiveness['Effectiveness'], hue=all_effectiveness['Sensitive group'], ax=axes[dataset_idx, 2], errwidth=0.5, capsize=0.1)
         b0.legend([], [], frameon=False)
         b1.legend([], [], frameon=False)
         b2.legend(bbox_to_anchor=(1.01,1), frameon=False, prop={'size': 6}) #
@@ -1399,10 +1406,12 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
             b1.set_xticklabels([])
             b2.set_xticklabels([])
         if dataset_idx == len(datasets) - 1:
-            xticklabels = [methods_names['BIGRACE_dist'], methods_names['BIGRACE_l'], methods_names['BIGRACE_e'], methods_names['ARES'], methods_names['FACTS']]
-            b0.set_xticklabels(xticklabels, rotation = 45)
-            b1.set_xticklabels(xticklabels, rotation = 45)
-            b2.set_xticklabels(xticklabels, rotation = 45)
+            xticklabels_dist = [methods_names['BIGRACE_dist'], methods_names['BIGRACE_dev_dist'], methods_names['ARES'], methods_names['FACTS']]
+            xticklabels_like = [methods_names['BIGRACE_l'], methods_names['BIGRACE_dev_like'], methods_names['ARES'], methods_names['FACTS']]
+            xticklabels_eff = [methods_names['BIGRACE_e'], methods_names['BIGRACE_dev_eff'], methods_names['ARES'], methods_names['FACTS']]
+            b0.set_xticklabels(xticklabels_dist, rotation = 45)
+            b1.set_xticklabels(xticklabels_like, rotation = 45)
+            b2.set_xticklabels(xticklabels_eff, rotation = 45)
     fig.subplots_adjust(left=0.075,
                     bottom=0.08,
                     right=0.8,

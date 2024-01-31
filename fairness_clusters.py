@@ -13,7 +13,7 @@ from sklearn.metrics import f1_score
 from support import save_obj
 
 datasets = ['compass','synthetic_athlete'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
-methods_to_run = ['BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','ARES','FACTS']
+methods_to_run = ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -103,21 +103,21 @@ if __name__=='__main__':
         print(f'---------------------------------------')
         clusters_obj = Clusters(data, model, metric=clustering_metric)
         for method in methods_to_run:
+            cf_evaluator = Evaluator(data, n_feat, method, clusters_obj)
             if 'BIGRACE' in method:
-                # graph_obj = Graph(data, model, clusters_obj, feature, dist, percentage=percentage_close_train_cf)
-                cf_evaluator = Evaluator(data, n_feat, methods_to_run[0], clusters_obj)
                 cf_evaluator.add_fairness_measures(data, model)
                 cf_evaluator.add_fnr_data(data)
                 alpha, beta, gamma, delta1, delta2, delta3 = select_parameters(method)
                 counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta1, delta2, delta3, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
+                cf_evaluator.add_cf_data(counterfactual)
             elif method == 'ARES':
                 graph_obj = None
+                counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta1, delta2, delta3, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
                 cf_evaluator.add_cf_data_ares(counterfactual)
             elif method == 'FACTS':
                 graph_obj = None
+                counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta1, delta2, delta3, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
                 cf_evaluator.add_cf_data_facts(counterfactual)
-            else:
-                cf_evaluator.add_cf_data(counterfactual)
             print(f'---------------------------')
             print(f'  DONE: {data_str}, method: {method}')
             print(f'---------------------------')
