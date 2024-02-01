@@ -1385,7 +1385,7 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
         all_distance = pd.concat((eval_bigrace_proximity_df, eval_bigrace_dev_dist_df, eval_ares_df, eval_facts_df), axis=0)
         all_likelihood = pd.concat((eval_bigrace_likelihood_df, eval_bigrace_dev_like_df, eval_ares_df, eval_facts_df), axis=0)
         all_effectiveness = pd.concat((eval_bigrace_effectiveness_df, eval_bigrace_dev_eff_df, eval_ares_df, eval_facts_df), axis=0)
-        b0 = sns.barplot(x=all_distance['Method'], y=all_distance['Distance'], hue=all_distance['Sensitive group'], ax=axes[dataset_idx, 0], errwidth=0.5, capsize=0.1)
+        b0 = sns.barplot(x=all_distance['Method'], y=all_distance['Distance'], hue=all_distance['Sensitive group'], ax=axes[dataset_idx, 0], errwidth=0.5, capsize=0.1, estimator='sum')
         b1 = sns.barplot(x=all_likelihood['Method'], y=all_likelihood['Likelihood'], hue=all_likelihood['Sensitive group'], ax=axes[dataset_idx, 1], errwidth=0.5, capsize=0.1)
         b2 = sns.barplot(x=all_effectiveness['Method'], y=all_effectiveness['Effectiveness'], hue=all_effectiveness['Sensitive group'], ax=axes[dataset_idx, 2], errwidth=0.5, capsize=0.1)
         b0.legend([], [], frameon=False)

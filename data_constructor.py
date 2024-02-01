@@ -60,6 +60,7 @@ class Dataset:
         self.transformed_test_np = self.transformed_test_df.to_numpy()
         self.train_target, self.test_target = self.change_targets_to_numpy()
         self.undesired_class = self.undesired_class_data()
+        self.desired_class = int(1 - self.undesired_class)
         self.feat_type = self.define_feat_type()
         self.feat_protected = self.define_protected()
         self.feat_mutable = self.define_mutable()

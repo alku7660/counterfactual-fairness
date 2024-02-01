@@ -59,7 +59,7 @@ class BIGRACE:
         G = nx.DiGraph()
         G.add_nodes_from(graph.rho)
 
-        def unfeasible_case(self, graph):
+        def unfeasible_case(graph):
             """
             Obtains the feasible justified solution when the problem is unfeasible
             """
@@ -120,27 +120,32 @@ class BIGRACE:
         for c in set_Centroids:
             opt_model.addConstr(gp.quicksum(cf[c, i] for i in G.nodes) == 1)
         
-        def calculate_s_dist(cf, C, W, CW, centroids_idx, nodes_idx):
-            var = 0
-            mean_value = cf.prod(CW)
-            c_idx_checked = []
-            c_dist_all = []
-            for c_idx in centroids_idx:
-                if c_idx in c_idx_checked:
-                    continue
-                else:
-                    sensitive_group = graph.feature_groups[c_idx - 1]
-                    c_idx_sensitive_group_list = [i[0] + 1 for i in enumerate(graph.feature_groups) if graph.feature_groups[i[0]] == sensitive_group]
-                    sensitive_group_weight = 0
-                    for c_idx_feat_val in c_idx_sensitive_group_list:
-                        sensitive_group_weight += W[c_idx_feat_val]
-                    c_dist_sensitive_group = 0 
-                    for c_idx_feat_val in c_idx_sensitive_group_list:
-                        c_dist_cluster = gp.quicksum(cf[c_idx_feat_val, i]*C[c_idx_feat_val, i] for i in nodes_idx)
-                        c_dist_sensitive_group += (W[c_idx_feat_val]/sensitive_group_weight)*c_dist_cluster
-                    var += sensitive_group_weight*(c_dist_sensitive_group - mean_value)**2
-                    c_idx_checked.extend(c_idx_sensitive_group_list)
-            return var
+        def calculate_s_dist(cf, C, centroids_idx, nodes_idx):
+            c_dist = cf.prod(C)/len(centroids_idx)
+            s_dist = gp.quicksum((cf[c, i]*C[c, i] - c_dist)**2 for i in nodes_idx for c in centroids_idx)
+            return s_dist
+            
+        # def calculate_s_dist(cf, C, W, CW, centroids_idx, nodes_idx):
+        #     var = 0
+        #     mean_value = cf.prod(CW)
+        #     c_idx_checked = []
+        #     c_dist_all = []
+        #     for c_idx in centroids_idx:
+        #         if c_idx in c_idx_checked:
+        #             continue
+        #         else:
+        #             sensitive_group = graph.feature_groups[c_idx - 1]
+        #             c_idx_sensitive_group_list = [i[0] + 1 for i in enumerate(graph.feature_groups) if graph.feature_groups[i[0]] == sensitive_group]
+        #             sensitive_group_weight = 0
+        #             for c_idx_feat_val in c_idx_sensitive_group_list:
+        #                 sensitive_group_weight += W[c_idx_feat_val]
+        #             c_dist_sensitive_group = 0 
+        #             for c_idx_feat_val in c_idx_sensitive_group_list:
+        #                 c_dist_cluster = gp.quicksum(cf[c_idx_feat_val, i]*C[c_idx_feat_val, i] for i in nodes_idx)
+        #                 c_dist_sensitive_group += (W[c_idx_feat_val]/sensitive_group_weight)*c_dist_cluster
+        #             var += sensitive_group_weight*(c_dist_sensitive_group - mean_value)**2
+        #             c_idx_checked.extend(c_idx_sensitive_group_list)
+        #     return var
 
         def calculate_s_like(cf, rho, centroids_idx, nodes_idx):
             c_like = gp.quicksum(cf[c, i]*rho[i] for i in nodes_idx for c in centroids_idx)/len(centroids_idx)
@@ -152,22 +157,22 @@ class BIGRACE:
             s_eff = gp.quicksum((cf[c, i]*eta[i] - c_eff)**2 for i in nodes_idx for c in centroids_idx)
             return s_eff
 
-        def fairness_objective(cf, C, W, CW, rho, eta, centroids_idx, nodes_idx):
+        def fairness_objective(cf, C, rho, eta, centroids_idx, nodes_idx):
             s_dist = 0
             s_like = 0
             s_eff = 0
             if self.delta1 == 1:
-                s_dist = calculate_s_dist(cf, C, W, CW, centroids_idx, nodes_idx)
+                s_dist = calculate_s_dist(cf, C, centroids_idx, nodes_idx)
             if self.delta2 == 1:
                 s_like = calculate_s_like(cf, rho, centroids_idx, nodes_idx)
             if self.delta3 == 1:
                 s_eff = calculate_s_eff(cf, eta, centroids_idx, nodes_idx)
             return s_dist + s_like + s_eff
 
-        opt_model.setObjective(cf.prod(graph.CW)*self.alpha
+        opt_model.setObjective(cf.prod(graph.C)*self.alpha
                                - gp.quicksum(cf[c, i]*graph.rho[i] for i in G.nodes for c in set_Centroids)*self.beta
                                - gp.quicksum(cf[c, i]*graph.eta[i] for i in G.nodes for c in set_Centroids)*self.gamma
-                               + fairness_objective(cf, graph.C, graph.W, graph.CW, graph.rho, graph.eta, set_Centroids, G.nodes), GRB.MINIMIZE)
+                               + fairness_objective(cf, graph.C, graph.rho, graph.eta, set_Centroids, G.nodes), GRB.MINIMIZE)
             
         """
         OPTIMIZATION AND RESULTS

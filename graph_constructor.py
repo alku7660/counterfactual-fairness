@@ -223,7 +223,7 @@ class Graph:
                         verify_feasibility(normal_centroid, perm_i, data):
                         graph_nodes.append(perm_i)
         return graph_nodes
-    
+
     def get_all_costs_weights(self, data, type, all_nodes):
         """
         Method that outputs the cost parameters required for optimization
@@ -234,6 +234,7 @@ class Graph:
             clusters_total_instances += self.feature_centroids[c_idx - 1].cluster_size
         for c_idx in range(1, len(self.feature_centroids) + 1):
             cluster_instances_list = self.feature_clusters[c_idx - 1]
+            len_positives_sensitive_group = self.feature_centroids[c_idx - 1].positives_sensitive_group
             W[c_idx] = len(cluster_instances_list)/clusters_total_instances
             for k in range(1, len(all_nodes) + 1):
                 node_k = all_nodes[k - 1]
@@ -241,10 +242,32 @@ class Graph:
                 for instance_idx in cluster_instances_list:
                     instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
                     dist_instance_node += distance_calculation(instance, node_k, data, type)
-                C[c_idx, k] = dist_instance_node/len(cluster_instances_list)
+                C[c_idx, k] = dist_instance_node/(2*len_positives_sensitive_group)
                 CW[c_idx, k] = C[c_idx, k]*W[c_idx]
                 print(f'Costs for centroid {c_idx}, node {k} calculated')
         return C, W, CW
+
+    # def get_all_costs_weights(self, data, type, all_nodes):
+    #     """
+    #     Method that outputs the cost parameters required for optimization
+    #     """
+    #     C, W, CW = {}, {}, {}
+    #     clusters_total_instances = 0
+    #     for c_idx in range(1, len(self.feature_centroids) + 1):
+    #         clusters_total_instances += self.feature_centroids[c_idx - 1].cluster_size
+    #     for c_idx in range(1, len(self.feature_centroids) + 1):
+    #         cluster_instances_list = self.feature_clusters[c_idx - 1]
+    #         W[c_idx] = len(cluster_instances_list)/clusters_total_instances
+    #         for k in range(1, len(all_nodes) + 1):
+    #             node_k = all_nodes[k - 1]
+    #             dist_instance_node = 0
+    #             for instance_idx in cluster_instances_list:
+    #                 instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
+    #                 dist_instance_node += distance_calculation(instance, node_k, data, type)
+    #             C[c_idx, k] = dist_instance_node/len(cluster_instances_list)
+    #             CW[c_idx, k] = C[c_idx, k]*W[c_idx]
+    #             print(f'Costs for centroid {c_idx}, node {k} calculated')
+    #     return C, W, CW
     
     def get_all_feasibility(self, data, all_nodes):
         """

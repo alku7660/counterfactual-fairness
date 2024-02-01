@@ -28,6 +28,13 @@ def inverse_transform_original(centroid, data):
         original_centroid_df = pd.concat((original_centroid_df, centroid_num_pd), axis=1)
     return original_centroid_df
 
+def estimate_sensitive_group_positive(data, feat, feat_val):
+    """
+    Estimates the amount of ground truth positives in the feature sensitive group given as parameter
+    """
+    sensitive_group_df = data.test_df.loc[(data.test_df[feat] == feat_val) & (data.test_target == data.desired_class)]
+    return len(sensitive_group_df)
+
 class Centroid:
 
     def __init__(self, centroid_idx, centroid_list, cluster_size, feat_val, feat, data, model) -> None:
@@ -39,3 +46,4 @@ class Centroid:
         self.normal_x = self.normal_x_df.values[0]
         self.x = inverse_transform_original(self.normal_x_df, data).values
         self.x_label = model.model.predict(self.normal_x.reshape(1, -1))
+        self.positives_sensitive_group = estimate_sensitive_group_positive(data, feat, feat_val)
