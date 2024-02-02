@@ -14,12 +14,11 @@ import copy
 
 class Graph:
 
-    def __init__(self, data, model, cluster, feat, type, percentage) -> None:
+    def __init__(self, data, model, feat, type, percentage) -> None:
         self.percentage = percentage
-        self.cluster = cluster
         self.feat = feat
         self.feature_centroids, self.feature_clusters, self.feature_groups = self.select_centroids_clusters_groups_for_feature()
-        self.ioi_label = cluster.undesired_class
+        self.ioi_label = data.undesired_class
         self.train_cf = self.find_train_cf(data, model, type)
         self.epsilon = self.get_epsilon(data, dist=type)
         self.feat_possible_values, self.all_nodes, self.C, self.W, self.CW, self.F, self.rho, self.eta = self.construct_graph(data, model, type)

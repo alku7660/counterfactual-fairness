@@ -12,8 +12,8 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['compass','synthetic_athlete'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
-methods_to_run = ['ARES','FACTS'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
+datasets = ['synthetic_athlete','compass'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
+methods_to_run = ['BIGRACE_dist'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -26,11 +26,7 @@ lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 likelihood_factors = [0.5] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5] This is used to calculate a minimum rho admitted for each CF found
 # t = 100 # Number of preselected close NN Training Counterfactuals
 # k = 10
-major_weight, minor_weight = 1.00, 0.00
-alphas =  [major_weight, minor_weight, minor_weight, minor_weight]
-betas = [minor_weight, major_weight, minor_weight, minor_weight]
-gammas = [minor_weight, minor_weight, major_weight, minor_weight]
-deltas = [minor_weight, minor_weight, minor_weight, major_weight]
+major_weight, minor_weight = 1, 0
 np.random.seed(seed_int)
 
 def percentage_close_train(dataset):
@@ -38,7 +34,7 @@ def percentage_close_train(dataset):
     Selects the appropriate percentage per dataset for the close CF
     """
     if dataset in ['german','dutch','compass','synthetic_athlete','heart']:
-        percentage_close_train_cf = 0.5
+        percentage_close_train_cf = 0.01
     elif dataset in ['student']:
         percentage_close_train_cf = 0.5
     elif dataset in ['law','oulad']:
@@ -56,7 +52,7 @@ def support_threshold(dataset):
     Selects the appropriate support threshold
     """
     if dataset in ['compass','synthetic_athlete','synthetic_disease','heart','credit','adult','kdd_census','diabetes']:
-        support_th = 0.01
+        support_th = 0.05
     elif dataset in ['german']:
         support_th = 0.05
     elif dataset in ['dutch','oulad','law']:

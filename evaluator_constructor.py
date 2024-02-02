@@ -791,7 +791,7 @@ class Evaluator():
             if isinstance(instance_idx,str):
                 continue
             else:
-                x = data.test_df.loc[instance_idx].values
+                x = data.test_df.loc[instance_idx].values[:-1]
             normal_x = data.transformed_test_df.loc[instance_idx].values
             q_c_c_prime = instance['best_q_c_c_prime']
             q, c, c_prime = q_c_c_prime[0], q_c_c_prime[1], q_c_c_prime[2]
