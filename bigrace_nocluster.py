@@ -15,28 +15,47 @@ class BIGRACE:
 
     def __init__(self, counterfactual):
         self.percentage = counterfactual.percentage
-        self.cluster = counterfactual.cluster
-        self.ioi_label = self.cluster.undesired_class
+        self.feat_protected = counterfactual.data.feat_protected
+        self.false_undesired_test_df = counterfactual.data.false_undesired_test_df
+        self.ioi_label = counterfactual.data.undesired_class
+        self.sensitive_feat_idx_dict = self.select_instances_by_sensitive_group()
         self.alpha, self.beta, self.gamma, self.delta1, self.delta2, self.delta3 = counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta1, counterfactual.delta2, counterfactual.delta3
         self.normal_x_cf, self.nodes_solution, self.centroid_nodes_solution, self.likelihood_dict, self.effectiveness_dict, self.run_time, self.model_status, self.obj_val = self.solve_problem(counterfactual)
     
+    def select_instances_by_sensitive_group(self):
+        """
+        Obtains indices of each sensitive group and stores them in a dict
+        """
+        sensitive_feat_idx_dict = dict()
+        for key in self.feat_protected.keys():
+            idx_list_by_sensitive_group_dict = dict()
+            value_dict = self.feat_protected[key]
+            for value in value_dict.keys():
+                sensitive_group_df = self.false_undesired_test_df.loc[self.false_undesired_test_df[key] == value]
+                idx_list_sensitive_group = sensitive_group_df.index.to_list()
+                idx_list_by_sensitive_group_dict[value] = idx_list_sensitive_group
+            sensitive_feat_idx_dict[key] = idx_list_by_sensitive_group_dict
+        return sensitive_feat_idx_dict
+
     def solve_problem(self, counterfactual):
         """
         Generates the solution according to the BIGRACE algorithms
         """
         normal_x_cf_dict, nodes_solution_list, centroid_nodes_solutions_dict, likelihood_dict, effectiveness_dict, model_status_list, obj_val_list = {}, [], {}, {}, {}, [], []
-        centroids_feat_list = list(self.cluster.centroids_dict.keys())
         start_time = time.time()
-        for feature in centroids_feat_list:
-            graph = Graph(counterfactual.data, counterfactual.model, self.cluster, feature, counterfactual.type, self.percentage)
-            normal_x_cf, nodes_solution, centroid_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.Bigrace(counterfactual, graph)
-            normal_x_cf_dict.update(normal_x_cf)
-            nodes_solution_list.extend(nodes_solution)
-            centroid_nodes_solutions_dict.update(centroid_nodes_solution)
-            likelihood_dict.update(likelihood)
-            effectiveness_dict.update(effectiveness)
-            model_status_list.append(model_status)
-            obj_val_list.append(obj_val)
+        for feature in self.feat_protected.keys():
+            value_dict = self.feat_protected[feature]
+            for feature_value in value_dict.keys():
+                sensitive_group_idx = self.sensitive_feat_idx_dict[feature][feature_value]
+                graph = Graph(counterfactual.data, counterfactual.model, feature, counterfactual.type, self.percentage)
+                normal_x_cf, nodes_solution, centroid_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.Bigrace(counterfactual, graph)
+                normal_x_cf_dict.update(normal_x_cf)
+                nodes_solution_list.extend(nodes_solution)
+                centroid_nodes_solutions_dict.update(centroid_nodes_solution)
+                likelihood_dict.update(likelihood)
+                effectiveness_dict.update(effectiveness)
+                model_status_list.append(model_status)
+                obj_val_list.append(obj_val)
         end_time = time.time()
         run_time = end_time - start_time
         return normal_x_cf_dict, nodes_solution_list, centroid_nodes_solutions_dict, likelihood_dict, effectiveness_dict, run_time, model_status_list, obj_val_list
