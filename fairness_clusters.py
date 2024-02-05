@@ -99,7 +99,7 @@ if __name__=='__main__':
         print(f'---------------------------------------')
         # clusters_obj = Clusters(data, model, metric=clustering_metric)
         for method in methods_to_run:
-            cf_evaluator = Evaluator(data, n_feat, method, clusters_obj)
+            # cf_evaluator = Evaluator(data, n_feat, method, clusters_obj)
             cf_evaluator = Evaluator(data, n_feat, method)
             if 'BIGRACE' in method:
                 cf_evaluator.add_fairness_measures(data, model)
