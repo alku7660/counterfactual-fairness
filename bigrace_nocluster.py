@@ -45,17 +45,16 @@ class BIGRACE:
         start_time = time.time()
         for feature in self.feat_protected.keys():
             value_dict = self.feat_protected[feature]
-            for feature_value in value_dict.keys():
-                sensitive_group_idx = self.sensitive_feat_idx_dict[feature][feature_value]
-                graph = Graph(counterfactual.data, counterfactual.model, feature, counterfactual.type, self.percentage)
-                normal_x_cf, nodes_solution, centroid_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.Bigrace(counterfactual, graph)
-                normal_x_cf_dict.update(normal_x_cf)
-                nodes_solution_list.extend(nodes_solution)
-                centroid_nodes_solutions_dict.update(centroid_nodes_solution)
-                likelihood_dict.update(likelihood)
-                effectiveness_dict.update(effectiveness)
-                model_status_list.append(model_status)
-                obj_val_list.append(obj_val)
+            sensitive_group_dict = self.sensitive_feat_idx_dict[feature]
+            graph = Graph(counterfactual.data, counterfactual.model, feature, value_dict.keys(), sensitive_group_dict, counterfactual.type, self.percentage)
+            normal_x_cf, nodes_solution, centroid_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.Bigrace(counterfactual, graph)
+            normal_x_cf_dict.update(normal_x_cf)
+            nodes_solution_list.extend(nodes_solution)
+            centroid_nodes_solutions_dict.update(centroid_nodes_solution)
+            likelihood_dict.update(likelihood)
+            effectiveness_dict.update(effectiveness)
+            model_status_list.append(model_status)
+            obj_val_list.append(obj_val)
         end_time = time.time()
         run_time = end_time - start_time
         return normal_x_cf_dict, nodes_solution_list, centroid_nodes_solutions_dict, likelihood_dict, effectiveness_dict, run_time, model_status_list, obj_val_list
