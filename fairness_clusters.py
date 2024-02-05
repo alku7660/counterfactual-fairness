@@ -26,7 +26,7 @@ lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 likelihood_factors = [0.5] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5] This is used to calculate a minimum rho admitted for each CF found
 # t = 100 # Number of preselected close NN Training Counterfactuals
 # k = 10
-major_weight, minor_weight = 1, 0
+major_weight, minor_weight = 0.95, 0.05
 np.random.seed(seed_int)
 
 def percentage_close_train(dataset):
@@ -97,9 +97,10 @@ if __name__=='__main__':
         print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
         print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
         print(f'---------------------------------------')
-        clusters_obj = Clusters(data, model, metric=clustering_metric)
+        # clusters_obj = Clusters(data, model, metric=clustering_metric)
         for method in methods_to_run:
             cf_evaluator = Evaluator(data, n_feat, method, clusters_obj)
+            cf_evaluator = Evaluator(data, n_feat, method)
             if 'BIGRACE' in method:
                 cf_evaluator.add_fairness_measures(data, model)
                 cf_evaluator.add_fnr_data(data)

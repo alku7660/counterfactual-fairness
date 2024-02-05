@@ -4,7 +4,8 @@ from cchvae import CCHVAE
 from ijuice import IJUICE
 from fijuice import FIJUICE
 from foce_constraint import FOCE_CONSTRAINT
-from bigrace import BIGRACE
+# from bigrace import BIGRACE
+from bigrace_nocluster import BIGRACE
 from ares import ARES
 from facts import FACTS
 

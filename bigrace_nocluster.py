@@ -8,7 +8,7 @@ from evaluator_constructor import distance_calculation, verify_feasibility
 from nnt import nn_for_juice
 import time
 from scipy.stats import norm
-from graph_constructor import Graph
+from graph_constructor_nocluster import Graph
 import copy
 
 class BIGRACE:
@@ -41,23 +41,23 @@ class BIGRACE:
         """
         Generates the solution according to the BIGRACE algorithms
         """
-        normal_x_cf_dict, nodes_solution_list, centroid_nodes_solutions_dict, likelihood_dict, effectiveness_dict, model_status_list, obj_val_list = {}, [], {}, {}, {}, [], []
+        normal_x_cf_dict, nodes_solution_dict, graph_nodes_solutions_dict, likelihood_dict, effectiveness_dict, model_status_dict, obj_val_dict = {}, {}, {}, {}, {}, {}, {}
         start_time = time.time()
         for feature in self.feat_protected.keys():
             value_dict = self.feat_protected[feature]
             sensitive_group_dict = self.sensitive_feat_idx_dict[feature]
             graph = Graph(counterfactual.data, counterfactual.model, feature, value_dict.keys(), sensitive_group_dict, counterfactual.type, self.percentage)
-            normal_x_cf, nodes_solution, centroid_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.Bigrace(counterfactual, graph)
-            normal_x_cf_dict.update(normal_x_cf)
-            nodes_solution_list.extend(nodes_solution)
-            centroid_nodes_solutions_dict.update(centroid_nodes_solution)
-            likelihood_dict.update(likelihood)
-            effectiveness_dict.update(effectiveness)
-            model_status_list.append(model_status)
-            obj_val_list.append(obj_val)
+            normal_x_cf, nodes_solution, graph_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.Bigrace(counterfactual, graph)
+            normal_x_cf_dict[feature] = normal_x_cf
+            nodes_solution_dict[feature] = nodes_solution
+            graph_nodes_solutions_dict[feature] = graph_nodes_solution
+            likelihood_dict[feature] = likelihood
+            effectiveness_dict[feature] = effectiveness
+            model_status_dict[feature] = model_status
+            obj_val_dict[feature] = obj_val
         end_time = time.time()
         run_time = end_time - start_time
-        return normal_x_cf_dict, nodes_solution_list, centroid_nodes_solutions_dict, likelihood_dict, effectiveness_dict, run_time, model_status_list, obj_val_list
+        return normal_x_cf_dict, nodes_solution_dict, graph_nodes_solutions_dict, likelihood_dict, effectiveness_dict, run_time, model_status_dict, obj_val_dict
 
     def Bigrace(self, counterfactual, graph):
         """
@@ -81,116 +81,100 @@ class BIGRACE:
             """
             Obtains the feasible justified solution when the problem is unfeasible
             """
-            sol_x, centroids_solved, nodes_solution, centroid_nodes_solution, likelihood, effectiveness = {}, [], [], {}, {}, {}
+            sol_x, centroids_solved, nodes_solution, graph_nodes_solution, likelihood, effectiveness = {}, [], [], {}, {}, {}
             potential_CF = {}
-            for c_idx in range(1, len(graph.feature_centroids) + 1):
+            for instance_idx in range(1, len(graph.sensitive_feature_instances) + 1):
                 for i in range(1, len(graph.all_nodes) + 1):
-                    if graph.F[c_idx, i]:
-                        potential_CF[c_idx, i] = graph.C[c_idx, i]
-                        if c_idx not in centroids_solved:
-                            centroids_solved.append(c_idx)
+                    if graph.F[instance_idx, i]:
+                        potential_CF[instance_idx, i] = graph.C[instance_idx, i]
+                        if instance_idx not in centroids_solved:
+                            centroids_solved.append(instance_idx)
                         if i not in nodes_solution:
                             nodes_solution.append(i)
-            for c_idx in centroids_solved:
-                centroid_idx = graph.feature_centroids[c_idx - 1].centroid_idx
-                centroids_solved_i = dict([(tup, potential_CF[tup]) for tup in list(potential_CF.keys()) if tup[0] == c_idx])
+            for instance_idx in centroids_solved:
+                centroids_solved_i = dict([(tup, potential_CF[tup]) for tup in list(potential_CF.keys()) if tup[0] == instance_idx])
                 _, sol_x_idx = min(centroids_solved_i, key=centroids_solved_i.get)
-                sol_x[centroid_idx] = graph.all_nodes[sol_x_idx - 1]
-                centroid_nodes_solution[centroid_idx] = sol_x_idx
+                sol_x[instance_idx] = graph.all_nodes[sol_x_idx - 1]
+                graph_nodes_solution[instance_idx] = sol_x_idx
                 likelihood[sol_x_idx] = graph.rho[sol_x_idx]
                 effectiveness[sol_x_idx] = graph.eta[sol_x_idx]
                 if sol_x_idx not in nodes_solution:
                     nodes_solution.append(sol_x_idx)
-            not_centroids_solved = [i for i in range(1, len(graph.feature_centroids) + 1) if i not in centroids_solved]
-            for c_idx in not_centroids_solved:
-                centroid_normal_x = graph.feature_centroids[c_idx - 1].normal_x
-                centroid_idx = graph.feature_centroids[c_idx - 1].centroid_idx
+            not_centroids_solved = [i for i in range(1, len(graph.sensitive_feature_instances) + 1) if i not in centroids_solved]
+            for instance_idx in not_centroids_solved:
+                instance = graph.sensitive_feature_instances[instance_idx - 1]
                 train_cfs = graph.find_train_cf(counterfactual.data, counterfactual.model, counterfactual.type, extra_search=True)
                 for train_cf_idx in range(train_cfs.shape[0]):
                     train_cf = train_cfs[train_cf_idx,:]
-                    if verify_feasibility(centroid_normal_x, train_cf, counterfactual.data):
+                    if verify_feasibility(instance, train_cf, counterfactual.data):
                         cf_instance = train_cf
-                sol_x[centroid_idx] = cf_instance
+                sol_x[instance_idx] = cf_instance
                 nodes_solution.append(sol_x_idx)
-                centroid_nodes_solution[centroid_idx] = sol_x_idx
+                graph_nodes_solution[instance_idx] = sol_x_idx
                 likelihood[sol_x_idx] = graph.rho[sol_x_idx]
                 effectiveness[sol_x_idx] = graph.eta[sol_x_idx]
-            return sol_x, nodes_solution, centroid_nodes_solution, likelihood, effectiveness
+            return sol_x, nodes_solution, graph_nodes_solution, likelihood, effectiveness
 
         """
         SETS
         """
-        set_Centroids = range(1, len(graph.feature_centroids) + 1)               
+        set_Instances = range(1, len(graph.sensitive_feature_instances) + 1)               
             
         """
         VARIABLES
         """
-        for c in set_Centroids:
-            cf = opt_model.addVars(set_Centroids, G.nodes, vtype=GRB.BINARY, name='Counterfactual')   # Node chosen as destination
+        # for c in set_Instances:
+        #     cf = opt_model.addVars(set_Instances, G.nodes, vtype=GRB.BINARY, name='Counterfactual')   # Node chosen as destination
+        cf = opt_model.addVars(set_Instances, G.nodes, vtype=GRB.BINARY, name='Counterfactual')
+        limiter = opt_model.addVars(G.nodes, vtype=GRB.BINARY, name='Limiter')
             
         """
         CONSTRAINTS AND OBJECTIVE
         """
-        for c in set_Centroids:
+        for i in set_Instances:
             for n in G.nodes:
-                opt_model.addConstr(cf[c, n] <= graph.F[c, n])
+                opt_model.addConstr(cf[i, n] <= graph.F[i, n])
         
-        for c in set_Centroids:
-            opt_model.addConstr(gp.quicksum(cf[c, i] for i in G.nodes) == 1)
+        for i in set_Instances:
+            opt_model.addConstr(gp.quicksum(cf[i, n] for n in G.nodes) == 1)
         
-        def calculate_s_dist(cf, C, centroids_idx, nodes_idx):
-            c_dist = cf.prod(C)/len(centroids_idx)
-            s_dist = gp.quicksum((cf[c, i]*C[c, i] - c_dist)**2 for i in nodes_idx for c in centroids_idx)
-            return s_dist
-            
-        # def calculate_s_dist(cf, C, W, CW, centroids_idx, nodes_idx):
-        #     var = 0
-        #     mean_value = cf.prod(CW)
-        #     c_idx_checked = []
-        #     c_dist_all = []
-        #     for c_idx in centroids_idx:
-        #         if c_idx in c_idx_checked:
-        #             continue
-        #         else:
-        #             sensitive_group = graph.feature_groups[c_idx - 1]
-        #             c_idx_sensitive_group_list = [i[0] + 1 for i in enumerate(graph.feature_groups) if graph.feature_groups[i[0]] == sensitive_group]
-        #             sensitive_group_weight = 0
-        #             for c_idx_feat_val in c_idx_sensitive_group_list:
-        #                 sensitive_group_weight += W[c_idx_feat_val]
-        #             c_dist_sensitive_group = 0 
-        #             for c_idx_feat_val in c_idx_sensitive_group_list:
-        #                 c_dist_cluster = gp.quicksum(cf[c_idx_feat_val, i]*C[c_idx_feat_val, i] for i in nodes_idx)
-        #                 c_dist_sensitive_group += (W[c_idx_feat_val]/sensitive_group_weight)*c_dist_cluster
-        #             var += sensitive_group_weight*(c_dist_sensitive_group - mean_value)**2
-        #             c_idx_checked.extend(c_idx_sensitive_group_list)
-        #     return var
+        for i in set_Instances:
+            for n in G.nodes:
+                opt_model.addConstr(cf[i, n] <= limiter[n])
 
-        def calculate_s_like(cf, rho, centroids_idx, nodes_idx):
-            c_like = gp.quicksum(cf[c, i]*rho[i] for i in nodes_idx for c in centroids_idx)/len(centroids_idx)
-            s_like = gp.quicksum((cf[c, i]*rho[i] - c_like)**2 for i in nodes_idx for c in centroids_idx)
-            return s_like
+        # def calculate_s_dist(cf, C, centroids_idx, nodes_idx):
+        #     c_dist = cf.prod(C)/len(centroids_idx)
+        #     s_dist = gp.quicksum((cf[c, i]*C[c, i] - c_dist)**2 for i in nodes_idx for c in centroids_idx)
+        #     return s_dist
 
-        def calculate_s_eff(cf, eta, centroids_idx, nodes_idx):
-            c_eff = gp.quicksum(cf[c, i]*eta[i] for i in nodes_idx for c in centroids_idx)/len(centroids_idx)
-            s_eff = gp.quicksum((cf[c, i]*eta[i] - c_eff)**2 for i in nodes_idx for c in centroids_idx)
-            return s_eff
+        # def calculate_s_like(cf, rho, centroids_idx, nodes_idx):
+        #     c_like = gp.quicksum(cf[c, i]*rho[i] for i in nodes_idx for c in centroids_idx)/len(centroids_idx)
+        #     s_like = gp.quicksum((cf[c, i]*rho[i] - c_like)**2 for i in nodes_idx for c in centroids_idx)
+        #     return s_like
 
-        def fairness_objective(cf, C, rho, eta, centroids_idx, nodes_idx):
-            s_dist = 0
-            s_like = 0
-            s_eff = 0
-            if self.delta1 == 1:
-                s_dist = calculate_s_dist(cf, C, centroids_idx, nodes_idx)
-            if self.delta2 == 1:
-                s_like = calculate_s_like(cf, rho, centroids_idx, nodes_idx)
-            if self.delta3 == 1:
-                s_eff = calculate_s_eff(cf, eta, centroids_idx, nodes_idx)
-            return s_dist + s_like + s_eff
+        # def calculate_s_eff(cf, eta, centroids_idx, nodes_idx):
+        #     c_eff = gp.quicksum(cf[c, i]*eta[i] for i in nodes_idx for c in centroids_idx)/len(centroids_idx)
+        #     s_eff = gp.quicksum((cf[c, i]*eta[i] - c_eff)**2 for i in nodes_idx for c in centroids_idx)
+        #     return s_eff
 
-        opt_model.setObjective(cf.prod(graph.C)*self.alpha
-                               - gp.quicksum(cf[c, i]*graph.rho[i] for i in G.nodes for c in set_Centroids)*self.beta
-                               - gp.quicksum(cf[c, i]*graph.eta[i] for i in G.nodes for c in set_Centroids)*self.gamma
-                               + fairness_objective(cf, graph.C, graph.rho, graph.eta, set_Centroids, G.nodes), GRB.MINIMIZE)
+        # def fairness_objective(cf, C, rho, eta, centroids_idx, nodes_idx):
+        #     s_dist = 0
+        #     s_like = 0
+        #     s_eff = 0
+        #     if self.delta1 == 1:
+        #         s_dist = calculate_s_dist(cf, C, centroids_idx, nodes_idx)
+        #     if self.delta2 == 1:
+        #         s_like = calculate_s_like(cf, rho, centroids_idx, nodes_idx)
+        #     if self.delta3 == 1:
+        #         s_eff = calculate_s_eff(cf, eta, centroids_idx, nodes_idx)
+        #     return s_dist + s_like + s_eff
+
+        # opt_model.setObjective(cf.prod(graph.C)*self.alpha
+        #                        - gp.quicksum(cf[c, i]*graph.rho[i] for i in G.nodes for c in set_Instances)*self.beta
+        #                        - gp.quicksum(cf[c, i]*graph.eta[i] for i in G.nodes for c in set_Instances)*self.gamma
+        #                        + fairness_objective(cf, graph.C, graph.rho, graph.eta, set_Instances, G.nodes), GRB.MINIMIZE)
+        
+        opt_model.setObjective(cf.prod(graph.C)*self.alpha + gp.quicksum(limiter[n] for n in G.nodes)*(1 - self.alpha), GRB.MINIMIZE)
             
         """
         OPTIMIZATION AND RESULTS
@@ -198,26 +182,25 @@ class BIGRACE:
         opt_model.optimize()
         time.sleep(0.25)
         if opt_model.status == 3 or len(graph.all_nodes) == len(graph.train_cf):
-            sol_x, nodes_solution, centroid_nodes_solution, likelihood, effectiveness = unfeasible_case(self, graph)
+            sol_x, nodes_solution, graph_nodes_solution, likelihood, effectiveness = unfeasible_case(self, graph)
             obj_val = 1000
         else:
             print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
             print(f'Solution:')
             obj_val = opt_model.ObjVal
-            sol_x, nodes_solution, centroid_nodes_solution, likelihood, effectiveness = {}, [], {}, {}, {}
-            for c in set_Centroids:
+            sol_x, nodes_solution, graph_nodes_solution, likelihood, effectiveness = {}, [], {}, {}, {}
+            for i in set_Instances:
                 time.sleep(0.25)
-                for i in G.nodes:
-                    if cf[c, i].x > 0.1:
-                        centroid_idx = graph.feature_centroids[c - 1].centroid_idx
-                        sol_x[centroid_idx] = graph.all_nodes[i - 1]
-                        centroid_nodes_solution[centroid_idx] = i
-                        likelihood[i] = graph.rho[i]
-                        effectiveness[i] = graph.eta[i]
-                        if i not in nodes_solution:
-                            nodes_solution.append(i)
-                        print(f'cf{c, i}: {cf[c, i].x}')
-                        print(f'Node {i}: {graph.all_nodes[i - 1]}')
-                        print(f'Centroid: {graph.feature_centroids[c - 1].normal_x}')
-                        print(f'Distance: {np.round(graph.C[c, i], 5)}')
-        return sol_x, nodes_solution, centroid_nodes_solution, likelihood, effectiveness, opt_model.status, obj_val
+                for n in G.nodes:
+                    if cf[i, n].x > 0.1:
+                        sol_x[i] = graph.all_nodes[n - 1]
+                        graph_nodes_solution[i] = n
+                        likelihood[n] = graph.rho[n]
+                        effectiveness[n] = graph.eta[n]
+                        if n not in nodes_solution:
+                            nodes_solution.append(n)
+                        print(f'cf{i, n}: {cf[i, n].x}')
+                        print(f'Node {n}: {graph.all_nodes[n - 1]}')
+                        print(f'Instance: {graph.sensitive_feature_instances[i - 1]}')
+                        print(f'Distance: {np.round(graph.C[i, n], 4)}')
+        return sol_x, nodes_solution, graph_nodes_solution, likelihood, effectiveness, opt_model.status, obj_val
