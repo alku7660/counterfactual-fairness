@@ -20,7 +20,7 @@ class BIGRACE:
         self.ioi_label = counterfactual.data.undesired_class
         self.sensitive_feat_idx_dict = self.select_instances_by_sensitive_group()
         self.alpha, self.beta, self.gamma, self.delta1, self.delta2, self.delta3 = counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta1, counterfactual.delta2, counterfactual.delta3
-        self.normal_x_cf, self.nodes_solution, self.centroid_nodes_solution, self.likelihood_dict, self.effectiveness_dict, self.run_time, self.model_status, self.obj_val = self.solve_problem(counterfactual)
+        self.normal_x_cf, self.graph_nodes, self.likelihood_dict, self.effectiveness_dict, self.run_time, self.model_status, self.obj_val, self.sensitive_group_idx_feat_value_dict = self.solve_problem(counterfactual)
     
     def select_instances_by_sensitive_group(self):
         """
@@ -41,23 +41,37 @@ class BIGRACE:
         """
         Generates the solution according to the BIGRACE algorithms
         """
-        normal_x_cf_dict, nodes_solution_dict, graph_nodes_solutions_dict, likelihood_dict, effectiveness_dict, model_status_dict, obj_val_dict = {}, {}, {}, {}, {}, {}, {}
+        normal_x_cf_dict, graph_nodes_solutions_dict, likelihood_dict, effectiveness_dict, model_status_dict, obj_val_dict, sensitive_group_idx_feat_value_dict = {}, {}, {}, {}, {}, {}, {}
         start_time = time.time()
         for feature in self.feat_protected.keys():
             value_dict = self.feat_protected[feature]
             sensitive_group_dict = self.sensitive_feat_idx_dict[feature]
             graph = Graph(counterfactual.data, counterfactual.model, feature, value_dict.keys(), sensitive_group_dict, counterfactual.type, self.percentage)
-            normal_x_cf, nodes_solution, graph_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.Bigrace(counterfactual, graph)
+            normal_x_cf, graph_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.Bigrace(counterfactual, graph)
+            normal_x_cf, graph_nodes_solution = self.adapt_indices_results(graph, normal_x_cf, graph_nodes_solution)
             normal_x_cf_dict[feature] = normal_x_cf
-            nodes_solution_dict[feature] = nodes_solution
             graph_nodes_solutions_dict[feature] = graph_nodes_solution
             likelihood_dict[feature] = likelihood
             effectiveness_dict[feature] = effectiveness
             model_status_dict[feature] = model_status
             obj_val_dict[feature] = obj_val
+            sensitive_group_idx_feat_value_dict[feature] = graph.sensitive_group_idx_feat_value_dict
         end_time = time.time()
         run_time = end_time - start_time
-        return normal_x_cf_dict, nodes_solution_dict, graph_nodes_solutions_dict, likelihood_dict, effectiveness_dict, run_time, model_status_dict, obj_val_dict
+        return normal_x_cf_dict, graph_nodes_solutions_dict, likelihood_dict, effectiveness_dict, run_time, model_status_dict, obj_val_dict, sensitive_group_idx_feat_value_dict
+
+    def adapt_indices_results(self, graph, normal_x_cf, graph_nodes_solution):
+        """
+        Adapts the indices to the original index for each of the instances
+        """
+        modified_normal_x_cf, modified_graph_nodes_solution = {}, {}
+        for idx in normal_x_cf.keys():
+            x_cf = normal_x_cf[idx]
+            graph_node = graph_nodes_solution[idx]
+            original_x_idx = graph.instance_idx_to_original_idx_dict[idx]
+            modified_normal_x_cf[original_x_idx] = x_cf
+            modified_graph_nodes_solution[original_x_idx] = graph_node
+        return modified_normal_x_cf, modified_graph_nodes_solution
 
     def Bigrace(self, counterfactual, graph):
         """
@@ -113,7 +127,7 @@ class BIGRACE:
                 graph_nodes_solution[instance_idx] = sol_x_idx
                 likelihood[sol_x_idx] = graph.rho[sol_x_idx]
                 effectiveness[sol_x_idx] = graph.eta[sol_x_idx]
-            return sol_x, nodes_solution, graph_nodes_solution, likelihood, effectiveness
+            return sol_x, graph_nodes_solution, likelihood, effectiveness
 
         """
         SETS
@@ -182,13 +196,13 @@ class BIGRACE:
         opt_model.optimize()
         time.sleep(0.25)
         if opt_model.status == 3 or len(graph.all_nodes) == len(graph.train_cf):
-            sol_x, nodes_solution, graph_nodes_solution, likelihood, effectiveness = unfeasible_case(self, graph)
+            sol_x, graph_nodes_solution, likelihood, effectiveness = unfeasible_case(self, graph)
             obj_val = 1000
         else:
             print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'
             print(f'Solution:')
             obj_val = opt_model.ObjVal
-            sol_x, nodes_solution, graph_nodes_solution, likelihood, effectiveness = {}, [], {}, {}, {}
+            sol_x, graph_nodes_solution, likelihood, effectiveness = {}, {}, {}, {}
             for i in set_Instances:
                 time.sleep(0.25)
                 for n in G.nodes:
@@ -197,10 +211,9 @@ class BIGRACE:
                         graph_nodes_solution[i] = n
                         likelihood[n] = graph.rho[n]
                         effectiveness[n] = graph.eta[n]
-                        if n not in nodes_solution:
-                            nodes_solution.append(n)
                         print(f'cf{i, n}: {cf[i, n].x}')
                         print(f'Node {n}: {graph.all_nodes[n - 1]}')
                         print(f'Instance: {graph.sensitive_feature_instances[i - 1]}')
                         print(f'Distance: {np.round(graph.C[i, n], 4)}')
-        return sol_x, nodes_solution, graph_nodes_solution, likelihood, effectiveness, opt_model.status, obj_val
+        
+        return sol_x, graph_nodes_solution, likelihood, effectiveness, opt_model.status, obj_val

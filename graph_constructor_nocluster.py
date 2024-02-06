@@ -18,7 +18,7 @@ class Graph:
         self.percentage = percentage
         self.feat = feat
         self.sensitive_group_dict = sensitive_group_dict
-        self.sensitive_feature_instances, self.idx_feat_value_dict = self.find_sensitive_feat_instances(data, feat_values)
+        self.sensitive_feature_instances, self.sensitive_group_idx_feat_value_dict, self.instance_idx_to_original_idx_dict = self.find_sensitive_feat_instances(data, feat_values)
         self.ioi_label = data.undesired_class
         self.train_cf = self.find_train_cf(data, model, feat_values, type)
         self.epsilon = self.get_epsilon(data, dist=type)
@@ -29,23 +29,25 @@ class Graph:
         Finds the instances of the sensitive group given as parameter by index
         """
         sensitive_group_idx = self.sensitive_group_dict[feat_val]
-        sensitive_group_instances = data.transformed_false_undesired_test_df.loc[sensitive_group_idx].values
+        sensitive_group_instances = data.transformed_false_undesired_test_df.loc[sensitive_group_idx]
         return sensitive_group_instances
     
     def find_sensitive_feat_instances(self, data, feat_values):
         """
         Finds the instances of the sensitive feature by index
         """
-        sensitive_feature_instances, idx_feat_value_dict = [], {}
-        start_idx = 0
+        sensitive_feature_instances, sensitive_group_idx_feat_value_dict, instance_idx_to_original_idx_dict, counter = [], {}, {}, 1
         for feat_value in feat_values:
             sensitive_group_instances = self.find_sensitive_group_instances(data, feat_value)
+            sensitive_group_instances_idx = sensitive_group_instances.index.to_list()
+            sensitive_group_instances = sensitive_group_instances.values
             sensitive_feature_instances.append(sensitive_group_instances)
-            for idx in range(start_idx, len(sensitive_group_instances)): 
-                idx_feat_value_dict[idx] = feat_value
-            start_idx += len(sensitive_group_instances)
+            for idx in sensitive_group_instances_idx: 
+                sensitive_group_idx_feat_value_dict[idx] = feat_value
+                instance_idx_to_original_idx_dict[counter] = idx
+                counter += 1
         sensitive_feature_instances = np.array(sensitive_feature_instances)
-        return sensitive_feature_instances, idx_feat_value_dict
+        return sensitive_feature_instances, sensitive_group_idx_feat_value_dict, instance_idx_to_original_idx_dict
     
     def estimate_sensitive_group_positive(self, data, feat_val):
         """
@@ -64,7 +66,7 @@ class Graph:
         target_feat_val = train_target_feat_val_df['target'].values
         del train_target_feat_val_df['target']
         train_feat_val_np = data.transform_data(train_target_feat_val_df).values
-        return train_target_feat_val_df, target_feat_val, train_feat_val_np
+        return train_feat_val_np, target_feat_val
 
     def find_train_desired_label(self, train_np, train_target, train_pred, extra_search):
         """
@@ -101,7 +103,7 @@ class Graph:
         """
         train_cf_list = []
         for feat_value in feat_values:
-            train_feat_val_df, target_feat_val, train_feat_val_np = self.find_train_specific_feature_val(data, feat_value)
+            train_feat_val_np, target_feat_val = self.find_train_specific_feature_val(data, feat_value)
             train_np_feat_val_pred = model.model.predict(train_feat_val_np)
             train_desired_label_np = self.find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search)
             sensitive_group_instances = self.find_sensitive_group_instances(data, feat_value)
@@ -230,7 +232,8 @@ class Graph:
         C = {}
         for instance_idx in range(1, len(self.sensitive_feature_instances) + 1):
             instance = self.sensitive_feature_instances[instance_idx - 1]
-            feat_value = self.idx_feat_value_dict[instance_idx - 1]
+            original_instance_idx = self.sensitive_group_idx_feat_value_dict.keys[instance_idx - 1]
+            feat_value = self.sensitive_group_idx_feat_value_dict[original_instance_idx]
             len_positives_sensitive_group = self.estimate_sensitive_group_positive(data, feat_value)
             for k in range(1, len(all_nodes) + 1):
                 node_k = all_nodes[k - 1]
