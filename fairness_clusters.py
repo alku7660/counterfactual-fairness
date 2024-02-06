@@ -97,7 +97,7 @@ if __name__=='__main__':
         print(f'       model train accuracy: {np.round_(f1_score(model.model.predict(data.transformed_train_df), data.train_target), 2)}')
         print(f'        model test accuracy: {np.round_(f1_score(model.model.predict(data.transformed_test_df), data.test_target), 2)}')
         print(f'---------------------------------------')
-        # clusters_obj = Clusters(data, model, metric=clustering_metric)
+        clusters_obj = Clusters(data, model, metric=clustering_metric)
         for method in methods_to_run:
             # cf_evaluator = Evaluator(data, n_feat, method, clusters_obj)
             cf_evaluator = Evaluator(data, n_feat, method)
@@ -105,7 +105,8 @@ if __name__=='__main__':
                 cf_evaluator.add_fairness_measures(data, model)
                 cf_evaluator.add_fnr_data(data)
                 alpha, beta, gamma, delta1, delta2, delta3 = select_parameters(method)
-                counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta1, delta2, delta3, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
+                # counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta1, delta2, delta3, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
+                counterfactual = Counterfactual(data, model, method, alpha, beta, gamma, delta1, delta2, delta3, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
                 cf_evaluator.add_cf_data(counterfactual)
             elif method == 'ARES':
                 graph_obj = None

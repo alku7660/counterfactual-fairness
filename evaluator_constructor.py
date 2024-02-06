@@ -771,33 +771,40 @@ class Evaluator():
         """
         cols = ['Method','alpha','beta','gamma','delta1','delta2','delta3','feature','feat_value','Sensitive group','instance_idx','centroid_idx','normal_centroid','centroid',
                 'normal_cf','cf','Distance','Feasibility','Likelihood','Effectiveness','Time','model_status','obj_val']
-        centroid_node_solution = counterfactual.cf_method.centroid_nodes_solution
+        data = counterfactual.data
+        cf_dict = counterfactual.cf_method.normal_x_cf
+        graph_nodes_dict = counterfactual.cf_method.graph_nodes_solution
         likelihood_dict = counterfactual.cf_method.likelihood_dict
         effectiveness_dict = counterfactual.cf_method.effectiveness_dict
-        for c_idx in range(len(counterfactual.cluster.filtered_centroids_list)):
-            node = centroid_node_solution[c_idx + 1]
-            likelihood = likelihood_dict[node]
-            effectiveness = effectiveness_dict[node]
-            centroid = counterfactual.cluster.filtered_centroids_list[c_idx]
-            len_positives_sensitive_group = centroid.positives_sensitive_group
-            original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[0], columns=counterfactual.data.features)
-            normal_centroid_cf = counterfactual.cf_method.normal_x_cf[c_idx + 1]
-            cluster_instances_list = counterfactual.cluster.filtered_clusters_list[c_idx]
-            normal_x_cf_df = pd.DataFrame(data=normal_centroid_cf.reshape(1,-1), index=[0], columns=counterfactual.data.processed_features)
-            original_cf = self.inverse_transform_original(normal_x_cf_df)
-            original_cf = original_cf.values
-            print(f'Original Centroid ({centroid.feat}: {centroid.feat_val}): {original_centroid}')
-            print(f'      Original CF: {original_cf}')
-            feat_val_name = counterfactual.data.feat_protected[centroid.feat][np.round(float(centroid.feat_val),2)] 
-            sensitive_group = f'{centroid.feat}: {feat_val_name}'
-            for instance_idx in cluster_instances_list:
-                instance = counterfactual.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
-                cf_proximity = distance_calculation(instance, normal_centroid_cf, counterfactual.data, counterfactual.type)
-                cf_feasibility = verify_feasibility(instance, normal_centroid_cf, counterfactual.data)
+        sensitive_group_idx_feat_value_dict = counterfactual.cf_method.sensitive_group_idx_feat_value_dict
+        for feature in self.feat_protected.keys():
+            cf_feature = cf_dict[feature]
+            graph_nodes_feature = graph_nodes_dict[feature]
+            likelihood_feature = likelihood_dict[feature]
+            effectiveness_feature = effectiveness_dict[feature]
+            sensitive_group_idx_feat_value_dict[feature]
+            for idx in cf_feature.keys():
+                normal_cf = cf_feature[idx]
+                graph_node = graph_nodes_feature[idx]
+                likelihood = likelihood_feature[graph_node]
+                effectiveness = effectiveness_feature[graph_node]
+                feat_value = sensitive_group_idx_feat_value_dict[idx]
+                len_positives_sensitive_group = len(data.test_df.loc[(data.test_df[feature] == feat_value) & (data.test_target == data.desired_class)])
+                instance = counterfactual.cluster.transformed_false_undesired_test_df.loc[idx].values
+                original_instance = data.test_df.loc[idx].values
+                normal_x_cf_df = pd.DataFrame(data=normal_cf.reshape(1,-1), index=[0], columns=data.processed_features)
+                original_cf = self.inverse_transform_original(normal_x_cf_df)
+                original_cf = original_cf.values
+                print(f'Original Centroid ({feature}: {feat_value}): {original_instance}')
+                print(f'      Original CF: {original_cf}')
+                feat_val_name = data.feat_protected[feature][np.round(float(feat_value),2)] 
+                sensitive_group = f'{feature}: {feat_val_name}'
+                cf_proximity = distance_calculation(instance, normal_cf, data, counterfactual.type)
+                cf_feasibility = verify_feasibility(instance, normal_cf, data)
                 data_list = [counterfactual.method, counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta1, counterfactual.delta2, counterfactual.delta3,
-                             centroid.feat, feat_val_name, sensitive_group, instance_idx, centroid.centroid_idx, centroid.normal_x, centroid.x,
-                             normal_centroid_cf, original_cf, cf_proximity/(2*len_positives_sensitive_group), cf_feasibility, likelihood, effectiveness, counterfactual.cf_method.run_time, 
-                             counterfactual.cf_method.model_status, counterfactual.cf_method.obj_val]
+                            feature, feat_val_name, sensitive_group, idx, idx, instance, original_instance,
+                            normal_cf, original_cf, cf_proximity/(2*len_positives_sensitive_group), cf_feasibility, likelihood, effectiveness, counterfactual.cf_method.run_time, 
+                            counterfactual.cf_method.model_status, counterfactual.cf_method.obj_val]
                 data_df = pd.DataFrame(data=[data_list], index=[len(self.cf_df)], columns=cols)
                 self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
 
