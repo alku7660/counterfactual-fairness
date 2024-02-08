@@ -12,7 +12,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['oulad','bank','student','heart','diabetes','law','credit','dutch','adult','kdd_census'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
+datasets = ['oulad','bank','student','diabetes','law','credit','dutch','adult','kdd_census'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
 methods_to_run = ['BIGRACE_dist'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -33,7 +33,7 @@ def percentage_close_train(dataset):
     """
     Selects the appropriate percentage per dataset for the close CF
     """
-    if dataset in ['german','compass','synthetic_athlete','heart','diabetes']:
+    if dataset in ['german','compass','synthetic_athlete','diabetes']:
         percentage_close_train_cf = 1
     elif dataset in ['bank','kdd_census','law','student']:
         percentage_close_train_cf = 0.5
@@ -45,7 +45,7 @@ def support_threshold(dataset):
     """
     Selects the appropriate support threshold
     """
-    if dataset in ['compass','synthetic_athlete','synthetic_disease','heart','credit','adult','kdd_census','diabetes']:
+    if dataset in ['compass','synthetic_athlete','synthetic_disease','credit','adult','kdd_census','diabetes']:
         support_th = 0.05
     elif dataset in ['german']:
         support_th = 0.05
