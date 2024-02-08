@@ -773,7 +773,7 @@ class Evaluator():
                 'normal_cf','cf','Distance','Feasibility','Likelihood','Effectiveness','Time','model_status','obj_val']
         data = counterfactual.data
         cf_dict = counterfactual.cf_method.normal_x_cf
-        graph_nodes_dict = counterfactual.cf_method.graph_nodes_solution
+        graph_nodes_dict = counterfactual.cf_method.graph_nodes
         likelihood_dict = counterfactual.cf_method.likelihood_dict
         effectiveness_dict = counterfactual.cf_method.effectiveness_dict
         sensitive_group_idx_feat_value_dict = counterfactual.cf_method.sensitive_group_idx_feat_value_dict
@@ -782,21 +782,19 @@ class Evaluator():
             graph_nodes_feature = graph_nodes_dict[feature]
             likelihood_feature = likelihood_dict[feature]
             effectiveness_feature = effectiveness_dict[feature]
-            sensitive_group_idx_feat_value_dict[feature]
+            idx_feature = sensitive_group_idx_feat_value_dict[feature]
             for idx in cf_feature.keys():
                 normal_cf = cf_feature[idx]
                 graph_node = graph_nodes_feature[idx]
                 likelihood = likelihood_feature[graph_node]
                 effectiveness = effectiveness_feature[graph_node]
-                feat_value = sensitive_group_idx_feat_value_dict[idx]
+                feat_value = idx_feature[idx]
                 len_positives_sensitive_group = len(data.test_df.loc[(data.test_df[feature] == feat_value) & (data.test_target == data.desired_class)])
-                instance = counterfactual.cluster.transformed_false_undesired_test_df.loc[idx].values
+                instance = data.transformed_false_undesired_test_df.loc[idx].values
                 original_instance = data.test_df.loc[idx].values
                 normal_x_cf_df = pd.DataFrame(data=normal_cf.reshape(1,-1), index=[0], columns=data.processed_features)
                 original_cf = self.inverse_transform_original(normal_x_cf_df)
                 original_cf = original_cf.values
-                print(f'Original Centroid ({feature}: {feat_value}): {original_instance}')
-                print(f'      Original CF: {original_cf}')
                 feat_val_name = data.feat_protected[feature][np.round(float(feat_value),2)] 
                 sensitive_group = f'{feature}: {feat_val_name}'
                 cf_proximity = distance_calculation(instance, normal_cf, data, counterfactual.type)
@@ -807,6 +805,7 @@ class Evaluator():
                             counterfactual.cf_method.model_status, counterfactual.cf_method.obj_val]
                 data_df = pd.DataFrame(data=[data_list], index=[len(self.cf_df)], columns=cols)
                 self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
+        print('Printed counterfactual data')
 
     def find_centroid_for_ares(self, counterfactual, feat, feat_val):
         """

@@ -18,11 +18,15 @@ class Graph:
         self.percentage = percentage
         self.feat = feat
         self.sensitive_group_dict = sensitive_group_dict
+        print('Before sensitive_feature_instances')
         self.sensitive_feature_instances, self.sensitive_group_idx_feat_value_dict, self.instance_idx_to_original_idx_dict = self.find_sensitive_feat_instances(data, feat_values)
         self.ioi_label = data.undesired_class
+        print('Before train cf')
         self.train_cf = self.find_train_cf(data, model, feat_values, type)
+        print('After train cf, before get epsilon')
         self.epsilon = self.get_epsilon(data, dist=type)
-        self.feat_possible_values, self.all_nodes, self.C, self.W, self.CW, self.F, self.rho, self.eta = self.construct_graph(data, model, feat_values, type)
+        print('After get epsilon, before construct graph')
+        self.feat_possible_values, self.all_nodes, self.C, self.F, self.rho, self.eta = self.construct_graph(data, model, feat_values, type)
 
     def find_sensitive_group_instances(self, data, feat_val):
         """
@@ -46,7 +50,7 @@ class Graph:
                 sensitive_group_idx_feat_value_dict[idx] = feat_value
                 instance_idx_to_original_idx_dict[counter] = idx
                 counter += 1
-        sensitive_feature_instances = np.array(sensitive_feature_instances)
+        sensitive_feature_instances = np.concatenate(sensitive_feature_instances, axis=0)
         return sensitive_feature_instances, sensitive_group_idx_feat_value_dict, instance_idx_to_original_idx_dict
     
     def estimate_sensitive_group_positive(self, data, feat_val):
@@ -84,14 +88,14 @@ class Graph:
         """
         list_instances = []
         for train_i in range(train_cfs.shape[0]):
-            train_cfs = train_cfs[train_i]
+            train_cf_i = train_cfs[train_i]
             if extra_search:
-                if verify_feasibility(normal_instance, train_cfs[train_i], data):
-                    dist = distance_calculation(train_cfs[train_i], normal_instance, data, type=type)
-                    list_instances.append((train_cfs[train_i], dist))
+                if verify_feasibility(normal_instance, train_cf_i, data):
+                    dist = distance_calculation(train_cf_i, normal_instance, data, type=type)
+                    list_instances.append((train_cf_i, dist))
             else:
-                dist = distance_calculation(train_cfs[train_i], normal_instance, data, type=type)
-                list_instances.append((train_cfs[train_i], dist))
+                dist = distance_calculation(train_cf_i, normal_instance, data, type=type)
+                list_instances.append((train_cf_i, dist))
         list_instances.sort(key=lambda x: x[1])
         list_instances = [i[0] for i in list_instances]
         closest_train_cf = list_instances[0]
@@ -102,19 +106,24 @@ class Graph:
         Finds the set of training observations belonging to, and predicted as, the counterfactual class and that belong to the same sensitive group as the centroid (this avoids node generation explosion)
         """
         train_cf_list = []
+        count_instances = 0
         for feat_value in feat_values:
             train_feat_val_np, target_feat_val = self.find_train_specific_feature_val(data, feat_value)
             train_np_feat_val_pred = model.model.predict(train_feat_val_np)
             train_desired_label_np = self.find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search)
-            sensitive_group_instances = self.find_sensitive_group_instances(data, feat_value)
+            sensitive_group_instances = self.find_sensitive_group_instances(data, feat_value).values
             for instance in sensitive_group_instances:
+                count_instances += 1
+                start_time = time.time()
                 closest_train_cf = self.find_closest_train_cf_per_instance(data, instance, train_desired_label_np, type, extra_search)
+                end_time = time.time()
                 if not any(np.array_equal(closest_train_cf, x) for x in train_cf_list):
                     train_cf_list.append(closest_train_cf)
-            # train_cf_list = train_cf_list[:int(len(train_cf_list)*self.percentage)]
+                print(f'Count of instances {count_instances} out of {len(sensitive_group_instances)} in Feat {feat_value} (estimated total time: {len(sensitive_group_instances)*(end_time - start_time)*2})')
+            train_cf_list = train_cf_list[:int(len(train_cf_list)*self.percentage)]
         return train_cf_list
 
-    def construct_graph(self, data, feat_values, model, type):
+    def construct_graph(self, data, model, feat_values, type):
         """
         Constructs the graph and the required parameters to run Fijuice several lagrange values
         """
@@ -124,7 +133,7 @@ class Graph:
         graph_nodes = self.get_graph_nodes(data, model, feat_possible_values)
         all_nodes = self.train_cf + graph_nodes
         print(f'Obtained all possible nodes in the graph: {len(all_nodes)}')
-        C, W, CW = self.get_all_costs_weights(data, type, feat_values, all_nodes)
+        C = self.get_all_costs_weights(data, type, feat_values, all_nodes)
         print(f'Obtained all costs in the graph')
         F = self.get_all_feasibility(data, all_nodes)
         print(f'Obtained all feasibility in the graph')
@@ -132,7 +141,7 @@ class Graph:
         print(f'Obtained all Likelihood parameter')
         eta = self.get_all_effectiveness(data, feat_values, all_nodes)
         print(f'Obtained all effectiveness parameter')
-        return feat_possible_values, all_nodes, C, W, CW, F, rho, eta
+        return feat_possible_values, all_nodes, C, F, rho, eta
     
     def get_feat_possible_values(self, data, obj=None, points=None):
         """
@@ -146,7 +155,7 @@ class Graph:
             points = self.train_cf
         else:
             points = points
-        feat_possible_values_all_centroids = {}
+        feat_possible_values_all = {}
         for instance_idx in range(len(sensitive_feature_instances)):
             instance = sensitive_feature_instances[instance_idx]
             cf_feat_possible_values = {}
@@ -191,8 +200,8 @@ class Graph:
                             feat_checked.extend([i])
                         feat_possible_values.append(value)
                 cf_feat_possible_values[k] = feat_possible_values
-            feat_possible_values_all_centroids[instance_idx] = cf_feat_possible_values
-        return feat_possible_values_all_centroids
+            feat_possible_values_all[instance_idx] = cf_feat_possible_values
+        return feat_possible_values_all
 
     def make_array(self, i):
         """
@@ -214,15 +223,17 @@ class Graph:
         graph_nodes = []
         for instance_idx in range(len(self.sensitive_feature_instances)):
             for k in range(len(self.train_cf)):
-                print(f'Graph: sensitive group instance {instance_idx} and training CF {k}. Nodes size: {len(graph_nodes)}')
                 feat_possible_values_k = feat_possible_values[instance_idx][k]
                 permutations = product(*feat_possible_values_k)
+                instance = self.sensitive_feature_instances[instance_idx]
                 for i in permutations:
                     perm_i = self.make_array(i)
-                    if model.model.predict(perm_i.reshape(1, -1)) != self.ioi_label and \
-                        not any(np.array_equal(perm_i, x) for x in graph_nodes) and \
-                        not any(np.array_equal(perm_i, x) for x in self.train_cf):
+                    if verify_feasibility(instance, perm_i, data) and \
+                        model.model.predict(perm_i.reshape(1, -1)) != self.ioi_label and \
+                        not any(np.array_equal(perm_i, x) for x in self.train_cf) and \
+                        not any(np.array_equal(perm_i, x) for x in graph_nodes):
                         graph_nodes.append(perm_i)
+            print(f'Graph: sensitive group instance {instance_idx} of {len(self.sensitive_feature_instances)}. Nodes size: {len(graph_nodes)}')
         return graph_nodes
 
     def get_all_costs_weights(self, data, type, feat_values, all_nodes):
@@ -232,14 +243,14 @@ class Graph:
         C = {}
         for instance_idx in range(1, len(self.sensitive_feature_instances) + 1):
             instance = self.sensitive_feature_instances[instance_idx - 1]
-            original_instance_idx = self.sensitive_group_idx_feat_value_dict.keys[instance_idx - 1]
+            original_instance_idx = self.instance_idx_to_original_idx_dict[instance_idx]
             feat_value = self.sensitive_group_idx_feat_value_dict[original_instance_idx]
             len_positives_sensitive_group = self.estimate_sensitive_group_positive(data, feat_value)
             for k in range(1, len(all_nodes) + 1):
                 node_k = all_nodes[k - 1]
                 dist_instance_node = distance_calculation(instance, node_k, data, type)
                 C[instance_idx, k] = dist_instance_node/(2*len_positives_sensitive_group)
-                print(f'Costs for centroid {instance_idx}, node {k} calculated')
+            print(f'Costs for instance {instance_idx} of {len(self.sensitive_feature_instances) + 1}')
         return C
 
     def get_all_feasibility(self, data, all_nodes):
@@ -266,7 +277,7 @@ class Graph:
                 sum_eta = 0
                 node_k = all_nodes[k - 1]
                 for instance_idx in feat_value_idx:
-                    instance = data.transformed_false_undesired_test_df[instance_idx].values
+                    instance = data.transformed_false_undesired_test_df.loc[instance_idx].values
                     sum_eta += verify_feasibility(instance, node_k, data)
                 eta[k] = sum_eta/len_sensitive_group
             print(f'Highest eta value for {data.feat_protected[self.feat][feat_value]} : {np.max(list(eta.values()))}')

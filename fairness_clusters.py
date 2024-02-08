@@ -12,7 +12,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['synthetic_athlete','compass'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
+datasets = ['oulad','bank','student','heart','diabetes','law','credit','dutch','adult','kdd_census'] # 'oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease' Student runs ARES at 0.1, FACTS 0.4 'german','dutch','compass','synthetic_athlete','heart','student','oulad','bank','law','credit','adult','kdd_census','diabetes','synthetic_disease'
 methods_to_run = ['BIGRACE_dist'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -26,24 +26,18 @@ lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 likelihood_factors = [0.5] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5] This is used to calculate a minimum rho admitted for each CF found
 # t = 100 # Number of preselected close NN Training Counterfactuals
 # k = 10
-major_weight, minor_weight = 0.95, 0.05
+major_weight, minor_weight = 1.0, 0.0
 np.random.seed(seed_int)
 
 def percentage_close_train(dataset):
     """
     Selects the appropriate percentage per dataset for the close CF
     """
-    if dataset in ['german','dutch','compass','synthetic_athlete','heart']:
-        percentage_close_train_cf = 0.01
-    elif dataset in ['student']:
+    if dataset in ['german','compass','synthetic_athlete','heart','diabetes']:
+        percentage_close_train_cf = 1
+    elif dataset in ['bank','kdd_census','law','student']:
         percentage_close_train_cf = 0.5
-    elif dataset in ['law','oulad']:
-        percentage_close_train_cf = 0.1
-    elif dataset in ['bank','credit']:
-        percentage_close_train_cf = 0.1
-    elif dataset in ['adult','diabetes']:
-        percentage_close_train_cf = 0.1
-    elif dataset in ['kdd_census']:
+    elif dataset in ['oulad','adult','credit','dutch']:
         percentage_close_train_cf = 0.1
     return percentage_close_train_cf
 
@@ -99,11 +93,13 @@ if __name__=='__main__':
         print(f'---------------------------------------')
         clusters_obj = Clusters(data, model, metric=clustering_metric)
         for method in methods_to_run:
-            # cf_evaluator = Evaluator(data, n_feat, method, clusters_obj)
-            cf_evaluator = Evaluator(data, n_feat, method)
+            cf_evaluator = Evaluator(data, n_feat, method, clusters_obj)
             if 'BIGRACE' in method:
+                print('Before add_fairness_measures')
                 cf_evaluator.add_fairness_measures(data, model)
+                print('After add_fairness_measures Before add_fnr_data')
                 cf_evaluator.add_fnr_data(data)
+                print('After add_fnr_data Before Counterfactual creation')
                 alpha, beta, gamma, delta1, delta2, delta3 = select_parameters(method)
                 # counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta1, delta2, delta3, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
                 counterfactual = Counterfactual(data, model, method, alpha, beta, gamma, delta1, delta2, delta3, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)

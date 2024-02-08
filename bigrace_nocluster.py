@@ -77,8 +77,8 @@ class BIGRACE:
         """
         BIGRACE algorithm
         """
-        normal_x_cf, nodes_solution, centroid_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.do_optimize_all(counterfactual, graph)
-        return normal_x_cf, nodes_solution, centroid_nodes_solution, likelihood, effectiveness, model_status, obj_val 
+        normal_x_cf, graph_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.do_optimize_all(counterfactual, graph)
+        return normal_x_cf, graph_nodes_solution, likelihood, effectiveness, model_status, obj_val 
 
     def do_optimize_all(self, counterfactual, graph):
         """
@@ -215,5 +215,4 @@ class BIGRACE:
                         print(f'Node {n}: {graph.all_nodes[n - 1]}')
                         print(f'Instance: {graph.sensitive_feature_instances[i - 1]}')
                         print(f'Distance: {np.round(graph.C[i, n], 4)}')
-        
         return sol_x, graph_nodes_solution, likelihood, effectiveness, opt_model.status, obj_val
