@@ -803,7 +803,7 @@ class Evaluator():
                 original_cf = original_cf.values
                 feat_val_name = data.feat_protected[feature][np.round(float(feat_value),2)] 
                 sensitive_group = f'{feature}: {feat_val_name}'
-                cf_proximity = distance_calculation(instance, normal_cf, {'dat':data, 'type':counterfactual.type})
+                cf_proximity = distance_calculation(instance, normal_cf, kwargs={'dat':data, 'type':counterfactual.type})
                 cf_feasibility = verify_feasibility(instance, normal_cf, data)
                 data_list = [counterfactual.method, counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta1, counterfactual.delta2, counterfactual.delta3,
                             feature, feat_val_name, sensitive_group, idx, idx, instance, original_instance,
@@ -853,7 +853,7 @@ class Evaluator():
             normal_cf_df = cfs[instance_idx]
             normal_cf = normal_cf_df.values[0]
             original_cf = self.inverse_transform_original(normal_cf_df).values
-            cf_proximity = distance_calculation(normal_x, normal_cf, {'dat':data, 'type':counterfactual.type})
+            cf_proximity = distance_calculation(normal_x, normal_cf, kwargs={'dat':data, 'type':counterfactual.type})
             cf_feasibility = verify_feasibility(normal_x, normal_cf, data)
             sensitive_group = f'{feat}: {feat_val_name}'
             data_list = ['ARES', counterfactual.alpha, counterfactual.beta, counterfactual.gamma, 
@@ -888,7 +888,7 @@ class Evaluator():
                 action = actions[idx]
                 normal_cf = normal_cf_df.values[0]
                 original_cf = self.inverse_transform_original(normal_cf_df).values
-                cf_proximity = distance_calculation(normal_x, normal_cf, {'dat':data, 'type':counterfactual.type})
+                cf_proximity = distance_calculation(normal_x, normal_cf, kwargs={'dat':data, 'type':counterfactual.type})
                 cf_feasibility = verify_feasibility(normal_x, normal_cf, data)
                 sensitive_group = f'{centroid.feat}: {feat_val_name}'
                 data_list = ['FACTS', counterfactual.alpha, counterfactual.beta, counterfactual.gamma, 
