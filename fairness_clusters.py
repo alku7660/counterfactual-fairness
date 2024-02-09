@@ -39,7 +39,7 @@ def percentage_close_train(dataset):
     elif dataset in ['bank','kdd_census','student']:
         percentage_close_train_cf = 0.1
     elif dataset in ['oulad','adult','credit','dutch']:
-        percentage_close_train_cf = 0.05
+        percentage_close_train_cf = 0.01
     return percentage_close_train_cf
 
 def support_threshold(dataset):
