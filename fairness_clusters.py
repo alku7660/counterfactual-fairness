@@ -11,9 +11,10 @@ from evaluator_constructor import Evaluator
 import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
+import time
 
-datasets = ['oulad','bank','student'] # 'compass','synthetic_athlete','german','oulad','bank','student','law','credit','dutch','adult' # 'diabetes','kdd_census'
-methods_to_run = ['BIGRACE_dist'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
+datasets = ['compass'] # 'compass','synthetic_athlete','german','oulad','bank','student','law','credit','dutch','adult' # 'diabetes','kdd_census'
+methods_to_run = ['ARES'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -93,6 +94,7 @@ if __name__=='__main__':
         print(f'---------------------------------------')
         clusters_obj = Clusters(data, model, metric=clustering_metric)
         for method in methods_to_run:
+            start_time = time.time()
             cf_evaluator = Evaluator(data, n_feat, method, clusters_obj)
             if 'BIGRACE' in method:
                 print('Before add_fairness_measures')
@@ -107,15 +109,16 @@ if __name__=='__main__':
             elif method == 'ARES':
                 graph_obj = None
                 alpha, beta, gamma, delta1, delta2, delta3 = select_parameters(method)
-                counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta1, delta2, delta3, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
+                counterfactual = Counterfactual(data, model, method, alpha, beta, gamma, delta1, delta2, delta3, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th, cluster=clusters_obj)
                 cf_evaluator.add_cf_data_ares(counterfactual)
             elif method == 'FACTS':
                 graph_obj = None
                 alpha, beta, gamma, delta1, delta2, delta3 = select_parameters(method)
-                counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, beta, gamma, delta1, delta2, delta3, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
+                counterfactual = Counterfactual(data, model, method, alpha, beta, gamma, delta1, delta2, delta3, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th, cluster=clusters_obj)
                 cf_evaluator.add_cf_data_facts(counterfactual)
+            end_time = time.time()
             print(f'---------------------------')
-            print(f'  DONE: {data_str}, method: {method}')
+            print(f'  DONE: {data_str}, method: {method}, time: {np.round(end_time - start_time, 2)}')
             print(f'---------------------------')
             save_obj(cf_evaluator, f'{data_str}_{method}_cluster_eval.pkl')
     print(f'---------------------------')

@@ -110,25 +110,27 @@ def distance_calculation(x, y, **kwargs):
             value_to_return = max(perc_shift_list)
         return value_to_return
 
-    x_original, y_original = data.inverse(x), data.inverse(y)
-    if type == 'euclidean':
+    if type in ['L1_L0', 'L1_L0_L_inf', 'prob']:
+        x_original, y_original = data.inverse(x), data.inverse(y)
+        if type == 'L1_L0':
+            n_con, n_cat = len(data.numerical), len(data.binary + data.categorical)
+            n = n_con + n_cat
+            L1_distance, L0_distance = L1_L0(x, y, x_original, y_original, data)
+            """
+            Equation from Sharma et al.: Please see: https://arxiv.org/pdf/1905.07857.pdf
+            """
+            distance = (n_con/n)*L1_distance + (n_cat/n)*L0_distance
+        elif type == 'L1_L0_L_inf':
+            distance = L1_L0_L_inf(x, y, x_original, y_original, data)
+        elif type == 'prob':
+            distance = max_percentile_shift(x_original, y_original, data)
+    elif type == 'euclidean':
         distance = euclid(x, y)
     elif type == 'L1':
         distance = L1(x, y)
     elif type == 'L_inf':
         distance = Linf(x, y)
-    elif type == 'L1_L0':
-        n_con, n_cat = len(data.numerical), len(data.binary + data.categorical)
-        n = n_con + n_cat
-        L1_distance, L0_distance = L1_L0(x, y, x_original, y_original, data)
-        """
-        Equation from Sharma et al.: Please see: https://arxiv.org/pdf/1905.07857.pdf
-        """
-        distance = (n_con/n)*L1_distance + (n_cat/n)*L0_distance
-    elif type == 'L1_L0_L_inf':
-        distance = L1_L0_L_inf(x, y, x_original, y_original, data)
-    elif type == 'prob':
-        distance = max_percentile_shift(x_original, y_original, data)
+    
     return distance
 
 class Evaluator():
@@ -603,6 +605,7 @@ class Evaluator():
         rho = {}
         cfs_keys = list(cfs.keys())
         cfs_np = np.array([cfs[i].values[0] for i in cfs.keys()])
+        print(cfs_np.shape, data.transformed_train_np.shape)
         distance = distance_matrix(cfs_np, data.transformed_train_np, p=1)
         gaussian_kernel = np.exp(-(distance/self.epsilon)**2)
         sum_gaussian_kernel_col = np.sum(gaussian_kernel, axis=1)
@@ -847,9 +850,9 @@ class Evaluator():
             feat, feat_val = q.split('_')[0], int(float(q.split('_')[1]))
             len_positives_sensitive_group = self.find_centroid_for_ares(counterfactual, feat, feat_val)
             feat_val_name = counterfactual.data.feat_protected[feat][np.round(float(feat_val),2)] 
-            q = q if isinstance(q,str) else list(q) 
-            c = c if isinstance(c,str) else list(c) 
-            c_prime = c_prime if isinstance(c_prime,str) else list(c_prime)
+            # q = q if isinstance(q,str) else list(q)
+            # c = c if isinstance(c,str) else list(c) 
+            # c_prime = c_prime if isinstance(c_prime,str) else list(c_prime)
             normal_cf_df = cfs[instance_idx]
             normal_cf = normal_cf_df.values[0]
             original_cf = self.inverse_transform_original(normal_cf_df).values
