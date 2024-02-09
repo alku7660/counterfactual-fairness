@@ -12,7 +12,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['oulad','bank','student'] # 'compass','synthetic_athlete','german','oulad','bank','student','law','credit','dutch','adult' # 'diabetes','kdd_census'
+datasets = ['synthetic_athlete'] # 'compass','synthetic_athlete','german','oulad','bank','student','law','credit','dutch','adult' # 'diabetes','kdd_census'
 methods_to_run = ['BIGRACE_dist'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training

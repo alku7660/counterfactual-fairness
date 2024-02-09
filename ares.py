@@ -287,7 +287,7 @@ class ARES:
                         correctness_q_c_c_prime = 1
                     else:
                         correctness_q_c_c_prime = 0
-                    feat_change_q_c_c_prime = distance_calculation(np.array(x_transformed), np.array(x_prime_transformed), data, type='L1_L0')
+                    feat_change_q_c_c_prime = distance_calculation(np.array(x_transformed), np.array(x_prime_transformed), {'dat':data, 'type':'L1_L0'})
                     result_x = [x_idx, q, q_c, q_c_c_prime, correctness_q_c_c_prime, feat_change_q_c_c_prime]
                     results_x_list.append(result_x)
         return results_x_list

@@ -5,9 +5,11 @@ import networkx as nx
 import gurobipy as gp
 from gurobipy import GRB, tuplelist
 from scipy.spatial import distance_matrix
+from sklearn.metrics import pairwise_distances
 from evaluator_constructor import distance_calculation, verify_feasibility
 from centroid_constructor import inverse_transform_original
 from nnt import nn_for_juice
+from sklearn.neighbors import NearestNeighbors
 import time
 from scipy.stats import norm
 import copy
@@ -22,7 +24,8 @@ class Graph:
         self.sensitive_feature_instances, self.sensitive_group_idx_feat_value_dict, self.instance_idx_to_original_idx_dict = self.find_sensitive_feat_instances(data, feat_values)
         self.ioi_label = data.undesired_class
         print('Before train cf')
-        self.train_cf = self.find_train_cf(data, model, feat_values, type)
+        # self.train_cf = self.find_train_cf(data, model, feat_values, type)
+        self.train_cf = self.nearest_neighbor_train_cf(data, model, feat_values, type)
         print('After train cf, before get epsilon')
         self.epsilon = self.get_epsilon(data, dist=type)
         print('After get epsilon, before construct graph')
@@ -91,10 +94,10 @@ class Graph:
             train_cf_i = train_cfs[train_i]
             if extra_search:
                 if verify_feasibility(normal_instance, train_cf_i, data):
-                    dist = distance_calculation(train_cf_i, normal_instance, data, type=type)
+                    dist = distance_calculation(train_cf_i, normal_instance, {'dat':data, 'type':type})
                     list_instances.append((train_cf_i, dist))
             else:
-                dist = distance_calculation(train_cf_i, normal_instance, data, type=type)
+                dist = distance_calculation(train_cf_i, normal_instance, {'dat':data, 'type':type})
                 list_instances.append((train_cf_i, dist))
         list_instances.sort(key=lambda x: x[1])
         list_instances = [i[0] for i in list_instances]
@@ -123,6 +126,29 @@ class Graph:
             train_cf_list = train_cf_list[:int(len(train_cf_list)*self.percentage)]
         return train_cf_list
 
+    def nearest_neighbor_train_cf(self, data, model, feat_values, type, extra_search=False):
+        """
+        Efficiently finds the set of training observations belonging to, and predicted as, the counterfactual class and that belong to the same sensitive group as the centroid (this avoids node generation explosion)
+        """
+        train_cf_list = []
+        start_time = time.time()
+        for feat_value in feat_values:
+            train_feat_val_np, target_feat_val = self.find_train_specific_feature_val(data, feat_value)
+            train_np_feat_val_pred = model.model.predict(train_feat_val_np)
+            train_desired_label_np = self.find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search)
+            sensitive_group_instances = self.find_sensitive_group_instances(data, feat_value).values
+            neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type})
+            neigh.fit(train_desired_label_np)
+            closest_cf_idx = neigh.kneighbors(sensitive_group_instances, return_distance=False)
+            unique_closest_cf_idx = np.unique(closest_cf_idx).tolist()
+            unique_closest_cf_idx_filtered = unique_closest_cf_idx[:int(len(unique_closest_cf_idx)*self.percentage)]
+            train_cf = train_desired_label_np[unique_closest_cf_idx_filtered]
+            train_cf_list.append(train_cf)
+        train_cf_array = np.concatenate(train_cf_list, axis=0)
+        end_time = time.time()
+        print(f'Found closest training CFs. Total time: {(end_time - start_time)})')
+        return train_cf_array
+
     def construct_graph(self, data, model, feat_values, type):
         """
         Constructs the graph and the required parameters to run Fijuice several lagrange values
@@ -131,9 +157,9 @@ class Graph:
         feat_possible_values = self.get_feat_possible_values(data)
         print(f'Obtained all possible feature values from training CF')
         graph_nodes = self.get_graph_nodes(data, model, feat_possible_values)
-        all_nodes = self.train_cf + graph_nodes
+        all_nodes = np.concatenate([self.train_cf, graph_nodes], axis=0)
         print(f'Obtained all possible nodes in the graph: {len(all_nodes)}')
-        C = self.get_all_costs_weights(data, type, feat_values, all_nodes)
+        C = self.get_all_costs_weights(data, type, all_nodes)
         print(f'Obtained all costs in the graph')
         F = self.get_all_feasibility(data, all_nodes)
         print(f'Obtained all feasibility in the graph')
@@ -236,20 +262,18 @@ class Graph:
             print(f'Graph: sensitive group instance {instance_idx} of {len(self.sensitive_feature_instances)}. Nodes size: {len(graph_nodes)}')
         return graph_nodes
 
-    def get_all_costs_weights(self, data, type, feat_values, all_nodes):
+    def get_all_costs_weights(self, data, type, all_nodes):
         """
         Method that outputs the cost parameters required for optimization
         """
         C = {}
+        distance_mat = pairwise_distances(self.sensitive_feature_instances, all_nodes, metric=distance_calculation, kwargs={'dat':data, 'type':type})
         for instance_idx in range(1, len(self.sensitive_feature_instances) + 1):
-            instance = self.sensitive_feature_instances[instance_idx - 1]
-            original_instance_idx = self.instance_idx_to_original_idx_dict[instance_idx]
-            feat_value = self.sensitive_group_idx_feat_value_dict[original_instance_idx]
-            len_positives_sensitive_group = self.estimate_sensitive_group_positive(data, feat_value)
             for k in range(1, len(all_nodes) + 1):
-                node_k = all_nodes[k - 1]
-                dist_instance_node = distance_calculation(instance, node_k, data, type)
-                C[instance_idx, k] = dist_instance_node/(2*len_positives_sensitive_group)
+                original_instance_idx = self.instance_idx_to_original_idx_dict[instance_idx]
+                feat_value = self.sensitive_group_idx_feat_value_dict[original_instance_idx]
+                len_positives_sensitive_group = self.estimate_sensitive_group_positive(data, feat_value)
+                C[instance_idx, k] = distance_mat[instance_idx - 1, k -1]/(2*len_positives_sensitive_group)
             print(f'Costs for instance {instance_idx} of {len(self.sensitive_feature_instances) + 1}')
         return C
 

@@ -233,7 +233,7 @@ class FACTS:
             x_transformed = data.transformed_test_df.loc[x.index,:]
             x_prime = self.get_x_discretized_prime_from_discretized_x(action, x)
             x_prime_normal = self.adjust_continuous_feat_normal_x_prime(x_prime, x_transformed, action, data)
-            cost = distance_calculation(np.array(x_transformed), np.array(x_prime_normal), data, type='L1_L0')
+            cost = distance_calculation(np.array(x_transformed), np.array(x_prime_normal), {'dat':data, 'type':'L1_L0'})
             cost_instances.append(cost)
         return len(set(cost_instances)) == 1
 
