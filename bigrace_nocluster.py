@@ -91,11 +91,14 @@ class BIGRACE:
         G = nx.DiGraph()
         G.add_nodes_from(graph.rho)
 
-        def unfeasible_case(graph):
+        def unfeasible_case(graph, type):
             """
             Obtains the feasible justified solution when the problem is unfeasible
             """
             sol_x, centroids_solved, nodes_solution, graph_nodes_solution, likelihood, effectiveness = {}, [], [], {}, {}, {}
+            data = counterfactual.data
+            model = counterfactual.model
+            feat_values = data.feat_protected[graph.feat].keys()
             potential_CF = {}
             for instance_idx in range(1, len(graph.sensitive_feature_instances) + 1):
                 for i in range(1, len(graph.all_nodes) + 1):
@@ -117,10 +120,11 @@ class BIGRACE:
             not_centroids_solved = [i for i in range(1, len(graph.sensitive_feature_instances) + 1) if i not in centroids_solved]
             for instance_idx in not_centroids_solved:
                 instance = graph.sensitive_feature_instances[instance_idx - 1]
-                train_cfs = graph.find_train_cf(counterfactual.data, counterfactual.model, counterfactual.type, extra_search=True)
+                train_cfs = graph.find_train_cf(data, model, counterfactual.type, extra_search=True)
+                graph.nearest_neighbor_train_cf(self, data, model, feat_values, type, extra_search=False)
                 for train_cf_idx in range(train_cfs.shape[0]):
                     train_cf = train_cfs[train_cf_idx,:]
-                    if verify_feasibility(instance, train_cf, counterfactual.data):
+                    if verify_feasibility(instance, train_cf, data):
                         cf_instance = train_cf
                 sol_x[instance_idx] = cf_instance
                 nodes_solution.append(sol_x_idx)
@@ -196,7 +200,7 @@ class BIGRACE:
         opt_model.optimize()
         time.sleep(0.25)
         if opt_model.status == 3 or len(graph.all_nodes) == len(graph.train_cf):
-            sol_x, graph_nodes_solution, likelihood, effectiveness = unfeasible_case(graph)
+            sol_x, graph_nodes_solution, likelihood, effectiveness = unfeasible_case(graph, counterfactual.type)
             obj_val = 1000
         else:
             print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'

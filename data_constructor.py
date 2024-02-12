@@ -396,7 +396,8 @@ class Dataset:
         elif self.name == 'credit':
             feat_protected['isMale'] = {1.00:'True', 0.00:'False'}
             feat_protected['isMarried'] = {1.00:'True', 0.00:'False'}
-            feat_protected['EducationLevel'] = {1.00:'Other', 2.00:'HS', 3.00:'University', 4.00:'Graduate'}
+            # feat_protected['AgeGroup'] = {}
+            # feat_protected['EducationLevel'] = {1.00:'Other', 2.00:'HS', 3.00:'University', 4.00:'Graduate'}
         elif self.name == 'compass':
             feat_protected['Race'] = {1.00:'African-American', 2.00:'Caucasian'}
             feat_protected['Sex'] = {1.00:'Male', 2.00:'Female'}
@@ -434,6 +435,20 @@ class Dataset:
             feat = [feat_list[j] for j in idx_feat_protected]
             for j in feat:
                 feat_mutable[j] = 0
+        if self.name in ['adult','dutch']:
+            immutable_not_protected = ['MaritalStatus']
+        elif self.name == 'german':
+            immutable_not_protected = ['Single']
+        elif self.name == 'student':
+            immutable_not_protected = ['ParentStatus']
+        elif self.name == 'oulad':
+            immutable_not_protected = ['Disability']
+        else:
+            immutable_not_protected = []
+        for feat_immutable_not_protected in immutable_not_protected:
+            feat = [j for j in feat_list if feat_immutable_not_protected in j]
+            for j in feat:
+                feat_mutable[j] = 0
         feat_mutable = pd.Series(feat_mutable)
         return feat_mutable
     
@@ -455,7 +470,7 @@ class Dataset:
         feat_list = feat_directionality.index.tolist()
         if self.name == 'adult':
             for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Race' in i or 'Native' in i:
+                if 'Age' in i or 'Sex' in i or 'Race' in i or 'Native' in i or 'MaritalStatus' in i:
                     feat_directionality[i] = 0
                 elif 'Education' in i:
                     feat_directionality[i] = 'pos'
@@ -469,7 +484,7 @@ class Dataset:
                     feat_directionality[i] = 'any'
         elif self.name == 'german':
             for i in feat_list:
-                if 'Sex' in i:
+                if 'Sex' in i or 'Single' in i:
                     feat_directionality[i] = 0
                 elif 'Age' in i:
                     feat_directionality[i] = 'pos'
@@ -477,9 +492,9 @@ class Dataset:
                     feat_directionality[i] = 'any'
         elif self.name == 'dutch':
             for i in feat_list:
-                if 'Sex' in i or 'Country' in i:
+                if 'Sex' in i or 'Country' in i or 'MaritalStatus' in i:
                     feat_directionality[i] = 0
-                elif 'HouseholdPosition' in i or 'HouseholdSize' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i:
+                elif 'HouseholdPosition' in i or 'HouseholdSize' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i:
                     feat_directionality[i] = 'any'
                 elif 'EducationLevel' in i or 'Age' in i:
                     feat_directionality[i] = 'pos'
@@ -515,7 +530,7 @@ class Dataset:
                     feat_directionality[i] = 'any'
         elif self.name == 'student':
             for i in feat_list:
-                if 'Sex' in i or 'Age' in i:
+                if 'Sex' in i or 'Age' in i or 'ParentStatus' in i:
                     feat_directionality[i] = 0
                 elif 'MotherEducation' in i or 'FatherEducation' in i:
                     feat_directionality[i] = 'pos'
