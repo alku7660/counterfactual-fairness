@@ -12,8 +12,8 @@ import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
 
-datasets = ['synthetic_athlete','compass'] # 'compass','synthetic_athlete','german','oulad','bank','student','law','credit','dutch','adult' # 'diabetes','kdd_census'
-methods_to_run = ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','ARES','FACTS'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
+datasets = ['oulad','bank','student'] # 'german','oulad','bank','student','law','credit','dutch','adult' # Done: 'synthetic_athlete','compass'
+methods_to_run = ['BIGRACE_dist'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -33,7 +33,7 @@ def percentage_close_train(dataset):
     """
     Selects the appropriate percentage per dataset for the close CF
     """
-    if dataset in ['german','compass','synthetic_athlete','diabetes']:
+    if dataset in ['german','compass','synthetic_athlete']:
         percentage_close_train_cf = 0.5
     elif dataset in ['bank','kdd_census','student']:
         percentage_close_train_cf = 0.1

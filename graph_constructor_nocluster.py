@@ -155,10 +155,15 @@ class Graph:
             train_cf = train_desired_label_np[unique_closest_cf_idx]
             train_cf_list.append(train_cf)
         train_cf_array = np.concatenate(train_cf_list, axis=0)
-        max_min_closest_distance = np.max(closest_distances)
+        if data.name in ['synthetic_athlete','compass','german']:
+            param_closest_distance = np.max(closest_distances)
+        elif data.name in ['student','kdd_census']:
+            param_closest_distance = np.mean(closest_distances)
+        elif data.name in ['oulad','credit','bank','dutch','adult']:
+            param_closest_distance = np.min(closest_distances)
         end_time = time.time()
         print(f'Found closest training CFs. (Total time: {(end_time - start_time)})')
-        return train_cf_array, max_min_closest_distance
+        return train_cf_array, param_closest_distance
 
     def construct_graph(self, data, model, feat_values, type):
         """
