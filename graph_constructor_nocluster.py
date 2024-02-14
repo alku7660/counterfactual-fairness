@@ -144,12 +144,12 @@ class Graph:
             sensitive_group_instances = self.find_sensitive_group_instances(data, feat_value).values
             neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type})
             neigh.fit(train_desired_label_np)
-            print(f'NearestNeighbors module trained for feat_value {feat_value}')
+            print(f'NearestNeighbors fit for feat_value {feat_value}.')
             closest_distances, closest_cf_idx = neigh.kneighbors(sensitive_group_instances, return_distance=True)
             unique_closest_cf_idx = np.unique(closest_cf_idx).tolist()
             min_closest_distance = np.min(closest_distances)
             closest_distances_list.append(min_closest_distance) 
-            print(f'Found unique close training CF for feat_value {feat_value}')
+            print(f'Found {len(unique_closest_cf_idx)} unique close training CF for feat_value {feat_value} with len instances {len(sensitive_group_instances)}')
             # unique_closest_cf_idx_filtered = unique_closest_cf_idx[:int(len(unique_closest_cf_idx)*self.percentage)]
             # train_cf = train_desired_label_np[unique_closest_cf_idx_filtered]
             train_cf = train_desired_label_np[unique_closest_cf_idx]
@@ -157,12 +157,12 @@ class Graph:
         train_cf_array = np.concatenate(train_cf_list, axis=0)
         if data.name in ['synthetic_athlete','compass','german']:
             param_closest_distance = np.max(closest_distances)
-        elif data.name in ['student','kdd_census']:
+        elif data.name in ['kdd_census']:
             param_closest_distance = np.mean(closest_distances)
-        elif data.name in ['oulad','credit','bank','dutch','adult']:
+        elif data.name in ['oulad','credit','bank','dutch','adult','student']:
             param_closest_distance = np.min(closest_distances)
         end_time = time.time()
-        print(f'Found closest training CFs. (Total time: {(end_time - start_time)})')
+        print(f'Found closest training CFs {len(train_cf_array)} for len instances {len(self.sensitive_feature_instances)}. (Total time: {(end_time - start_time)})')
         return train_cf_array, param_closest_distance
 
     def construct_graph(self, data, model, feat_values, type):
