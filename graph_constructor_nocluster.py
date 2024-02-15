@@ -8,11 +8,45 @@ from scipy.spatial import distance_matrix
 from sklearn.metrics import pairwise_distances
 from evaluator_constructor import distance_calculation, verify_feasibility
 from centroid_constructor import inverse_transform_original
+from joblib import Parallel, delayed
 from nnt import nn_for_juice
+
 from sklearn.neighbors import NearestNeighbors
 import time
 from scipy.stats import norm
 import copy
+
+number_cores = -1
+
+def make_array(i):
+    """
+    Method that transforms a generator instance into array  
+    """
+    list_i = list(i)
+    new_list = []
+    for j in list_i:
+        if isinstance(j, list):
+            new_list.extend([k for k in j])
+        else:
+            new_list.extend([j])
+    return np.array(new_list)
+
+def get_graph_nodes_parallel(data, model, sensitive_feature_instances, train_cf, min_closest_distance, feat_possible_values, k, instance_idx, ioi_label, type):
+    """
+    Parallelization of the graph nodes search
+    """
+    permutations_list = []
+    feat_possible_values_k = feat_possible_values[instance_idx][k]
+    permutations = product(*feat_possible_values_k)
+    instance = sensitive_feature_instances[instance_idx]
+    for i in permutations:
+        perm_i = make_array(i)
+        if verify_feasibility(instance, perm_i, data):
+            if model.model.predict(perm_i.reshape(1, -1)) != ioi_label:
+                if not any(np.array_equal(perm_i, x) for x in train_cf):
+                    if distance_calculation(instance, perm_i, kwargs={'dat':data, 'type':type}) < min_closest_distance:
+                        permutations_list.append(perm_i)
+    return permutations_list
 
 class Graph:
 
@@ -142,7 +176,7 @@ class Graph:
             train_np_feat_val_pred = model.model.predict(train_feat_val_np)
             train_desired_label_np = self.find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search)
             sensitive_group_instances = self.find_sensitive_group_instances(data, feat_value).values
-            neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type})
+            neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type}, n_jobs=number_cores)
             neigh.fit(train_desired_label_np)
             print(f'NearestNeighbors fit for feat_value {feat_value}.')
             closest_distances, closest_cf_idx = neigh.kneighbors(sensitive_group_instances, return_distance=True)
@@ -183,66 +217,6 @@ class Graph:
         eta = self.get_all_effectiveness(data, feat_values, all_nodes)
         print(f'Obtained all effectiveness parameter')
         return feat_possible_values, all_nodes, C, F, rho, eta
-    
-    # def get_feat_possible_values(self, data, obj=None, points=None):
-    #     """
-    #     Method that obtains the features possible values
-    #     """
-    #     if obj is None:
-    #         sensitive_feature_instances = self.sensitive_feature_instances
-    #     else:
-    #         sensitive_feature_instances = obj
-    #     if points is None:
-    #         points = self.train_cf
-    #     else:
-    #         points = points
-    #     feat_possible_values_all = {}
-    #     for instance_idx in range(len(sensitive_feature_instances)):
-    #         instance = sensitive_feature_instances[instance_idx]
-    #         cf_feat_possible_values = {}
-    #         for k in range(len(points)):
-    #             train_cf_k = points[k]
-    #             v = instance - train_cf_k
-    #             nonzero_index = list(np.nonzero(v)[0])
-    #             feat_checked = []
-    #             feat_possible_values = []
-    #             for i in range(len(instance)):
-    #                 if i not in feat_checked:
-    #                     feat_i = data.processed_features[i]
-    #                     if feat_i in data.bin_enc_cols:
-    #                         if i in nonzero_index:
-    #                             value = [train_cf_k[i], instance[i]]
-    #                         else:
-    #                             value = [train_cf_k[i]]
-    #                         feat_checked.extend([i])
-    #                     elif feat_i in data.cat_enc_cols:
-    #                         idx_cat_i = data.idx_cat_cols_dict[feat_i[:-4]]
-    #                         nn_cat_idx = list(train_cf_k[idx_cat_i])
-    #                         if any(item in idx_cat_i for item in nonzero_index):
-    #                             ioi_cat_idx = list(instance[idx_cat_i])
-    #                             value = [nn_cat_idx, ioi_cat_idx]
-    #                         else:
-    #                             value = [nn_cat_idx]
-    #                         feat_checked.extend(idx_cat_i)
-    #                     elif feat_i in data.ordinal:
-    #                         if i in nonzero_index:
-    #                             values_i = list(data.processed_feat_dist[feat_i].keys())
-    #                             max_val_i, min_val_i = max(instance[i], train_cf_k[i]), min(instance[i], train_cf_k[i])
-    #                             value = [j for j in values_i if j <= max_val_i and j >= min_val_i]
-    #                         else:
-    #                             value = [train_cf_k[i]]
-    #                         feat_checked.extend([i])
-    #                     elif feat_i in data.continuous:
-    #                         if i in nonzero_index:
-    #                             max_val_i, min_val_i = max(instance[i], train_cf_k[i]), min(instance[i], train_cf_k[i])
-    #                             value = self.continuous_feat_values(i, min_val_i, max_val_i, data)
-    #                         else:
-    #                             value = [train_cf_k[i]]
-    #                         feat_checked.extend([i])
-    #                     feat_possible_values.append(value)
-    #             cf_feat_possible_values[k] = feat_possible_values
-    #         feat_possible_values_all[instance_idx] = cf_feat_possible_values
-    #     return feat_possible_values_all
     
     def verify_prediction_feasibility(self, data, model, instance, train_cf, values, i):
         """
@@ -333,37 +307,42 @@ class Graph:
             feat_possible_values_all[instance_idx] = cf_feat_possible_values
         return feat_possible_values_all
 
-    def make_array(self, i):
-        """
-        Method that transforms a generator instance into array  
-        """
-        list_i = list(i)
-        new_list = []
-        for j in list_i:
-            if isinstance(j, list):
-                new_list.extend([k for k in j])
-            else:
-                new_list.extend([j])
-        return np.array(new_list)
+    # def get_graph_nodes(self, data, model, feat_possible_values, type):
+    #     """
+    #     Generator that contains all the nodes located in the space between the training CFs and the normal_ioi (all possible, CF-labeled nodes)
+    #     """
+    #     graph_nodes = []
+    #     for k in range(len(self.train_cf)):
+    #         for instance_idx in range(len(self.sensitive_feature_instances)):
+    #             feat_possible_values_k = feat_possible_values[instance_idx][k]
+    #             permutations = product(*feat_possible_values_k)
+    #             instance = self.sensitive_feature_instances[instance_idx]
+    #             for i in permutations:
+    #                 perm_i = self.make_array(i)
+    #                 if verify_feasibility(instance, perm_i, data):
+    #                     if model.model.predict(perm_i.reshape(1, -1)) != self.ioi_label:
+    #                         if not any(np.array_equal(perm_i, x) for x in self.train_cf) and not any(np.array_equal(perm_i, x) for x in graph_nodes):
+    #                             if distance_calculation(instance, perm_i, kwargs={'dat':data, 'type':type}) < self.min_closest_distance:
+    #                                 graph_nodes.append(perm_i)
+    #             print(f'Graph: instance {instance_idx+1}/{len(self.sensitive_feature_instances)}, Train CF {k+1}/{len(self.train_cf)}. Nodes size: {len(graph_nodes)}')
+    #     return graph_nodes
 
     def get_graph_nodes(self, data, model, feat_possible_values, type):
         """
         Generator that contains all the nodes located in the space between the training CFs and the normal_ioi (all possible, CF-labeled nodes)
         """
-        graph_nodes = []
-        for instance_idx in range(len(self.sensitive_feature_instances)):
-            for k in range(len(self.train_cf)):
-                feat_possible_values_k = feat_possible_values[instance_idx][k]
-                permutations = product(*feat_possible_values_k)
-                instance = self.sensitive_feature_instances[instance_idx]
-                for i in permutations:
-                    perm_i = self.make_array(i)
-                    if verify_feasibility(instance, perm_i, data):
-                        if model.model.predict(perm_i.reshape(1, -1)) != self.ioi_label:
-                            if not any(np.array_equal(perm_i, x) for x in self.train_cf) and not any(np.array_equal(perm_i, x) for x in graph_nodes):
-                                if distance_calculation(instance, perm_i, kwargs={'dat':data, 'type':type}) < self.min_closest_distance:
-                                    graph_nodes.append(perm_i)
-                print(f'Graph: instance {instance_idx+1}/{len(self.sensitive_feature_instances)}, Train CF {k+1}/{len(self.train_cf)}. Nodes size: {len(graph_nodes)}')
+        graph_nodes = Parallel(n_jobs=number_cores, verbose=10, prefer='threads')(delayed(get_graph_nodes_parallel)(data,
+                                                                              model,
+                                                                              self.sensitive_feature_instances,
+                                                                              self.train_cf,
+                                                                              self.min_closest_distance,
+                                                                              feat_possible_values,
+                                                                              k,
+                                                                              instance_idx,
+                                                                              self.ioi_label,
+                                                                              type
+                                                                              ) for k in range(len(self.train_cf)) for instance_idx in range(len(self.sensitive_feature_instances)) 
+                                            )
         return graph_nodes
 
     def get_all_costs_weights(self, data, type, all_nodes):
@@ -371,7 +350,7 @@ class Graph:
         Method that outputs the cost parameters required for optimization
         """
         C = {}
-        distance_mat = pairwise_distances(self.sensitive_feature_instances, all_nodes, metric=distance_calculation, kwargs={'dat':data, 'type':type})
+        distance_mat = pairwise_distances(self.sensitive_feature_instances, all_nodes, metric=distance_calculation, kwargs={'dat':data, 'type':type}, n_jobs=number_cores)
         for instance_idx in range(1, len(self.sensitive_feature_instances) + 1):
             for k in range(1, len(all_nodes) + 1):
                 original_instance_idx = self.instance_idx_to_original_idx_dict[instance_idx]
@@ -396,6 +375,10 @@ class Graph:
     def get_all_effectiveness(self, data, feat_values, all_nodes):
         """
         Outputs the counterfactual effectiveness parameter for all nodes (including the training CFs)
+        TO BE FIXED
+        TO BE FIXED
+        TO BE FIXED
+        TO BE FIXED: CALCULATE BASED ON FEASIBILITY, NEED TO CHECK WHICH SENSITIVE GROUP DOES THE NODE BELONG TO AND CALCULATE THE LENGTH OF THE SENS. GROUP
         """
         eta = {}
         for feat_value in feat_values:
