@@ -10,6 +10,7 @@ from evaluator_constructor import distance_calculation, verify_feasibility
 from centroid_constructor import inverse_transform_original
 from joblib import Parallel, delayed
 from nnt import nn_for_juice
+from itertools import chain
 
 from sklearn.neighbors import NearestNeighbors
 import time
@@ -17,6 +18,36 @@ from scipy.stats import norm
 import copy
 
 number_cores = -1
+
+def find_sensitive_group_instances(data, feat_val, sensitive_group_dict):
+    """
+    Finds the instances of the sensitive group given as parameter by index
+    """
+    sensitive_group_idx = sensitive_group_dict[feat_val]
+    sensitive_group_instances = data.transformed_false_undesired_test_df.loc[sensitive_group_idx]
+    return sensitive_group_instances
+
+def find_train_specific_feature_val(data, feat, feat_value):
+    """
+    Finds all the training observations belonging to the feature value of interest
+    """
+    train_target_df = copy.deepcopy(data.train_df)
+    train_target_df['target'] = data.train_target
+    train_target_feat_val_df = train_target_df[train_target_df[feat] == feat_value]
+    target_feat_val = train_target_feat_val_df['target'].values
+    del train_target_feat_val_df['target']
+    train_feat_val_np = data.transform_data(train_target_feat_val_df).values
+    return train_feat_val_np, target_feat_val
+
+def find_train_desired_label(train_np, train_target, train_pred, extra_search, ioi_label):
+    """
+    Finds the training instances that have the desired label from either ground truth and/or prediction
+    """
+    if not extra_search:
+        train_cf = train_np[(train_target != ioi_label) & (train_pred != ioi_label)]
+    else:
+        train_cf = train_np[train_target != ioi_label]
+    return train_cf
 
 def make_array(i):
     """
@@ -31,6 +62,26 @@ def make_array(i):
             new_list.extend([j])
     return np.array(new_list)
 
+def estimate_sensitive_group_positive(data, feat, feat_value):
+    """
+    Extracts length of the sensitive group test
+    """
+    sensitive_group_df = data.test_df.loc[(data.test_df[feat] == feat_value) & (data.test_target == data.desired_class)]
+    return len(sensitive_group_df)
+
+def get_all_costs_weights_parallel(data, feat, sensitive_feature_instances, all_nodes, instance_idx_to_original_idx_dict, sensitive_group_idx_feat_value_dict, instance_idx, k, type):
+    """
+    Parallelization of the cost calculation
+    """
+    instance = sensitive_feature_instances[instance_idx - 1]
+    node_k = all_nodes[k - 1]
+    distance = distance_calculation(instance, node_k, kwargs={'dat':data, 'type':type})
+    original_instance_idx = instance_idx_to_original_idx_dict[instance_idx]
+    feat_value = sensitive_group_idx_feat_value_dict[original_instance_idx]
+    len_positives_sensitive_group = estimate_sensitive_group_positive(data, feat, feat_value)
+    distance = distance/(len_positives_sensitive_group)
+    return instance_idx, k, distance
+    
 def get_graph_nodes_parallel(data, model, sensitive_feature_instances, train_cf, min_closest_distance, feat_possible_values, k, instance_idx, ioi_label, type):
     """
     Parallelization of the graph nodes search
@@ -44,9 +95,27 @@ def get_graph_nodes_parallel(data, model, sensitive_feature_instances, train_cf,
         if verify_feasibility(instance, perm_i, data):
             if model.model.predict(perm_i.reshape(1, -1)) != ioi_label:
                 if not any(np.array_equal(perm_i, x) for x in train_cf):
-                    if distance_calculation(instance, perm_i, kwargs={'dat':data, 'type':type}) < min_closest_distance:
-                        permutations_list.append(perm_i)
+                    # if distance_calculation(instance, perm_i, kwargs={'dat':data, 'type':type}) < min_closest_distance:
+                    permutations_list.append(perm_i)
     return permutations_list
+
+def get_nearest_neighbor_parallel(data, model, feat, feat_value, extra_search, sensitive_group_dict, type):
+    """
+    Nearest neighbor parallelization
+    """
+    train_feat_val_np, target_feat_val = find_train_specific_feature_val(data, feat, feat_value)
+    train_np_feat_val_pred = model.model.predict(train_feat_val_np)
+    train_desired_label_np = find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search, data.undesired_class)
+    sensitive_group_instances = find_sensitive_group_instances(data, feat_value, sensitive_group_dict).values
+    neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type}, n_jobs=1)
+    neigh.fit(train_desired_label_np)
+    print(f'NearestNeighbors fit for feat_value {feat_value}.')
+    closest_distances, closest_cf_idx = neigh.kneighbors(sensitive_group_instances, return_distance=True)
+    unique_closest_cf_idx = np.unique(closest_cf_idx).tolist()
+    avg_closest_distance = np.mean(closest_distances)
+    print(f'Found {len(unique_closest_cf_idx)} unique close training CF for feat_value {feat_value} with len instances {len(sensitive_group_instances)}')
+    train_cf = train_desired_label_np[unique_closest_cf_idx]
+    return train_cf, avg_closest_distance
 
 class Graph:
 
@@ -60,7 +129,7 @@ class Graph:
         print('-------------------------------------------------------------------------')
         print('-------------Starting Nearest Training Counterfactual Search-------------')
         print('-------------------------------------------------------------------------')
-        self.train_cf, self.min_closest_distance = self.nearest_neighbor_train_cf(data, model, feat_values, type)
+        self.train_cf, self.min_closest_distance = self.nearest_neighbor_train_cf(data, model, feat, feat_values, type, sensitive_group_dict)
         print('-------------------------------------------------------------------------')
         print('----------------Finding Epsilon for Likelihood calculation---------------')
         print('-------------------------------------------------------------------------')
@@ -165,29 +234,54 @@ class Graph:
             train_cf_list = train_cf_list[:int(len(train_cf_list)*self.percentage)]
         return train_cf_list
 
-    def nearest_neighbor_train_cf(self, data, model, feat_values, type, extra_search=False):
+    # def nearest_neighbor_train_cf(self, data, model, feat_values, type, extra_search=False):
+    #     """
+    #     Efficiently finds the set of training observations belonging to, and predicted as, the counterfactual class and that belong to the same sensitive group as the centroid (this avoids node generation explosion)
+    #     """
+    #     train_cf_list, closest_distances_list = [], []
+    #     start_time = time.time()
+    #     for feat_value in feat_values:
+    #         train_feat_val_np, target_feat_val = self.find_train_specific_feature_val(data, feat_value)
+    #         train_np_feat_val_pred = model.model.predict(train_feat_val_np)
+    #         train_desired_label_np = self.find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search)
+    #         sensitive_group_instances = self.find_sensitive_group_instances(data, feat_value).values
+    #         neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type}, n_jobs=1)
+    #         neigh.fit(train_desired_label_np)
+    #         print(f'NearestNeighbors fit for feat_value {feat_value}.')
+    #         closest_distances, closest_cf_idx = neigh.kneighbors(sensitive_group_instances, return_distance=True)
+    #         unique_closest_cf_idx = np.unique(closest_cf_idx).tolist()
+    #         min_closest_distance = np.min(closest_distances)
+    #         closest_distances_list.append(min_closest_distance) 
+    #         print(f'Found {len(unique_closest_cf_idx)} unique close training CF for feat_value {feat_value} with len instances {len(sensitive_group_instances)}')
+    #         # unique_closest_cf_idx_filtered = unique_closest_cf_idx[:int(len(unique_closest_cf_idx)*self.percentage)]
+    #         # train_cf = train_desired_label_np[unique_closest_cf_idx_filtered]
+    #         train_cf = train_desired_label_np[unique_closest_cf_idx]
+    #         train_cf_list.append(train_cf)
+    #     train_cf_array = np.concatenate(train_cf_list, axis=0)
+    #     if data.name in ['synthetic_athlete','compass','german']:
+    #         param_closest_distance = np.max(closest_distances)
+    #     elif data.name in ['kdd_census']:
+    #         param_closest_distance = np.mean(closest_distances)
+    #     elif data.name in ['oulad','credit','bank','dutch','adult','student']:
+    #         param_closest_distance = np.min(closest_distances)
+    #     end_time = time.time()
+    #     print(f'Found closest training CFs {len(train_cf_array)} for len instances {len(self.sensitive_feature_instances)}. (Total time: {(end_time - start_time)})')
+    #     return train_cf_array, param_closest_distance
+
+    def nearest_neighbor_train_cf(self, data, model, feat, feat_values, type, sensitive_group_dict, extra_search=False):
         """
         Efficiently finds the set of training observations belonging to, and predicted as, the counterfactual class and that belong to the same sensitive group as the centroid (this avoids node generation explosion)
         """
-        train_cf_list, closest_distances_list = [], []
         start_time = time.time()
-        for feat_value in feat_values:
-            train_feat_val_np, target_feat_val = self.find_train_specific_feature_val(data, feat_value)
-            train_np_feat_val_pred = model.model.predict(train_feat_val_np)
-            train_desired_label_np = self.find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search)
-            sensitive_group_instances = self.find_sensitive_group_instances(data, feat_value).values
-            neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type}, n_jobs=number_cores)
-            neigh.fit(train_desired_label_np)
-            print(f'NearestNeighbors fit for feat_value {feat_value}.')
-            closest_distances, closest_cf_idx = neigh.kneighbors(sensitive_group_instances, return_distance=True)
-            unique_closest_cf_idx = np.unique(closest_cf_idx).tolist()
-            min_closest_distance = np.min(closest_distances)
-            closest_distances_list.append(min_closest_distance) 
-            print(f'Found {len(unique_closest_cf_idx)} unique close training CF for feat_value {feat_value} with len instances {len(sensitive_group_instances)}')
-            # unique_closest_cf_idx_filtered = unique_closest_cf_idx[:int(len(unique_closest_cf_idx)*self.percentage)]
-            # train_cf = train_desired_label_np[unique_closest_cf_idx_filtered]
-            train_cf = train_desired_label_np[unique_closest_cf_idx]
-            train_cf_list.append(train_cf)
+        results_list = Parallel(n_jobs=number_cores, verbose=10, prefer='processes')(delayed(get_nearest_neighbor_parallel)(data,
+                                                                              model,
+                                                                              feat,
+                                                                              feat_value,
+                                                                              extra_search,
+                                                                              sensitive_group_dict,
+                                                                              type
+                                                                              ) for feat_value in feat_values) 
+        train_cf_list, closest_distances = zip(*results_list)
         train_cf_array = np.concatenate(train_cf_list, axis=0)
         if data.name in ['synthetic_athlete','compass','german']:
             param_closest_distance = np.max(closest_distances)
@@ -311,6 +405,7 @@ class Graph:
     #     """
     #     Generator that contains all the nodes located in the space between the training CFs and the normal_ioi (all possible, CF-labeled nodes)
     #     """
+    #     start_time = time.time()
     #     graph_nodes = []
     #     for k in range(len(self.train_cf)):
     #         for instance_idx in range(len(self.sensitive_feature_instances)):
@@ -318,20 +413,22 @@ class Graph:
     #             permutations = product(*feat_possible_values_k)
     #             instance = self.sensitive_feature_instances[instance_idx]
     #             for i in permutations:
-    #                 perm_i = self.make_array(i)
+    #                 perm_i = make_array(i)
     #                 if verify_feasibility(instance, perm_i, data):
     #                     if model.model.predict(perm_i.reshape(1, -1)) != self.ioi_label:
-    #                         if not any(np.array_equal(perm_i, x) for x in self.train_cf) and not any(np.array_equal(perm_i, x) for x in graph_nodes):
+    #                         if not any(np.array_equal(perm_i, x) for x in self.train_cf): #and not any(np.array_equal(perm_i, x) for x in graph_nodes)
     #                             if distance_calculation(instance, perm_i, kwargs={'dat':data, 'type':type}) < self.min_closest_distance:
     #                                 graph_nodes.append(perm_i)
     #             print(f'Graph: instance {instance_idx+1}/{len(self.sensitive_feature_instances)}, Train CF {k+1}/{len(self.train_cf)}. Nodes size: {len(graph_nodes)}')
+    #     end_time = time.time()
+    #     print(f'Total time (s): {end_time - start_time}')
     #     return graph_nodes
 
     def get_graph_nodes(self, data, model, feat_possible_values, type):
         """
         Generator that contains all the nodes located in the space between the training CFs and the normal_ioi (all possible, CF-labeled nodes)
         """
-        graph_nodes = Parallel(n_jobs=number_cores, verbose=10, prefer='threads')(delayed(get_graph_nodes_parallel)(data,
+        graph_nodes = Parallel(n_jobs=number_cores, verbose=10, prefer='processes')(delayed(get_graph_nodes_parallel)(data,
                                                                               model,
                                                                               self.sensitive_feature_instances,
                                                                               self.train_cf,
@@ -343,21 +440,35 @@ class Graph:
                                                                               type
                                                                               ) for k in range(len(self.train_cf)) for instance_idx in range(len(self.sensitive_feature_instances)) 
                                             )
-        return graph_nodes
+        graph_nodes_flat_list = list(chain.from_iterable(graph_nodes))
+        graph_nodes_array = np.vstack(graph_nodes_flat_list)
+        graph_nodes_array_unique = np.unique(graph_nodes_array, axis=0)
+        return graph_nodes_array_unique
 
     def get_all_costs_weights(self, data, type, all_nodes):
         """
         Method that outputs the cost parameters required for optimization
         """
         C = {}
-        distance_mat = pairwise_distances(self.sensitive_feature_instances, all_nodes, metric=distance_calculation, kwargs={'dat':data, 'type':type}, n_jobs=number_cores)
-        for instance_idx in range(1, len(self.sensitive_feature_instances) + 1):
-            for k in range(1, len(all_nodes) + 1):
-                original_instance_idx = self.instance_idx_to_original_idx_dict[instance_idx]
-                feat_value = self.sensitive_group_idx_feat_value_dict[original_instance_idx]
-                len_positives_sensitive_group = self.estimate_sensitive_group_positive(data, feat_value)
-                C[instance_idx, k] = distance_mat[instance_idx - 1, k -1]/(2*len_positives_sensitive_group)
-                print(f'Graph Costs: instance {instance_idx}/{len(self.sensitive_feature_instances)}, Train CF {k}/{len(all_nodes)}')
+        print(f'Starting pairwise distances...')
+        start_time = time.time()
+        # distance_mat = pairwise_distances(self.sensitive_feature_instances, all_nodes, metric=distance_calculation, kwargs={'dat':data, 'type':type})
+        results_list = Parallel(n_jobs=number_cores, verbose=10, prefer='processes')(delayed(get_all_costs_weights_parallel)(data,
+                                                                                                                             self.feat,
+                                                                                                                             self.sensitive_feature_instances,
+                                                                                                                             all_nodes,
+                                                                                                                             self.instance_idx_to_original_idx_dict,
+                                                                                                                             self.sensitive_group_idx_feat_value_dict,
+                                                                                                                             instance_idx,
+                                                                                                                             k,
+                                                                                                                             type
+                                                                                                                             ) for k in range(1, len(all_nodes) + 1) for instance_idx in range(1, len(self.sensitive_feature_instances) + 1)
+                                                                                    )
+        for instance_idx, k, distance in results_list:
+            C[instance_idx, k] = distance
+        end_time = time.time()
+        print(f'Total time (s): {(end_time - start_time)}')
+        # print(f'Graph Costs: instance {instance_idx}/{len(self.sensitive_feature_instances)}, Train CF {k}/{len(all_nodes)}')
         return C
 
     def get_all_feasibility(self, data, all_nodes):
