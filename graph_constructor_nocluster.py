@@ -9,7 +9,7 @@ import time
 from scipy.stats import norm
 import copy
 
-number_cores = -1
+number_cores = 12
 
 def find_sensitive_group_instances(data, feat_val, sensitive_group_dict):
     """
