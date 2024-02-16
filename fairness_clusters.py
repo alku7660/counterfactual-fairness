@@ -20,12 +20,13 @@ datasets_home = ['synthetic_athlete','compass','german','student']
 
 print(os.getcwd())
 
-if '/data0/home/dsv/' in os.getcwd():
-    print('Selected Datasets and cores for Zeus run')
-    datasets = datasets_zeus
-elif 'thor yeah' in os.getcwd():
-    print('Selected Datasets and cores for Thor run')
-    datasets = datasets_thor
+if 'dsv' in os.getcwd():
+    if '/data0/' in os.getcwd():
+        print('Selected Datasets and cores for Zeus run')
+        datasets = datasets_zeus
+    else:
+        print('Selected Datasets and cores for Thor run')
+        datasets = datasets_thor
 else:
     print('Selected Datasets and cores for Local run')
     datasets = datasets_home
