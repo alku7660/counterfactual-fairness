@@ -23,7 +23,7 @@ print(os.getcwd())
 if '/data0/home/dsv/' in os.getcwd():
     print('Selected Datasets for Zeus run')
     datasets = datasets_zeus
-elif '' in os.getcwd():
+elif 'thor_yeah' in os.getcwd():
     print('Selected Datasets for Thor run')
     datasets = datasets_thor
 else:

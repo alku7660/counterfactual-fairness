@@ -8,6 +8,23 @@ from sklearn.neighbors import NearestNeighbors
 import time
 from scipy.stats import norm
 import copy
+import os
+
+number_cores_zeus = 12
+number_cores_thor = 24
+number_cores_home = 12
+
+print(os.getcwd())
+
+if '/data0/home/dsv/' in os.getcwd():
+    print('Selected Datasets for Zeus run')
+    number_cores = number_cores_zeus
+elif 'thor yeah' in os.getcwd():
+    print('Selected number_cores for Thor run')
+    number_cores = number_cores_thor
+else:
+    print('Selected number_cores for Local run')
+    number_cores = number_cores_home
 
 number_cores = 12
 
