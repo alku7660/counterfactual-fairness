@@ -11,6 +11,9 @@ from evaluator_constructor import Evaluator
 import numpy as np
 from sklearn.metrics import f1_score
 from support import save_obj
+import os
+
+print(os.getcwd())
 
 datasets = ['compass','german','student','dutch'] # 'oulad','bank','student','law','credit','dutch','adult' # Done: 'synthetic_athlete','compass','german','student'
 methods_to_run = ['BIGRACE_dist'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
