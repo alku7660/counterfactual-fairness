@@ -14,9 +14,9 @@ from support import save_obj
 import os
 
 # List of datasets: 'synthetic_athlete','compass','german','student','dutch','oulad','bank','kdd_census','law','credit'
-datasets_zeus = ['oulad','credit']
+datasets_zeus = ['oulad','credit','dutch']
 datasets_thor = ['law','bank']
-datasets_home = ['synthetic_athlete','compass','german','student','dutch']
+datasets_home = ['synthetic_athlete','compass','german','student']
 
 print(os.getcwd())
 
