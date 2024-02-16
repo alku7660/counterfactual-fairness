@@ -1,17 +1,9 @@
 import numpy as np
-import pandas as pd
 from itertools import product
-import networkx as nx
-import gurobipy as gp
-from gurobipy import GRB, tuplelist
 from scipy.spatial import distance_matrix
-from sklearn.metrics import pairwise_distances
 from evaluator_constructor import distance_calculation, verify_feasibility
-from centroid_constructor import inverse_transform_original
 from joblib import Parallel, delayed
-from nnt import nn_for_juice
 from itertools import chain
-
 from sklearn.neighbors import NearestNeighbors
 import time
 from scipy.stats import norm
@@ -133,7 +125,6 @@ class Graph:
         self.sensitive_group_dict = sensitive_group_dict
         self.sensitive_feature_instances, self.sensitive_group_idx_feat_value_dict, self.instance_idx_to_original_idx_dict = self.find_sensitive_feat_instances(data, feat_values)
         self.ioi_label = data.undesired_class
-        # self.train_cf = self.find_train_cf(data, model, feat_values, type)
         print('-------------------------------------------------------------------------')
         print('-------------Starting Nearest Training Counterfactual Search-------------')
         print('-------------------------------------------------------------------------')
@@ -147,14 +138,6 @@ class Graph:
         print('-------------------------------------------------------------------------')
         self.feat_possible_values, self.C, self.F, self.rho, self.eta = self.construct_graph(data, model, feat_values, type)
 
-    # def find_sensitive_group_instances(self, data, feat_val):
-    #     """
-    #     Finds the instances of the sensitive group given as parameter by index
-    #     """
-    #     sensitive_group_idx = self.sensitive_group_dict[feat_val]
-    #     sensitive_group_instances = data.transformed_false_undesired_test_df.loc[sensitive_group_idx]
-    #     return sensitive_group_instances
-    
     def find_sensitive_feat_instances(self, data, feat_values):
         """
         Finds the instances of the sensitive feature by index
@@ -171,110 +154,6 @@ class Graph:
                 counter += 1
         sensitive_feature_instances = np.concatenate(sensitive_feature_instances, axis=0)
         return sensitive_feature_instances, sensitive_group_idx_feat_value_dict, instance_idx_to_original_idx_dict
-    
-    # def estimate_sensitive_group_positive(self, data, feat_val):
-    #     """
-    #     Estimates the amount of ground truth positives in the feature sensitive group given as parameter
-    #     """
-    #     sensitive_group_df = data.test_df.loc[(data.test_df[self.feat] == feat_val) & (data.test_target == data.desired_class)]
-    #     return len(sensitive_group_df)
-    
-    # def find_train_specific_feature_val(self, data, feat_value):
-    #     """
-    #     Finds all the training observations belonging to the feature value of interest
-    #     """
-    #     train_target_df = copy.deepcopy(data.train_df)
-    #     train_target_df['target'] = data.train_target
-    #     train_target_feat_val_df = train_target_df[train_target_df[self.feat] == feat_value]
-    #     target_feat_val = train_target_feat_val_df['target'].values
-    #     del train_target_feat_val_df['target']
-    #     train_feat_val_np = data.transform_data(train_target_feat_val_df).values
-    #     return train_feat_val_np, target_feat_val
-
-    # def find_train_desired_label(self, train_np, train_target, train_pred, extra_search):
-    #     """
-    #     Finds the training instances that have the desired label from either ground truth and/or prediction
-    #     """
-    #     if not extra_search:
-    #         train_cf = train_np[(train_target != self.ioi_label) & (train_pred != self.ioi_label)]
-    #     else:
-    #         train_cf = train_np[train_target != self.ioi_label]
-    #     return train_cf
-
-    # def find_closest_train_cf_per_instance(self, data, normal_instance, train_cfs, type, extra_search):
-    #     """
-    #     Finds the closest counterfactual training instance to the instance of interest 
-    #     """
-    #     list_instances = []
-    #     for train_i in range(train_cfs.shape[0]):
-    #         train_cf_i = train_cfs[train_i]
-    #         if extra_search:
-    #             if verify_feasibility(normal_instance, train_cf_i, data):
-    #                 dist = distance_calculation(train_cf_i, normal_instance, {'dat':data, 'type':type})
-    #                 list_instances.append((train_cf_i, dist))
-    #         else:
-    #             dist = distance_calculation(train_cf_i, normal_instance, {'dat':data, 'type':type})
-    #             list_instances.append((train_cf_i, dist))
-    #     list_instances.sort(key=lambda x: x[1])
-    #     list_instances = [i[0] for i in list_instances]
-    #     closest_train_cf = list_instances[0]
-    #     return closest_train_cf
-
-    # def find_train_cf(self, data, model, feat_values, type, extra_search=False):
-    #     """
-    #     Finds the set of training observations belonging to, and predicted as, the counterfactual class and that belong to the same sensitive group as the centroid (this avoids node generation explosion)
-    #     """
-    #     train_cf_list = []
-    #     count_instances = 0
-    #     for feat_value in feat_values:
-    #         train_feat_val_np, target_feat_val = self.find_train_specific_feature_val(data, feat_value)
-    #         train_np_feat_val_pred = model.model.predict(train_feat_val_np)
-    #         train_desired_label_np = self.find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search)
-    #         sensitive_group_instances = self.find_sensitive_group_instances(data, feat_value).values
-    #         for instance in sensitive_group_instances:
-    #             count_instances += 1
-    #             start_time = time.time()
-    #             closest_train_cf = self.find_closest_train_cf_per_instance(data, instance, train_desired_label_np, type, extra_search)
-    #             end_time = time.time()
-    #             if not any(np.array_equal(closest_train_cf, x) for x in train_cf_list):
-    #                 train_cf_list.append(closest_train_cf)
-    #             print(f'Count of instances {count_instances} out of {len(sensitive_group_instances)} in Feat {feat_value} (estimated total time: {len(sensitive_group_instances)*(end_time - start_time)*2})')
-    #         train_cf_list = train_cf_list[:int(len(train_cf_list)*self.percentage)]
-    #     return train_cf_list
-
-    # def nearest_neighbor_train_cf(self, data, model, feat_values, type, extra_search=False):
-    #     """
-    #     Efficiently finds the set of training observations belonging to, and predicted as, the counterfactual class and that belong to the same sensitive group as the centroid (this avoids node generation explosion)
-    #     """
-    #     train_cf_list, closest_distances_list = [], []
-    #     start_time = time.time()
-    #     for feat_value in feat_values:
-    #         train_feat_val_np, target_feat_val = self.find_train_specific_feature_val(data, feat_value)
-    #         train_np_feat_val_pred = model.model.predict(train_feat_val_np)
-    #         train_desired_label_np = self.find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search)
-    #         sensitive_group_instances = self.find_sensitive_group_instances(data, feat_value).values
-    #         neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type}, n_jobs=1)
-    #         neigh.fit(train_desired_label_np)
-    #         print(f'NearestNeighbors fit for feat_value {feat_value}.')
-    #         closest_distances, closest_cf_idx = neigh.kneighbors(sensitive_group_instances, return_distance=True)
-    #         unique_closest_cf_idx = np.unique(closest_cf_idx).tolist()
-    #         min_closest_distance = np.min(closest_distances)
-    #         closest_distances_list.append(min_closest_distance) 
-    #         print(f'Found {len(unique_closest_cf_idx)} unique close training CF for feat_value {feat_value} with len instances {len(sensitive_group_instances)}')
-    #         # unique_closest_cf_idx_filtered = unique_closest_cf_idx[:int(len(unique_closest_cf_idx)*self.percentage)]
-    #         # train_cf = train_desired_label_np[unique_closest_cf_idx_filtered]
-    #         train_cf = train_desired_label_np[unique_closest_cf_idx]
-    #         train_cf_list.append(train_cf)
-    #     train_cf_array = np.concatenate(train_cf_list, axis=0)
-    #     if data.name in ['synthetic_athlete','compass','german']:
-    #         param_closest_distance = np.max(closest_distances)
-    #     elif data.name in ['kdd_census']:
-    #         param_closest_distance = np.mean(closest_distances)
-    #     elif data.name in ['oulad','credit','bank','dutch','adult','student']:
-    #         param_closest_distance = np.min(closest_distances)
-    #     end_time = time.time()
-    #     print(f'Found closest training CFs {len(train_cf_array)} for len instances {len(self.sensitive_feature_instances)}. (Total time: {(end_time - start_time)})')
-    #     return train_cf_array, param_closest_distance
 
     def nearest_neighbor_train_cf(self, data, model, feat_values, type, extra_search=False):
         """
@@ -408,29 +287,6 @@ class Graph:
             feat_possible_values_all[instance_idx] = cf_feat_possible_values
         return feat_possible_values_all
 
-    # def get_graph_nodes(self, data, model, feat_possible_values, type):
-    #     """
-    #     Generator that contains all the nodes located in the space between the training CFs and the normal_ioi (all possible, CF-labeled nodes)
-    #     """
-    #     start_time = time.time()
-    #     graph_nodes = []
-    #     for k in range(len(self.train_cf)):
-    #         for instance_idx in range(len(self.sensitive_feature_instances)):
-    #             feat_possible_values_k = feat_possible_values[instance_idx][k]
-    #             permutations = product(*feat_possible_values_k)
-    #             instance = self.sensitive_feature_instances[instance_idx]
-    #             for i in permutations:
-    #                 perm_i = make_array(i)
-    #                 if verify_feasibility(instance, perm_i, data):
-    #                     if model.model.predict(perm_i.reshape(1, -1)) != self.ioi_label:
-    #                         if not any(np.array_equal(perm_i, x) for x in self.train_cf): #and not any(np.array_equal(perm_i, x) for x in graph_nodes)
-    #                             if distance_calculation(instance, perm_i, kwargs={'dat':data, 'type':type}) < self.min_closest_distance:
-    #                                 graph_nodes.append(perm_i)
-    #             print(f'Graph: instance {instance_idx+1}/{len(self.sensitive_feature_instances)}, Train CF {k+1}/{len(self.train_cf)}. Nodes size: {len(graph_nodes)}')
-    #     end_time = time.time()
-    #     print(f'Total time (s): {end_time - start_time}')
-    #     return graph_nodes
-
     def get_graph_nodes(self, data, model, feat_possible_values, type):
         """
         Generator that contains all the nodes located in the space between the training CFs and the normal_ioi (all possible, CF-labeled nodes)
@@ -563,7 +419,3 @@ class Graph:
         for i in range(1, len(self.all_nodes) + 1):
             rho[i] = (sum_gaussian_kernel_col[i-1] - min_sum_gaussian_kernel_col)/(max_sum_gaussian_kernel_col - min_sum_gaussian_kernel_col)
         return rho
-            
-
-            
-            
