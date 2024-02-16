@@ -14,8 +14,6 @@ number_cores_zeus = 12
 number_cores_thor = 24
 number_cores_home = 12
 
-print(os.getcwd())
-
 if '/data0/home/dsv/' in os.getcwd():
     number_cores = number_cores_zeus
 elif 'thor yeah' in os.getcwd():
