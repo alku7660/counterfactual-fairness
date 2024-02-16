@@ -14,12 +14,18 @@ from support import save_obj
 import os
 
 # List of datasets: 'synthetic_athlete','compass','german','student','dutch','oulad','bank','kdd_census','law','credit'
-datasets_server = ['oulad','credit']
+datasets_zeus = ['oulad','credit']
+datasets_thor = ['law','bank']
 datasets_home = ['synthetic_athlete','compass','german','student','dutch']
 
+print(os.getcwd())
+
 if '/data0/home/dsv/' in os.getcwd():
-    print('Selected Datasets for Server run')
-    datasets = datasets_server
+    print('Selected Datasets for Zeus run')
+    datasets = datasets_zeus
+elif '' in os.getcwd():
+    print('Selected Datasets for Thor run')
+    datasets = datasets_thor
 else:
     print('Selected Datasets for Local run')
     datasets = datasets_home

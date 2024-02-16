@@ -765,7 +765,7 @@ class Evaluator():
     #             cf_feasibility = verify_feasibility(instance, normal_centroid_cf, counterfactual.data)
     #             data_list = [counterfactual.method, counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta1, counterfactual.delta2, counterfactual.delta3,
     #                          centroid.feat, feat_val_name, sensitive_group, instance_idx, centroid.centroid_idx, centroid.normal_x, centroid.x,
-    #                          normal_centroid_cf, original_cf, cf_proximity/(2*len_positives_sensitive_group), cf_feasibility, likelihood, effectiveness, counterfactual.cf_method.run_time, 
+    #                          normal_centroid_cf, original_cf, cf_proximity/len_positives_sensitive_group, cf_feasibility, likelihood, effectiveness, counterfactual.cf_method.run_time, 
     #                          counterfactual.cf_method.model_status, counterfactual.cf_method.obj_val]
     #             data_df = pd.DataFrame(data=[data_list], index=[len(self.cf_df)], columns=cols)
     #             self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
@@ -807,7 +807,7 @@ class Evaluator():
                 cf_feasibility = verify_feasibility(instance, normal_cf, data)
                 data_list = [counterfactual.method, counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta1, counterfactual.delta2, counterfactual.delta3,
                             feature, feat_val_name, sensitive_group, idx, idx, instance, original_instance,
-                            normal_cf, original_cf, cf_proximity/(2*len_positives_sensitive_group), cf_feasibility, likelihood, effectiveness, counterfactual.cf_method.run_time, 
+                            normal_cf, original_cf, cf_proximity/len_positives_sensitive_group, cf_feasibility, likelihood, effectiveness, counterfactual.cf_method.run_time, 
                             counterfactual.cf_method.model_status, counterfactual.cf_method.obj_val]
                 data_df = pd.DataFrame(data=[data_list], index=[len(self.cf_df)], columns=cols)
                 self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
@@ -858,7 +858,7 @@ class Evaluator():
             sensitive_group = f'{feat}: {feat_val_name}'
             data_list = ['ARES', counterfactual.alpha, counterfactual.beta, counterfactual.gamma, 
                          counterfactual.delta1, counterfactual.delta2, counterfactual.delta3, feat, feat_val_name, sensitive_group, q_c_c_prime, instance_idx, instance_idx, normal_x, x, normal_cf, 
-                         original_cf, cf_proximity/(2*len_positives_sensitive_group), cf_feasibility, rho[instance_idx], eta[instance_idx], run_time, 2, 'NA']
+                         original_cf, cf_proximity/len_positives_sensitive_group, cf_feasibility, rho[instance_idx], eta[instance_idx], run_time, 2, 'NA']
             data_df = pd.DataFrame(data=[data_list], index=[len(self.cf_df)], columns=cols)
             self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
 
@@ -893,6 +893,6 @@ class Evaluator():
                 sensitive_group = f'{centroid.feat}: {feat_val_name}'
                 data_list = ['FACTS', counterfactual.alpha, counterfactual.beta, counterfactual.gamma, 
                             counterfactual.delta1, counterfactual.delta2, counterfactual.delta3, centroid.feat, feat_val_name, sensitive_group, action, idx, idx, normal_x, centroid.x, normal_cf, 
-                            original_cf, cf_proximity/(2*len_positives_sensitive_group), cf_feasibility, rho[idx], eta[idx], run_time, 2, 'NA']
+                            original_cf, cf_proximity/len_positives_sensitive_group, cf_feasibility, rho[idx], eta[idx], run_time, 2, 'NA']
                 data_df = pd.DataFrame(data=[data_list], index=[len(self.cf_df)], columns=cols)
                 self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
