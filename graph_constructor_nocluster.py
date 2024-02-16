@@ -72,6 +72,106 @@ def estimate_sensitive_group_positive(data, feat, feat_value):
     sensitive_group_df = data.test_df.loc[(data.test_df[feat] == feat_value) & (data.test_target == data.desired_class)]
     return len(sensitive_group_df)
 
+def continuous_feat_values(i, min_val, max_val, data):
+    """
+    Method that defines how to discretize the continuous features
+    """
+    sorted_feat_i = list(np.sort(data.transformed_train_np[:,i][(data.transformed_train_np[:,i] >= min_val) & (data.transformed_train_np[:,i] <= max_val)]))
+    value = list(np.unique(sorted_feat_i))
+    if len(value) <= 10:
+        if min_val not in value:
+            value = [min_val] + value
+        if max_val not in value:
+            value = value + [max_val]
+        return value
+    else:
+        mean_val, std_val = np.mean(data.transformed_train_np[:,i]), np.std(data.transformed_train_np[:,i])
+        percentiles_range = list(np.linspace(0, 1, 11))
+        value = []
+        for perc in percentiles_range:
+            value.append(norm.ppf(perc, loc=mean_val, scale=std_val))
+        value = [val for val in value if val >= min_val and val <= max_val]
+        if min_val not in value:
+            value = [min_val] + value
+        if max_val not in value:
+            value = value + [max_val]
+    return value
+
+def verify_prediction_feasibility(data, model, instance, values, i):
+    """
+    Verifies the feasibility of a node with respect to an instance
+    """
+    instance_feat_val = instance[i]
+    if isinstance(instance_feat_val, np.ndarray):
+        values_minus_feat_val = np.sum(np.abs(values - instance_feat_val), axis=1)
+    else:
+        values_minus_feat_val = values - instance_feat_val
+    zip_values_difference = list(zip(values, values_minus_feat_val))
+    zip_values_difference.sort(key=lambda x: abs(x[1]))
+    if isinstance(instance[i], np.ndarray):
+        close_cf_values = [list(instance[i])]
+    else:
+        close_cf_values = [instance[i]]
+    v = copy.deepcopy(instance)
+    for tup in zip_values_difference:
+        value = tup[0]
+        v[i] = value
+        if verify_feasibility(instance, v, data) and value not in close_cf_values:
+            close_cf_values.extend([value])
+            if model.model.predict(v.reshape(1, -1)) != data.undesired_class:
+                break
+    return close_cf_values
+
+def get_feat_possible_values_parallel(data, model, sensitive_feature_instances, points, instance_idx, k):
+    """
+    Method that obtains the features possible values
+    """
+    instance = sensitive_feature_instances[instance_idx]
+    train_cf_k = points[k]
+    v = train_cf_k - instance 
+    nonzero_index = list(np.nonzero(v)[0])
+    feat_checked = []
+    feat_possible_values = []
+    for i in range(len(instance)):
+        if i not in feat_checked:
+            feat_i = data.processed_features[i]
+            if feat_i in data.bin_enc_cols:
+                if i in nonzero_index:
+                    value = [train_cf_k[i], instance[i]]
+                    value = verify_prediction_feasibility(data, model, instance, value, i)
+                else:
+                    value = [train_cf_k[i]]
+                feat_checked.extend([i])
+            elif feat_i in data.cat_enc_cols:
+                idx_cat_i = data.idx_cat_cols_dict[feat_i[:-4]]
+                nn_cat_idx = list(train_cf_k[idx_cat_i])
+                if any(item in idx_cat_i for item in nonzero_index):
+                    ioi_cat_idx = list(instance[idx_cat_i])
+                    value = [nn_cat_idx, ioi_cat_idx]
+                    value = verify_prediction_feasibility(data, model, instance, value, idx_cat_i)
+                else:
+                    value = [nn_cat_idx]
+                feat_checked.extend(idx_cat_i)
+            elif feat_i in data.ordinal:
+                if i in nonzero_index:
+                    values_i = list(data.processed_feat_dist[feat_i].keys())
+                    max_val_i, min_val_i = max(instance[i], train_cf_k[i]), min(instance[i], train_cf_k[i])
+                    value = [j for j in values_i if j <= max_val_i and j >= min_val_i]
+                    value = verify_prediction_feasibility(data, model, instance, value, i)
+                else:
+                    value = [train_cf_k[i]]
+                feat_checked.extend([i])
+            elif feat_i in data.continuous:
+                if i in nonzero_index:
+                    max_val_i, min_val_i = max(instance[i], train_cf_k[i]), min(instance[i], train_cf_k[i])
+                    value = continuous_feat_values(i, min_val_i, max_val_i, data)
+                    value = verify_prediction_feasibility(data, model, instance, value, i)
+                else:
+                    value = [train_cf_k[i]]
+                feat_checked.extend([i])
+            feat_possible_values.append(value)
+    return instance_idx, k, feat_possible_values
+
 def get_all_feasibility_parallel(data, sensitive_feature_instances, all_nodes, instance_idx, k):
     """
     Parallelization of feasibility calculation
@@ -98,7 +198,7 @@ def get_graph_nodes_parallel(data, model, sensitive_feature_instances, train_cf,
     Parallelization of the graph nodes search
     """
     permutations_list = []
-    feat_possible_values_k = feat_possible_values[instance_idx][k]
+    feat_possible_values_k = feat_possible_values[instance_idx, k]
     permutations = product(*feat_possible_values_k)
     instance = sensitive_feature_instances[instance_idx]
     for i in permutations:
@@ -147,7 +247,7 @@ class Graph:
         print('-------------------------------------------------------------------------')
         print('----------------------------Constructing Graph---------------------------')
         print('-------------------------------------------------------------------------')
-        self.feat_possible_values, self.C, self.F, self.rho, self.eta = self.construct_graph(data, model, feat_values, type)
+        self.feat_possible_values, self.C, self.F, self.rho, self.eta = self.construct_graph(data, model, type)
 
     def find_sensitive_feat_instances(self, data, feat_values):
         """
@@ -191,7 +291,7 @@ class Graph:
         print(f'Found closest training CFs {len(train_cf_array)} for len instances {len(self.sensitive_feature_instances)}. (Total time: {(end_time - start_time)})')
         return train_cf_array, distance_threshold
 
-    def construct_graph(self, data, model, feat_values, type):
+    def construct_graph(self, data, model, type):
         """
         Constructs the graph and the required parameters to run BIGRACE several lagrange values
         """
@@ -209,35 +309,37 @@ class Graph:
         print(f'Obtained all effectiveness parameter')
         return feat_possible_values, C, F, rho, eta
     
-    def verify_prediction_feasibility(self, data, model, instance, values, i):
-        """
-        Verifies whether the values are as close as possible to achieve counterfactual state and if the feature can be changed
-        """
-        instance_feat_val = instance[i]
-        if isinstance(instance_feat_val, np.ndarray):
-            values_minus_feat_val = np.sum(np.abs(values - instance_feat_val), axis=1)
-        else:
-            values_minus_feat_val = values - instance_feat_val
-        zip_values_difference = list(zip(values, values_minus_feat_val))
-        zip_values_difference.sort(key=lambda x: abs(x[1]))
-        if isinstance(instance[i], np.ndarray):
-            close_cf_values = [list(instance[i])]
-        else:
-            close_cf_values = [instance[i]]
-        v = copy.deepcopy(instance)
-        for tup in zip_values_difference:
-            value = tup[0]
-            v[i] = value
-            if verify_feasibility(instance, v, data) and value not in close_cf_values:
-                close_cf_values.extend([value])
-                if model.model.predict(v.reshape(1, -1)) != self.ioi_label:
-                    break
-        return close_cf_values
+    # def verify_prediction_feasibility(self, data, model, instance, values, i):
+    #     """
+    #     Verifies whether the values are as close as possible to achieve counterfactual state and if the feature can be changed
+    #     """
+    #     instance_feat_val = instance[i]
+    #     if isinstance(instance_feat_val, np.ndarray):
+    #         values_minus_feat_val = np.sum(np.abs(values - instance_feat_val), axis=1)
+    #     else:
+    #         values_minus_feat_val = values - instance_feat_val
+    #     zip_values_difference = list(zip(values, values_minus_feat_val))
+    #     zip_values_difference.sort(key=lambda x: abs(x[1]))
+    #     if isinstance(instance[i], np.ndarray):
+    #         close_cf_values = [list(instance[i])]
+    #     else:
+    #         close_cf_values = [instance[i]]
+    #     v = copy.deepcopy(instance)
+    #     for tup in zip_values_difference:
+    #         value = tup[0]
+    #         v[i] = value
+    #         if verify_feasibility(instance, v, data) and value not in close_cf_values:
+    #             close_cf_values.extend([value])
+    #             if model.model.predict(v.reshape(1, -1)) != self.ioi_label:
+    #                 break
+    #     return close_cf_values
 
     def get_feat_possible_values(self, data, model, obj=None, points=None):
         """
         Method that obtains the features possible values
         """
+        print(f'Starting feature possible value search...')
+        start_time = time.time()
         if obj is None:
             sensitive_feature_instances = self.sensitive_feature_instances
         else:
@@ -247,55 +349,18 @@ class Graph:
         else:
             points = points
         feat_possible_values_all = {}
-        for instance_idx in range(len(sensitive_feature_instances)):
-            instance = sensitive_feature_instances[instance_idx]
-            cf_feat_possible_values = {}
-            for k in range(len(points)):
-                train_cf_k = points[k]
-                v = train_cf_k - instance 
-                nonzero_index = list(np.nonzero(v)[0])
-                feat_checked = []
-                feat_possible_values = []
-                for i in range(len(instance)):
-                    if i not in feat_checked:
-                        feat_i = data.processed_features[i]
-                        if feat_i in data.bin_enc_cols:
-                            if i in nonzero_index:
-                                value = [train_cf_k[i], instance[i]]
-                                value = self.verify_prediction_feasibility(data, model, instance, value, i)
-                            else:
-                                value = [train_cf_k[i]]
-                            feat_checked.extend([i])
-                        elif feat_i in data.cat_enc_cols:
-                            idx_cat_i = data.idx_cat_cols_dict[feat_i[:-4]]
-                            nn_cat_idx = list(train_cf_k[idx_cat_i])
-                            if any(item in idx_cat_i for item in nonzero_index):
-                                ioi_cat_idx = list(instance[idx_cat_i])
-                                value = [nn_cat_idx, ioi_cat_idx]
-                                value = self.verify_prediction_feasibility(data, model, instance, value, idx_cat_i)
-                            else:
-                                value = [nn_cat_idx]
-                            feat_checked.extend(idx_cat_i)
-                        elif feat_i in data.ordinal:
-                            if i in nonzero_index:
-                                values_i = list(data.processed_feat_dist[feat_i].keys())
-                                max_val_i, min_val_i = max(instance[i], train_cf_k[i]), min(instance[i], train_cf_k[i])
-                                value = [j for j in values_i if j <= max_val_i and j >= min_val_i]
-                                value = self.verify_prediction_feasibility(data, model, instance, value, i)
-                            else:
-                                value = [train_cf_k[i]]
-                            feat_checked.extend([i])
-                        elif feat_i in data.continuous:
-                            if i in nonzero_index:
-                                max_val_i, min_val_i = max(instance[i], train_cf_k[i]), min(instance[i], train_cf_k[i])
-                                value = self.continuous_feat_values(i, min_val_i, max_val_i, data)
-                                value = self.verify_prediction_feasibility(data, model, instance, value, i)
-                            else:
-                                value = [train_cf_k[i]]
-                            feat_checked.extend([i])
-                        feat_possible_values.append(value)
-                cf_feat_possible_values[k] = feat_possible_values
-            feat_possible_values_all[instance_idx] = cf_feat_possible_values
+        results_list = Parallel(n_jobs=number_cores, verbose=10, prefer='processes')(delayed(get_feat_possible_values_parallel)(data,
+                                                                                                                 model,
+                                                                                                                 sensitive_feature_instances,
+                                                                                                                 points,
+                                                                                                                 instance_idx,
+                                                                                                                 k
+                                                                                                                 ) for k in range(len(points)) for instance_idx in range(len(sensitive_feature_instances))
+                                                                                                                )
+        for instance_idx, k, feat_possible_values in results_list:
+            feat_possible_values_all[instance_idx, k] = feat_possible_values
+        end_time = time.time()
+        print(f'Total feature possible value time (s): {(end_time - start_time)}')
         return feat_possible_values_all
 
     def get_graph_nodes(self, data, model, feat_possible_values, type):
@@ -383,31 +448,6 @@ class Graph:
         end_time = time.time()
         print(f'Total effectiveness calculation time (s): {(end_time - start_time)}')
         return eta
-
-    def continuous_feat_values(self, i, min_val, max_val, data):
-        """
-        Method that defines how to discretize the continuous features
-        """
-        sorted_feat_i = list(np.sort(data.transformed_train_np[:,i][(data.transformed_train_np[:,i] >= min_val) & (data.transformed_train_np[:,i] <= max_val)]))
-        value = list(np.unique(sorted_feat_i))
-        if len(value) <= 10:
-            if min_val not in value:
-                value = [min_val] + value
-            if max_val not in value:
-                value = value + [max_val]
-            return value
-        else:
-            mean_val, std_val = np.mean(data.transformed_train_np[:,i]), np.std(data.transformed_train_np[:,i])
-            percentiles_range = list(np.linspace(0, 1, 11))
-            value = []
-            for perc in percentiles_range:
-                value.append(norm.ppf(perc, loc=mean_val, scale=std_val))
-            value = [val for val in value if val >= min_val and val <= max_val]
-            if min_val not in value:
-                value = [min_val] + value
-            if max_val not in value:
-                value = value + [max_val]
-        return value
     
     def get_epsilon(self, data, dist='euclidean'):
         """

@@ -13,10 +13,10 @@ from sklearn.metrics import f1_score
 from support import save_obj
 import os
 
-# List of datasets: 'synthetic_athlete','compass','german','student','dutch','oulad','bank','kdd_census','law','credit'
-datasets_zeus = ['oulad','credit']
+# List of datasets: 'synthetic_athlete','compass','german','student','dutch','oulad','kdd_census','credit'
+datasets_zeus = ['oulad']
 datasets_thor = ['dutch']
-datasets_home = ['bank']
+datasets_home = ['credit']
 # Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
 
 print(os.getcwd())
@@ -31,7 +31,7 @@ if 'dsv' in os.getcwd():
 else:
     print('Selected Datasets and cores for Local run')
     datasets = datasets_home
-
+# datasets = ['synthetic_athlete','compass','german','student']
 methods_to_run = ['BIGRACE_dist'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
