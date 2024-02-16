@@ -54,7 +54,7 @@ def percentage_close_train(dataset):
     """
     if dataset in ['german','compass','synthetic_athlete']:
         percentage_close_train_cf = 0.5
-    elif dataset in ['bank','kdd_census','student']:
+    elif dataset in ['bank','kdd_census','student','law']:
         percentage_close_train_cf = 0.1
     elif dataset in ['oulad','adult','credit','dutch']:
         percentage_close_train_cf = 0.1
