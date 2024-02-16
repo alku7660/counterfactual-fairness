@@ -218,7 +218,7 @@ def get_nearest_neighbor_parallel(data, model, feat, feat_value, extra_search, s
     train_np_feat_val_pred = model.model.predict(train_feat_val_np)
     train_desired_label_np = find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search, data.undesired_class)
     sensitive_group_instances = find_sensitive_group_instances(data, feat_value, sensitive_group_dict).values
-    neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type}, n_jobs=1)
+    neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type}, n_jobs=number_cores)
     neigh.fit(train_desired_label_np)
     print(f'NearestNeighbors fit for feat_value {feat_value}.')
     closest_distances, closest_cf_idx = neigh.kneighbors(sensitive_group_instances, return_distance=True)
@@ -308,31 +308,6 @@ class Graph:
         eta = self.get_all_effectiveness(F)
         print(f'Obtained all effectiveness parameter')
         return feat_possible_values, C, F, rho, eta
-    
-    # def verify_prediction_feasibility(self, data, model, instance, values, i):
-    #     """
-    #     Verifies whether the values are as close as possible to achieve counterfactual state and if the feature can be changed
-    #     """
-    #     instance_feat_val = instance[i]
-    #     if isinstance(instance_feat_val, np.ndarray):
-    #         values_minus_feat_val = np.sum(np.abs(values - instance_feat_val), axis=1)
-    #     else:
-    #         values_minus_feat_val = values - instance_feat_val
-    #     zip_values_difference = list(zip(values, values_minus_feat_val))
-    #     zip_values_difference.sort(key=lambda x: abs(x[1]))
-    #     if isinstance(instance[i], np.ndarray):
-    #         close_cf_values = [list(instance[i])]
-    #     else:
-    #         close_cf_values = [instance[i]]
-    #     v = copy.deepcopy(instance)
-    #     for tup in zip_values_difference:
-    #         value = tup[0]
-    #         v[i] = value
-    #         if verify_feasibility(instance, v, data) and value not in close_cf_values:
-    #             close_cf_values.extend([value])
-    #             if model.model.predict(v.reshape(1, -1)) != self.ioi_label:
-    #                 break
-    #     return close_cf_values
 
     def get_feat_possible_values(self, data, model, obj=None, points=None):
         """
