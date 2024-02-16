@@ -13,9 +13,17 @@ from sklearn.metrics import f1_score
 from support import save_obj
 import os
 
-print(os.getcwd())
+# List of datasets: 'synthetic_athlete','compass','german','student','dutch','oulad','bank','kdd_census','law','credit'
+datasets_server = ['oulad','bank','kdd_census','law','credit']
+datasets_home = ['synthetic_athlete','compass','german','student','dutch']
 
-datasets = ['compass','german','student','dutch'] # 'oulad','bank','student','law','credit','dutch','adult' # Done: 'synthetic_athlete','compass','german','student'
+if '/data0/home/dsv/' in os.getcwd():
+    print('Selected Datasets for Server run')
+    datasets = datasets_server
+else:
+    print('Selected Datasets for Local run')
+    datasets = datasets_home
+
 methods_to_run = ['BIGRACE_dist'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
