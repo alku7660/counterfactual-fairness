@@ -181,7 +181,7 @@ class Graph:
                                                                               ) for feat_value in feat_values) 
         train_cf_list, closest_distances = zip(*results_list)
         train_cf_array = np.concatenate(train_cf_list, axis=0)
-        if data.name in ['synthetic_athlete','compass','german','kdd_census','oulad','credit','bank','dutch','adult','student']:
+        if data.name in ['synthetic_athlete','compass','german','kdd_census','oulad','credit','bank','dutch','adult','student','law']:
             distance_threshold = np.max(closest_distances)
         elif data.name in []:
             distance_threshold = np.mean(closest_distances)
