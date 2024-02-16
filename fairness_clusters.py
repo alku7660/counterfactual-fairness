@@ -14,7 +14,7 @@ from support import save_obj
 import os
 
 # List of datasets: 'synthetic_athlete','compass','german','student','dutch','oulad','bank','kdd_census','law','credit'
-datasets_server = ['oulad','bank','kdd_census','law','credit']
+datasets_server = ['oulad','credit']
 datasets_home = ['synthetic_athlete','compass','german','student','dutch']
 
 if '/data0/home/dsv/' in os.getcwd():
