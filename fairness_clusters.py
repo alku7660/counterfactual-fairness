@@ -13,11 +13,11 @@ from sklearn.metrics import f1_score
 from support import save_obj
 import os
 
-# List of datasets: 'synthetic_athlete','compass','german','student','dutch','oulad','kdd_census','adult'
+# List of datasets: 'synthetic_athlete','compass','german','student','dutch','oulad','adult','credit','law'
 datasets_zeus = ['oulad']
+datasets_home = ['credit']
 datasets_thor = ['dutch']
-datasets_home = ['adult']
-# Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
+# Done for CounterFair dist: 'synthetic_athlete','compass','german','student','dutch'
 
 print(os.getcwd())
 
@@ -52,12 +52,10 @@ def percentage_close_train(dataset):
     """
     Selects the appropriate percentage per dataset for the close CF
     """
-    if dataset in ['german','compass','synthetic_athlete']:
-        percentage_close_train_cf = 0.5
-    elif dataset in ['bank','kdd_census','student','law']:
-        percentage_close_train_cf = 0.1
-    elif dataset in ['oulad','adult','credit','dutch']:
-        percentage_close_train_cf = 0.1
+    if dataset in ['synthetic_athlete','compass','student','german','dutch','oulad']:
+        percentage_close_train_cf = 1
+    elif dataset in ['adult','law','credit']:
+        percentage_close_train_cf = 0.2
     return percentage_close_train_cf
 
 def support_threshold(dataset):
