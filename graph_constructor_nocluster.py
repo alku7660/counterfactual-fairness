@@ -205,9 +205,8 @@ def get_graph_nodes_parallel(data, model, sensitive_feature_instances, train_cf,
         perm_i = make_array(i)
         if verify_feasibility(instance, perm_i, data):
             if model.model.predict(perm_i.reshape(1, -1)) != ioi_label:
-                if not any(np.array_equal(perm_i, x) for x in train_cf):
-                    if distance_calculation(instance, perm_i, kwargs={'dat':data, 'type':type}) < distance_threshold:
-                        permutations_list.append(perm_i)
+                if distance_calculation(instance, perm_i, kwargs={'dat':data, 'type':type}) < distance_threshold:
+                    permutations_list.append(perm_i)
     return permutations_list
 
 def get_nearest_neighbor_parallel(data, model, feat, feat_value, extra_search, sensitive_group_dict, type):
@@ -281,9 +280,9 @@ class Graph:
                                                                               ) for feat_value in feat_values) 
         train_cf_list, closest_distances = zip(*results_list)
         train_cf_array = np.concatenate(train_cf_list, axis=0)
-        if data.name in ['synthetic_athlete','compass','german','kdd_census','oulad','credit','bank','dutch','adult','student','law']:
+        if data.name in ['synthetic_athlete','compass','german','kdd_census','oulad','bank','dutch','adult','student','law']:
             distance_threshold = np.max(closest_distances)
-        elif data.name in []:
+        elif data.name in ['credit']:
             distance_threshold = np.mean(closest_distances)
         elif data.name in []:
             distance_threshold = np.min(closest_distances)
@@ -297,7 +296,7 @@ class Graph:
         """
         feat_possible_values = self.get_feat_possible_values(data, model)
         print(f'Extracted all possible feature value permutations from training CF. Getting Graph Nodes...')
-        self.graph_nodes, self.all_nodes = self.get_graph_nodes(data, model, feat_possible_values, type)
+        self.all_nodes = self.get_graph_nodes(data, model, feat_possible_values, type)
         print(f'Obtained all possible nodes in the graph: {len(self.all_nodes)}. Calculating costs...')
         C = self.get_all_costs_weights(data, type)
         print(f'Obtained all costs in the graph')
@@ -356,9 +355,9 @@ class Graph:
                                             )
         graph_nodes_flat_list = list(chain.from_iterable(graph_nodes))
         graph_nodes_array = np.vstack(graph_nodes_flat_list)
-        graph_nodes_array_unique = np.unique(graph_nodes_array, axis=0)
-        all_nodes = np.concatenate([self.train_cf, graph_nodes_array_unique], axis=0)
-        return graph_nodes_array_unique, all_nodes
+        all_nodes = np.concatenate([self.train_cf, graph_nodes_array], axis=0)
+        all_nodes_unique = np.unique(all_nodes, axis=0)
+        return all_nodes_unique
 
     def get_all_costs_weights(self, data, type):
         """

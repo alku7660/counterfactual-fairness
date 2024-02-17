@@ -13,10 +13,10 @@ from sklearn.metrics import f1_score
 from support import save_obj
 import os
 
-# List of datasets: 'synthetic_athlete','compass','german','student','dutch','oulad','kdd_census','credit'
+# List of datasets: 'synthetic_athlete','compass','german','student','dutch','oulad','kdd_census','adult'
 datasets_zeus = ['oulad']
 datasets_thor = ['dutch']
-datasets_home = ['credit']
+datasets_home = ['adult']
 # Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
 
 print(os.getcwd())
