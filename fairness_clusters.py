@@ -17,7 +17,7 @@ import os
 datasets_zeus = ['oulad']
 datasets_home = ['credit']
 datasets_thor = ['dutch']
-# Done for CounterFair dist: 'synthetic_athlete','compass','german','student','dutch'
+# Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
 
 print(os.getcwd())
 
@@ -52,9 +52,9 @@ def percentage_close_train(dataset):
     """
     Selects the appropriate percentage per dataset for the close CF
     """
-    if dataset in ['synthetic_athlete','compass','student','german','dutch','oulad']:
+    if dataset in ['synthetic_athlete','compass','student','german']:
         percentage_close_train_cf = 1
-    elif dataset in ['adult','law','credit']:
+    elif dataset in ['adult','credit','dutch','law','oulad']:
         percentage_close_train_cf = 0.1
     return percentage_close_train_cf
 

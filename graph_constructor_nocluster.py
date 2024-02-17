@@ -216,8 +216,8 @@ def filter_nearest_neighbors(closest_distances, closest_cf_idx, percentage_train
     filtered_closest_distances, filtered_closest_cf_idx = [], []
     if percentage_train_cf_per_feat_value < 1:
         print(f'Filtering to {percentage_train_cf_per_feat_value} of the training CFs found')
-        closest_distances_sorted = np.sort(closest_distances)
-        threshold_position_idx = int(len(closest_distances_sorted)*percentage_train_cf_per_feat_value)
+        closest_distances_sorted = np.sort(closest_distances, axis=0)
+        threshold_position_idx = int(np.ceil(len(closest_distances_sorted)*percentage_train_cf_per_feat_value))
         distance_threshold_cf = closest_distances_sorted[threshold_position_idx]
         for cf_idx in range(len(closest_distances)):
             if closest_distances[cf_idx] < distance_threshold_cf:
