@@ -54,8 +54,10 @@ def percentage_close_train(dataset):
     """
     if dataset in ['synthetic_athlete','compass','student','german']:
         percentage_close_train_cf = 1
-    elif dataset in ['adult','credit','dutch','law','oulad']:
+    elif dataset in ['adult','credit','dutch','oulad']:
         percentage_close_train_cf = 0.05
+    elif dataset in ['law']:
+        percentage_close_train_cf = 0.01
     return percentage_close_train_cf
 
 def support_threshold(dataset):
