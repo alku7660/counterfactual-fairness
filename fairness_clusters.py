@@ -14,8 +14,8 @@ from support import save_obj
 import os
 
 # List of datasets: 'synthetic_athlete','compass','german','student','dutch','oulad','adult','credit','law'
-datasets_zeus = ['oulad']
-datasets_home = ['credit']
+datasets_zeus = ['credit']
+datasets_home = ['law']
 datasets_thor = ['dutch']
 # Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
 
@@ -55,7 +55,7 @@ def percentage_close_train(dataset):
     if dataset in ['synthetic_athlete','compass','student','german']:
         percentage_close_train_cf = 1
     elif dataset in ['adult','credit','dutch','law','oulad']:
-        percentage_close_train_cf = 0.1
+        percentage_close_train_cf = 0.05
     return percentage_close_train_cf
 
 def support_threshold(dataset):
