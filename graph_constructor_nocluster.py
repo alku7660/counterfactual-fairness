@@ -10,9 +10,9 @@ from scipy.stats import norm
 import copy
 import os
 
-number_cores_zeus = 12
-number_cores_thor = 24
-number_cores_home = 12
+number_cores_zeus = 16
+number_cores_thor = 64
+number_cores_home = 16
 
 if 'dsv' in os.getcwd():
     if '/data0/' in os.getcwd():
