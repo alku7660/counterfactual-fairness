@@ -35,11 +35,24 @@ def distance_calculation(x, y, **kwargs):
         """
         return np.sum(np.abs(x - y))
 
-    def L0(x, y):
+    # def L0(x, y):
+    #     """
+    #     Calculates a simple matching distance between the features of the instances (pass only categortical features, inputs must be Numpy arrays)
+    #     """
+    #     return len(np.where(x != y)[0])
+
+    def L0(x, y, data):
         """
         Calculates a simple matching distance between the features of the instances (pass only categortical features, inputs must be Numpy arrays)
         """
-        return len(np.where(x != y)[0])
+        not_match = 0
+        for binary_categorical_feature in data.binary+data.categorical:
+            binary_categorical_idx = data.processed_features_dict_idx[binary_categorical_feature]
+            x_categorical_np = x[binary_categorical_idx]
+            y_categorical_np = y[binary_categorical_idx]
+            if not np.array_equal(x_categorical_np, y_categorical_np):
+                not_match += 1
+        return not_match
 
     def Linf(x, y):
         """
@@ -47,17 +60,27 @@ def distance_calculation(x, y, **kwargs):
         """
         return np.max(np.abs(x - y))
 
-    def L1_L0(x, y, x_original, y_original, data):
+    # def L1_L0(x, y, x_original, y_original, data):
+    #     """
+    #     Calculates the distance components according to Sharma et al.: Please see: https://arxiv.org/pdf/1905.07857.pdf
+    #     """
+    #     x_df, y_df = pd.DataFrame(data=x.reshape(1, -1), index=[0], columns=data.processed_features), pd.DataFrame(data=y.reshape(1, -1), index=[0], columns=data.processed_features)
+    #     x_original_df, y_original_df = pd.DataFrame(data=x_original, index=[0], columns=data.features), pd.DataFrame(data=y_original, index=[0], columns=data.features)
+    #     x_continuous_df, y_continuous_df = x_df[data.ordinal + data.continuous], y_df[data.ordinal + data.continuous]
+    #     x_continuous_np, y_continuous_np = x_continuous_df.to_numpy()[0], y_continuous_df.to_numpy()[0]
+    #     x_categorical_df, y_categorical_df = x_original_df[data.binary + data.categorical], y_original_df[data.binary + data.categorical]
+    #     x_categorical_np, y_categorical_np = x_categorical_df.to_numpy()[0], y_categorical_df.to_numpy()[0]
+    #     L1_distance, L0_distance = L1(x_continuous_np, y_continuous_np), L0(x_categorical_np, y_categorical_np)
+    #     return L1_distance, L0_distance
+
+    def L1_L0(x, y, data):
         """
         Calculates the distance components according to Sharma et al.: Please see: https://arxiv.org/pdf/1905.07857.pdf
         """
-        x_df, y_df = pd.DataFrame(data=x.reshape(1, -1), index=[0], columns=data.processed_features), pd.DataFrame(data=y.reshape(1, -1), index=[0], columns=data.processed_features)
-        x_original_df, y_original_df = pd.DataFrame(data=x_original, index=[0], columns=data.features), pd.DataFrame(data=y_original, index=[0], columns=data.features)
-        x_continuous_df, y_continuous_df = x_df[data.ordinal + data.continuous], y_df[data.ordinal + data.continuous]
-        x_continuous_np, y_continuous_np = x_continuous_df.to_numpy()[0], y_continuous_df.to_numpy()[0]
-        x_categorical_df, y_categorical_df = x_original_df[data.binary + data.categorical], y_original_df[data.binary + data.categorical]
-        x_categorical_np, y_categorical_np = x_categorical_df.to_numpy()[0], y_categorical_df.to_numpy()[0]
-        L1_distance, L0_distance = L1(x_continuous_np, y_continuous_np), L0(x_categorical_np, y_categorical_np)
+        x_continuous_np = x[data.processed_ordinal_continuous_idx_list]
+        y_continuous_np = y[data.processed_ordinal_continuous_idx_list]
+        L1_distance = L1(x_continuous_np, y_continuous_np)
+        L0_distance = L0(x, y, data)
         return L1_distance, L0_distance
     
     def L1_L0_L_inf(x, y, x_original, y_original, data, alpha=1/4, beta=1/4):
@@ -110,7 +133,7 @@ def distance_calculation(x, y, **kwargs):
             value_to_return = max(perc_shift_list)
         return value_to_return
 
-    x_original, y_original = data.inverse(x), data.inverse(y)
+    # x_original, y_original = data.inverse(x), data.inverse(y)
     if type == 'euclidean':
         distance = euclid(x, y)
     elif type == 'L1':
@@ -120,7 +143,8 @@ def distance_calculation(x, y, **kwargs):
     elif type == 'L1_L0':
         n_con, n_cat = len(data.numerical), len(data.binary + data.categorical)
         n = n_con + n_cat
-        L1_distance, L0_distance = L1_L0(x, y, x_original, y_original, data)
+        # L1_distance, L0_distance = L1_L0(x, y, x_original, y_original, data)
+        L1_distance, L0_distance = L1_L0(x, y, data)
         """
         Equation from Sharma et al.: Please see: https://arxiv.org/pdf/1905.07857.pdf
         """

@@ -54,6 +54,8 @@ class Dataset:
         self.bin_enc, self.cat_enc, self.bin_cat_enc, self.scaler = self.encoder_scaler_fit()
         self.bin_enc_cols, self.cat_enc_cols, self.bin_cat_enc_cols = self.encoder_scaler_cols()
         self.processed_features = list(self.bin_enc_cols) + list(self.cat_enc_cols) + self.ordinal + self.continuous
+        self.processed_features_dict_idx = self.get_idx_processed_features_dict()
+        self.processed_ordinal_continuous_idx_list = self.get_idx_ordinal_continuous_processed_features()
         self.transformed_train_df = self.transform_data(self.train_df)
         self.transformed_train_np = self.transformed_train_df.to_numpy()
         self.transformed_test_df = self.transform_data(self.test_df)
@@ -70,6 +72,29 @@ class Dataset:
         self.feat_cat = self.define_feat_cat()
         self.idx_cat_cols_dict = self.idx_cat_columns()
         self.feat_dist, self.processed_feat_dist = self.feature_distribution()
+
+    def get_idx_processed_features_dict(self):
+        """
+        Gets the indices of the processed features, and stores it as a dictionary
+        """
+        processed_features_idx_dict = {}
+        for feature in self.features:
+            feature_idx_list = []
+            for processed_feature_idx in range(len(self.processed_features)):
+                processed_feature = self.processed_features[processed_feature_idx]
+                if feature in processed_feature:
+                    feature_idx_list.extend([processed_feature_idx])
+            processed_features_idx_dict[feature] = feature_idx_list
+        return processed_features_idx_dict
+
+    def get_idx_ordinal_continuous_processed_features(self):
+        """
+        Gets the indices of the ordinal and continuous processed features
+        """
+        processed_ordinal_continuous_idx_list = []
+        for ordinal_continuous_feature in self.ordinal+self.continuous:
+            processed_ordinal_continuous_idx_list.extend(self.processed_features_dict_idx[ordinal_continuous_feature])
+        return processed_ordinal_continuous_idx_list
 
     def balance_train_data(self):
         """
