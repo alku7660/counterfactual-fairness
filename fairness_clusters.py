@@ -16,7 +16,7 @@ import os
 # List of datasets: 'synthetic_athlete','compass','german','student','dutch','oulad','adult','credit','law'
 datasets_zeus = ['credit']
 datasets_home = ['law']
-datasets_thor = ['dutch']
+datasets_thor = ['law','dutch']
 # Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
 
 print(os.getcwd())
@@ -54,7 +54,9 @@ def percentage_close_train(dataset):
     """
     if dataset in ['synthetic_athlete','compass','student','german']:
         percentage_close_train_cf = 1
-    elif dataset in ['adult','credit','dutch','oulad']:
+    elif dataset in ['dutch']:
+        percentage_close_train_cf = 0.1
+    elif dataset in ['adult','credit','oulad']:
         percentage_close_train_cf = 0.05
     elif dataset in ['law']:
         percentage_close_train_cf = 0.01

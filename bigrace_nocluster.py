@@ -121,7 +121,7 @@ class BIGRACE:
             for instance_idx in not_centroids_solved:
                 instance = graph.sensitive_feature_instances[instance_idx - 1]
                 # train_cfs = graph.find_train_cf(data, model, counterfactual.type, extra_search=True)
-                train_cfs = graph.nearest_neighbor_train_cf(self, data, model, feat_values, type, extra_search=True)
+                train_cfs = graph.nearest_neighbor_train_cf(data, model, feat_values, type, extra_search=True)
                 for train_cf_idx in range(train_cfs.shape[0]):
                     train_cf = train_cfs[train_cf_idx,:]
                     if verify_feasibility(instance, train_cf, data):
