@@ -13,6 +13,7 @@ class BIGRACE:
         self.percentage = counterfactual.percentage
         self.feat_protected = counterfactual.data.feat_protected
         self.false_undesired_test_df = counterfactual.data.false_undesired_test_df
+        self.continuous_bins = counterfactual.continuous_bins
         self.ioi_label = counterfactual.data.undesired_class
         self.sensitive_feat_idx_dict = self.select_instances_by_sensitive_group()
         self.alpha, self.dev, self.eff = counterfactual.alpha, counterfactual.dev, counterfactual.eff
@@ -42,7 +43,7 @@ class BIGRACE:
         for feature in self.feat_protected.keys():
             value_dict = self.feat_protected[feature]
             sensitive_group_dict = self.sensitive_feat_idx_dict[feature]
-            graph = Graph(counterfactual.data, counterfactual.model, feature, value_dict.keys(), sensitive_group_dict, counterfactual.type, self.percentage)
+            graph = Graph(counterfactual.data, counterfactual.model, feature, value_dict.keys(), sensitive_group_dict, counterfactual.type, self.percentage, self.continuous_bins)
             normal_x_cf, graph_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.Bigrace(counterfactual, graph)
             normal_x_cf, graph_nodes_solution = self.adapt_indices_results(graph, normal_x_cf, graph_nodes_solution)
             normal_x_cf_dict[feature] = normal_x_cf

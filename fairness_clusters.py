@@ -16,7 +16,7 @@ import os
 # LIST OF DATASETS TO RUN: 'synthetic_athlete','compass','german','student','dutch','oulad','adult','credit','law'
 datasets_zeus = ['credit']
 datasets_home = ['synthetic_athlete','compass','german','student']
-datasets_thor = ['law','dutch']
+datasets_thor = ['law','dutch','credit']
 # Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
 
 print(os.getcwd())
@@ -54,13 +54,17 @@ def percentage_close_train(dataset):
     """
     if dataset in ['synthetic_athlete','compass','student','german']:
         percentage_close_train_cf = 1
+        continuous_bins = 10
     elif dataset in ['dutch']:
         percentage_close_train_cf = 0.1
+        continuous_bins = 5
     elif dataset in ['adult','credit']:
         percentage_close_train_cf = 0.05
+        continuous_bins = 3
     elif dataset in ['law','oulad']:
         percentage_close_train_cf = 0.01
-    return percentage_close_train_cf
+        continuous_bins = 3
+    return percentage_close_train_cf, continuous_bins
 
 def support_threshold(dataset):
     """
@@ -94,7 +98,7 @@ def select_parameters(method, weight):
 
 if __name__=='__main__':
     for data_str in datasets:
-        percentage_close_train_cf = percentage_close_train(data_str)
+        percentage_close_train_cf, continuous_bins = percentage_close_train(data_str)
         support_th = support_threshold(data_str)
         data = load_dataset(data_str, train_fraction, seed_int, step)
         model = Model(data)
@@ -114,17 +118,17 @@ if __name__=='__main__':
                 cf_evaluator.add_fnr_data(data)
                 alpha, dev, eff = select_parameters(method, weight)
                 # counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, dev, eff type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
-                counterfactual = Counterfactual(data, model, method, alpha, dev, eff, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
+                counterfactual = Counterfactual(data, model, method, alpha, dev, eff, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th, continuous_bins=continuous_bins)
                 cf_evaluator.add_cf_data(counterfactual)
             elif method == 'ARES':
                 graph_obj = None
                 alpha, dev, eff = select_parameters(method, weight)
-                counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, dev, eff, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
+                counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, dev, eff, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th, continuous_bins=continuous_bins)
                 cf_evaluator.add_cf_data_ares(counterfactual)
             elif method == 'FACTS':
                 graph_obj = None
                 alpha, dev, eff = select_parameters(method, weight)
-                counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, dev, eff, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
+                counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, dev, eff, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th, continuous_bins=continuous_bins)
                 cf_evaluator.add_cf_data_facts(counterfactual)
             print(f'---------------------------')
             print(f'  DONE: {data_str}, method: {method}')

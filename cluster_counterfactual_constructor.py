@@ -12,7 +12,7 @@ from facts import FACTS
 class Counterfactual:
 
     # def __init__(self, data, model, method, cluster, alpha=1, beta=1, gamma=1, delta1=1, delta2=1, delta3=1, type='L1_L0', percentage_close_train_cf=0.1, support_th=0.01):
-    def __init__(self, data, model, method, alpha=1, dev=False, eff=False, type='L1_L0', percentage_close_train_cf=0.1, support_th=0.01):
+    def __init__(self, data, model, method, alpha=1, dev=False, eff=False, type='L1_L0', percentage_close_train_cf=0.1, support_th=0.01, continuous_bins=continuous_bins):
         self.data = data
         self.model = model
         self.method = method
@@ -20,6 +20,7 @@ class Counterfactual:
         self.type = type
         self.percentage = percentage_close_train_cf
         self.support_th = support_th
+        self.continuous_bins = continuous_bins
         # self.lagrange = lagrange
         # self.likelihood_factor = likelihood_factor
         self.alpha, self.dev, self.eff = alpha, dev, eff

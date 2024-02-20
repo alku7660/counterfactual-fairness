@@ -72,13 +72,13 @@ def estimate_sensitive_group_positive(data, feat, feat_value):
     sensitive_group_df = data.test_df.loc[(data.test_df[feat] == feat_value) & (data.test_target == data.desired_class)]
     return len(sensitive_group_df)
 
-def continuous_feat_values(i, min_val, max_val, data):
+def continuous_feat_values(i, min_val, max_val, data, continuous_bins):
     """
     Method that defines how to discretize the continuous features
     """
     sorted_feat_i = list(np.sort(data.transformed_train_np[:,i][(data.transformed_train_np[:,i] >= min_val) & (data.transformed_train_np[:,i] <= max_val)]))
     value = list(np.unique(sorted_feat_i))
-    if len(value) <= 10:
+    if len(value) <= continuous_bins:
         if min_val not in value:
             value = [min_val] + value
         if max_val not in value:
@@ -86,7 +86,7 @@ def continuous_feat_values(i, min_val, max_val, data):
         return value
     else:
         mean_val, std_val = np.mean(data.transformed_train_np[:,i]), np.std(data.transformed_train_np[:,i])
-        percentiles_range = list(np.linspace(0, 1, 11))
+        percentiles_range = list(np.linspace(0, 1, continuous_bins + 1))
         value = []
         for perc in percentiles_range:
             value.append(norm.ppf(perc, loc=mean_val, scale=std_val))
@@ -122,7 +122,7 @@ def verify_prediction_feasibility(data, model, instance, values, i):
                 break
     return close_cf_values
 
-def get_feat_possible_values_parallel(data, model, sensitive_feature_instances, points, instance_idx, k):
+def get_feat_possible_values_parallel(data, model, sensitive_feature_instances, points, continuous_bins, instance_idx, k):
     """
     Method that obtains the features possible values
     """
@@ -164,7 +164,7 @@ def get_feat_possible_values_parallel(data, model, sensitive_feature_instances, 
             elif feat_i in data.continuous:
                 if i in nonzero_index:
                     max_val_i, min_val_i = max(instance[i], train_cf_k[i]), min(instance[i], train_cf_k[i])
-                    value = continuous_feat_values(i, min_val_i, max_val_i, data)
+                    value = continuous_feat_values(i, min_val_i, max_val_i, data, continuous_bins)
                     value = verify_prediction_feasibility(data, model, instance, value, i)
                 else:
                     value = [train_cf_k[i]]
@@ -249,9 +249,10 @@ def get_nearest_neighbor_parallel(data, model, feat, feat_value, extra_search, s
 
 class Graph:
 
-    def __init__(self, data, model, feat, feat_values, sensitive_group_dict, type, percentage) -> None:
+    def __init__(self, data, model, feat, feat_values, sensitive_group_dict, type, percentage, continuous_bins) -> None:
         self.percentage_train_cf_per_feat_value = percentage
         self.feat = feat
+        self.continuous_bins = continuous_bins
         self.sensitive_group_dict = sensitive_group_dict
         self.sensitive_feature_instances, self.sensitive_group_idx_feat_value_dict, self.instance_idx_to_original_idx_dict = self.find_sensitive_feat_instances(data, feat_values)
         self.ioi_label = data.undesired_class
@@ -348,6 +349,7 @@ class Graph:
                                                                                                                  model,
                                                                                                                  sensitive_feature_instances,
                                                                                                                  points,
+                                                                                                                 self.continuous_bins,
                                                                                                                  instance_idx,
                                                                                                                  k
                                                                                                                  ) for k in range(len(points)) for instance_idx in range(len(sensitive_feature_instances))
