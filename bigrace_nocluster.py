@@ -1,15 +1,11 @@
 import numpy as np
-import pandas as pd
-from itertools import product
 import networkx as nx
 import gurobipy as gp
-from gurobipy import GRB, tuplelist
-from evaluator_constructor import distance_calculation, verify_feasibility
-from nnt import nn_for_juice
+from gurobipy import GRB
+from evaluator_constructor import verify_feasibility
 import time
 from scipy.stats import norm
 from graph_constructor_nocluster import Graph
-import copy
 
 class BIGRACE:
 
@@ -19,7 +15,7 @@ class BIGRACE:
         self.false_undesired_test_df = counterfactual.data.false_undesired_test_df
         self.ioi_label = counterfactual.data.undesired_class
         self.sensitive_feat_idx_dict = self.select_instances_by_sensitive_group()
-        self.alpha, self.beta, self.gamma, self.delta1, self.delta2, self.delta3 = counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta1, counterfactual.delta2, counterfactual.delta3
+        self.alpha, self.dev, self.eff = counterfactual.alpha, counterfactual.dev, counterfactual.eff
         self.normal_x_cf, self.graph_nodes, self.likelihood_dict, self.effectiveness_dict, self.run_time, self.model_status, self.obj_val, self.sensitive_group_idx_feat_value_dict = self.solve_problem(counterfactual)
     
     def select_instances_by_sensitive_group(self):
@@ -77,6 +73,7 @@ class BIGRACE:
         """
         BIGRACE algorithm
         """
+        print(f'Solving CounterFair: alpha: {self.alpha}, deviation: {self.dev}, effectiveness: {self.eff}')
         normal_x_cf, graph_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.do_optimize_all(counterfactual, graph)
         return normal_x_cf, graph_nodes_solution, likelihood, effectiveness, model_status, obj_val 
 
@@ -120,7 +117,6 @@ class BIGRACE:
             not_centroids_solved = [i for i in range(1, len(graph.sensitive_feature_instances) + 1) if i not in centroids_solved]
             for instance_idx in not_centroids_solved:
                 instance = graph.sensitive_feature_instances[instance_idx - 1]
-                # train_cfs = graph.find_train_cf(data, model, counterfactual.type, extra_search=True)
                 train_cfs = graph.nearest_neighbor_train_cf(data, model, feat_values, type, extra_search=True)
                 for train_cf_idx in range(train_cfs.shape[0]):
                     train_cf = train_cfs[train_cf_idx,:]
@@ -141,8 +137,6 @@ class BIGRACE:
         """
         VARIABLES
         """
-        # for c in set_Instances:
-        #     cf = opt_model.addVars(set_Instances, G.nodes, vtype=GRB.BINARY, name='Counterfactual')   # Node chosen as destination
         cf = opt_model.addVars(set_Instances, G.nodes, vtype=GRB.BINARY, name='Counterfactual')
         limiter = opt_model.addVars(G.nodes, vtype=GRB.BINARY, name='Limiter')
             
@@ -192,8 +186,19 @@ class BIGRACE:
         #                        - gp.quicksum(cf[c, i]*graph.eta[i] for i in G.nodes for c in set_Instances)*self.gamma
         #                        + fairness_objective(cf, graph.C, graph.rho, graph.eta, set_Instances, G.nodes), GRB.MINIMIZE)
         
-        opt_model.setObjective(cf.prod(graph.C)*self.alpha + gp.quicksum(limiter[n] for n in G.nodes)*(1 - self.alpha), GRB.MINIMIZE)
+        # EXPERIMENT 1, 2, 3: alpha = [1.0, 0.5, 0.1]
+        if self.dev == False and self.eff == False: 
+            opt_model.setObjective(cf.prod(graph.C)*self.alpha + gp.quicksum(limiter[n] for n in G.nodes)*(1 - self.alpha), GRB.MINIMIZE)
             
+        # EXPERIMENT 4: Minimization of burden variance
+        elif self.dev == True:
+            total_pairings = gp.quicksum(cf[i, n] for i in set_Instances for n in G.nodes)
+            opt_model.setObjective(cf.prod(graph.C2)/total_pairings - (cf.prod(graph.C)/total_pairings)**2, GRB.MINIMIZE)
+
+        # EXPERIMENT 5: Maximize effectiveness
+        elif self.eff == True:
+            opt_model.setObjective(gp.quicksum(cf[c, i]*graph.eta[i] for i in G.nodes for c in set_Instances), GRB.MINIMIZE)
+
         """
         OPTIMIZATION AND RESULTS
         """

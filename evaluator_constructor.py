@@ -35,12 +35,6 @@ def distance_calculation(x, y, **kwargs):
         """
         return np.sum(np.abs(x - y))
 
-    # def L0(x, y):
-    #     """
-    #     Calculates a simple matching distance between the features of the instances (pass only categortical features, inputs must be Numpy arrays)
-    #     """
-    #     return len(np.where(x != y)[0])
-
     def L0(x, y, data):
         """
         Calculates a simple matching distance between the features of the instances (pass only categortical features, inputs must be Numpy arrays)
@@ -60,19 +54,6 @@ def distance_calculation(x, y, **kwargs):
         """
         return np.max(np.abs(x - y))
 
-    # def L1_L0(x, y, x_original, y_original, data):
-    #     """
-    #     Calculates the distance components according to Sharma et al.: Please see: https://arxiv.org/pdf/1905.07857.pdf
-    #     """
-    #     x_df, y_df = pd.DataFrame(data=x.reshape(1, -1), index=[0], columns=data.processed_features), pd.DataFrame(data=y.reshape(1, -1), index=[0], columns=data.processed_features)
-    #     x_original_df, y_original_df = pd.DataFrame(data=x_original, index=[0], columns=data.features), pd.DataFrame(data=y_original, index=[0], columns=data.features)
-    #     x_continuous_df, y_continuous_df = x_df[data.ordinal + data.continuous], y_df[data.ordinal + data.continuous]
-    #     x_continuous_np, y_continuous_np = x_continuous_df.to_numpy()[0], y_continuous_df.to_numpy()[0]
-    #     x_categorical_df, y_categorical_df = x_original_df[data.binary + data.categorical], y_original_df[data.binary + data.categorical]
-    #     x_categorical_np, y_categorical_np = x_categorical_df.to_numpy()[0], y_categorical_df.to_numpy()[0]
-    #     L1_distance, L0_distance = L1(x_continuous_np, y_continuous_np), L0(x_categorical_np, y_categorical_np)
-    #     return L1_distance, L0_distance
-
     def L1_L0(x, y, data):
         """
         Calculates the distance components according to Sharma et al.: Please see: https://arxiv.org/pdf/1905.07857.pdf
@@ -82,58 +63,7 @@ def distance_calculation(x, y, **kwargs):
         L1_distance = L1(x_continuous_np, y_continuous_np)
         L0_distance = L0(x, y, data)
         return L1_distance, L0_distance
-    
-    def L1_L0_L_inf(x, y, x_original, y_original, data, alpha=1/4, beta=1/4):
-        """
-        Calculates the distance used by Karimi et al.: Please see: http://proceedings.mlr.press/v108/karimi20a/karimi20a.pdf
-        """
-        J = len(data.continuous) + len(data.bin_cat_enc_cols)
-        gamma = 1/((alpha + beta)*J)
-        L1_distance, L0_distance = L1_L0(x, y, x_original, y_original, data)
-        Linf_distance = Linf(x, y)
-        return alpha*L0_distance + beta*L1_distance + gamma*Linf_distance
 
-    def max_percentile_shift(x_original, y_original, data):
-        """
-        Calculates the maximum percentile shift as a cost function between two instances
-        """
-        perc_shift_list = []
-        x_original_df, y_original_df = pd.DataFrame(data=x_original, index=[0], columns=data.features), pd.DataFrame(data=y_original, index=[0], columns=data.features)
-        for col in data.features:
-            x_col_value = float(x_original_df[col].values)
-            try:
-                y_col_value = float(y_original_df[col].values)
-            except:
-                perc_shift_list.append(1)
-                continue
-            distribution = data.feat_dist[col]
-            if x_col_value == y_col_value:
-                continue
-            else:
-                if col in data.binary or col in data.categorical:
-                    perc_shift = np.abs(distribution[x_col_value] - distribution[y_col_value])
-                elif col in data.ordinal:
-                    min_val, max_val = min(x_col_value, y_col_value), max(x_col_value, y_col_value)
-                    values_range = [i for i in distribution.keys() if i >= min_val and i <= max_val]
-                    values_range.sort()
-                    prob_values = np.cumsum([distribution[val] for val in values_range])
-                    try:
-                        perc_shift = np.abs(prob_values[-1] - prob_values[0])
-                    except:
-                        perc_shift = 0
-                elif col in data.continuous:
-                    mean_val, std_val = distribution['mean'], distribution['std']
-                    normalized_x = (x_col_value - mean_val)/std_val
-                    normalized_y = (y_col_value - mean_val)/std_val
-                    perc_shift = np.abs(norm.cdf(normalized_x) - norm.cdf(normalized_y))
-            perc_shift_list.append(perc_shift)
-        if len(perc_shift_list) == 0:
-            value_to_return = 0
-        else:
-            value_to_return = max(perc_shift_list)
-        return value_to_return
-
-    # x_original, y_original = data.inverse(x), data.inverse(y)
     if type == 'euclidean':
         distance = euclid(x, y)
     elif type == 'L1':
@@ -143,16 +73,11 @@ def distance_calculation(x, y, **kwargs):
     elif type == 'L1_L0':
         n_con, n_cat = len(data.numerical), len(data.binary + data.categorical)
         n = n_con + n_cat
-        # L1_distance, L0_distance = L1_L0(x, y, x_original, y_original, data)
         L1_distance, L0_distance = L1_L0(x, y, data)
         """
         Equation from Sharma et al.: Please see: https://arxiv.org/pdf/1905.07857.pdf
         """
         distance = (n_con/n)*L1_distance + (n_cat/n)*L0_distance
-    elif type == 'L1_L0_L_inf':
-        distance = L1_L0_L_inf(x, y, x_original, y_original, data)
-    elif type == 'prob':
-        distance = max_percentile_shift(x_original, y_original, data)
     return distance
 
 class Evaluator():
@@ -829,7 +754,7 @@ class Evaluator():
                 sensitive_group = f'{feature}: {feat_val_name}'
                 cf_proximity = distance_calculation(instance, normal_cf, kwargs={'dat':data, 'type':counterfactual.type})
                 cf_feasibility = verify_feasibility(instance, normal_cf, data)
-                data_list = [counterfactual.method, counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta1, counterfactual.delta2, counterfactual.delta3,
+                data_list = [counterfactual.method, counterfactual.alpha, 0, 0, 0, 0, 0,
                             feature, feat_val_name, sensitive_group, idx, idx, instance, original_instance,
                             normal_cf, original_cf, cf_proximity/len_positives_sensitive_group, cf_feasibility, likelihood, effectiveness, counterfactual.cf_method.run_time, 
                             counterfactual.cf_method.model_status, counterfactual.cf_method.obj_val]
@@ -880,8 +805,7 @@ class Evaluator():
             cf_proximity = distance_calculation(normal_x, normal_cf, kwargs={'dat':data, 'type':counterfactual.type})
             cf_feasibility = verify_feasibility(normal_x, normal_cf, data)
             sensitive_group = f'{feat}: {feat_val_name}'
-            data_list = ['ARES', counterfactual.alpha, counterfactual.beta, counterfactual.gamma, 
-                         counterfactual.delta1, counterfactual.delta2, counterfactual.delta3, feat, feat_val_name, sensitive_group, q_c_c_prime, instance_idx, instance_idx, normal_x, x, normal_cf, 
+            data_list = ['ARES', counterfactual.alpha, 0, 0, 0, 0, 0, feat, feat_val_name, sensitive_group, q_c_c_prime, instance_idx, instance_idx, normal_x, x, normal_cf, 
                          original_cf, cf_proximity/len_positives_sensitive_group, cf_feasibility, rho[instance_idx], eta[instance_idx], run_time, 2, 'NA']
             data_df = pd.DataFrame(data=[data_list], index=[len(self.cf_df)], columns=cols)
             self.cf_df = pd.concat((self.cf_df, data_df),axis=0)
@@ -915,8 +839,7 @@ class Evaluator():
                 cf_proximity = distance_calculation(normal_x, normal_cf, kwargs={'dat':data, 'type':counterfactual.type})
                 cf_feasibility = verify_feasibility(normal_x, normal_cf, data)
                 sensitive_group = f'{centroid.feat}: {feat_val_name}'
-                data_list = ['FACTS', counterfactual.alpha, counterfactual.beta, counterfactual.gamma, 
-                            counterfactual.delta1, counterfactual.delta2, counterfactual.delta3, centroid.feat, feat_val_name, sensitive_group, action, idx, idx, normal_x, centroid.x, normal_cf, 
+                data_list = ['FACTS', counterfactual.alpha, 0, 0, 0, 0, 0, centroid.feat, feat_val_name, sensitive_group, action, idx, idx, normal_x, centroid.x, normal_cf, 
                             original_cf, cf_proximity/len_positives_sensitive_group, cf_feasibility, rho[idx], eta[idx], run_time, 2, 'NA']
                 data_df = pd.DataFrame(data=[data_list], index=[len(self.cf_df)], columns=cols)
                 self.cf_df = pd.concat((self.cf_df, data_df),axis=0)

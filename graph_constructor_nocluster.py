@@ -191,7 +191,8 @@ def get_all_costs_weights_parallel(data, feat, sensitive_feature_instances, all_
     feat_value = sensitive_group_idx_feat_value_dict[original_instance_idx]
     len_positives_sensitive_group = estimate_sensitive_group_positive(data, feat, feat_value)
     distance = distance/(len_positives_sensitive_group)
-    return instance_idx, k, distance
+    distance2 = distance**2
+    return instance_idx, k, distance, distance2
     
 def get_graph_nodes_parallel(data, model, sensitive_feature_instances, train_cf, distance_threshold, feat_possible_values, k, instance_idx, ioi_label, type):
     """
@@ -265,7 +266,7 @@ class Graph:
         print('-------------------------------------------------------------------------')
         print('----------------------------Constructing Graph---------------------------')
         print('-------------------------------------------------------------------------')
-        self.feat_possible_values, self.C, self.F, self.rho, self.eta = self.construct_graph(data, model, type)
+        self.feat_possible_values, self.C, self.C2, self.F, self.rho, self.eta = self.construct_graph(data, model, type)
 
     def find_sensitive_feat_instances(self, data, feat_values):
         """
@@ -318,7 +319,7 @@ class Graph:
         print(f'Extracted all possible feature value permutations from training CF. Getting Graph Nodes...')
         self.all_nodes = self.get_graph_nodes(data, model, feat_possible_values, type)
         print(f'Obtained all possible nodes in the graph: {len(self.all_nodes)}. Calculating costs...')
-        C = self.get_all_costs_weights(data, type)
+        C, C2 = self.get_all_costs_weights(data, type)
         print(f'Obtained all costs in the graph')
         F = self.get_all_feasibility(data)
         print(f'Obtained all feasibility in the graph')
@@ -326,7 +327,7 @@ class Graph:
         print(f'Obtained all Likelihood parameter')
         eta = self.get_all_effectiveness(F)
         print(f'Obtained all effectiveness parameter')
-        return feat_possible_values, C, F, rho, eta
+        return feat_possible_values, C, C2, F, rho, eta
 
     def get_feat_possible_values(self, data, model, obj=None, points=None):
         """
@@ -383,7 +384,7 @@ class Graph:
         """
         Method that outputs the cost parameters required for optimization
         """
-        C = {}
+        C, C2 = {}, {}
         print(f'Starting pairwise distances...')
         start_time = time.time()
         results_list = Parallel(n_jobs=number_cores, verbose=10, prefer='processes')(delayed(get_all_costs_weights_parallel)(data,
@@ -397,11 +398,12 @@ class Graph:
                                                                                                                              type
                                                                                                                              ) for k in range(1, len(self.all_nodes) + 1) for instance_idx in range(1, len(self.sensitive_feature_instances) + 1)
                                                                                     )
-        for instance_idx, k, distance in results_list:
+        for instance_idx, k, distance, distance2 in results_list:
             C[instance_idx, k] = distance
+            C2[instance_idx, k] = distance2
         end_time = time.time()
         print(f'Total cost calculation time (s): {(end_time - start_time)}')
-        return C
+        return C, C2
 
     def get_all_feasibility(self, data):
         """

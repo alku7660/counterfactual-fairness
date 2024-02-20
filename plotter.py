@@ -1424,8 +1424,8 @@ def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_di
                     top=0.9,
                     wspace=0.3,
                     hspace=0.1)
-    fig.suptitle('Performance of BIGRACE, ARES and FACTS')
-    plt.savefig(results_cf_plots_dir+'all_datasets_all_methods.pdf',format='pdf',dpi=400)
+    fig.suptitle('Proximity performance of CounterFair')
+    plt.savefig(results_cf_plots_dir+'proximity_performance.pdf',format='pdf',dpi=400)
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange']
 colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','Non-white':'dimgray',
