@@ -1380,7 +1380,7 @@ def proximity_across_alpha_counterfair(datasets):
         data_name = dataset_names[data_str]
         eval_alpha_10 = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl').cf_df
         eval_alpha_05 = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl').cf_df
-        eval_alpha_01 = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl').cf_df
+        eval_alpha_01 = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl').cf_df
         all_alphas = pd.concat((eval_alpha_10, eval_alpha_05, eval_alpha_01), axis=0)
         b0 = sns.barplot(x=all_alphas['Method'], y=all_alphas['Distance'], hue=all_alphas['alpha'], ax=axes[dataset_idx, 0], errwidth=0.5, capsize=0.1, estimator=sum)
         b1 = sns.barplot(x=all_alpha_05['Method'], y=all_alpha_05['Distance'], hue=all_alpha_05['Sensitive group'], ax=axes[dataset_idx, 1], errwidth=0.5, capsize=0.1, estimator=sum)
