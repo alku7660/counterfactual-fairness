@@ -140,7 +140,11 @@ class BIGRACE:
         """
         cf = opt_model.addVars(set_Instances, G.nodes, vtype=GRB.BINARY, name='Counterfactual')
         limiter = opt_model.addVars(G.nodes, vtype=GRB.BINARY, name='Limiter')
-            
+        
+        # Variables required for deviation minimization
+        max_burden = opt_model.addVar(vtype=GRB.CONTINUOUS, name='Max Burden')
+        min_burden = opt_model.addVar(vtype=GRB.CONTINUOUS, name='Min Burden')
+
         """
         CONSTRAINTS AND OBJECTIVE
         """
@@ -154,6 +158,12 @@ class BIGRACE:
         for i in set_Instances:
             for n in G.nodes:
                 opt_model.addConstr(cf[i, n] <= limiter[n])
+        
+        # Constraints required for deviation minimization
+        for i in set_Instances:
+            for n in G.nodes:
+                opt_model.addConstr(cf[i, n]*graph.C[i, n] <= max_burden)
+                opt_model.addConstr(cf[i, n]*graph.C[i, n] >= min_burden)
 
         # def calculate_s_dist(cf, C, centroids_idx, nodes_idx):
         #     c_dist = cf.prod(C)/len(centroids_idx)
@@ -193,8 +203,12 @@ class BIGRACE:
             
         # EXPERIMENT 4: Minimization of burden variance
         elif self.dev == True:
-            total_pairings = gp.quicksum(cf[i, n] for i in set_Instances for n in G.nodes)
-            opt_model.setObjective(cf.prod(graph.C2)/total_pairings - (cf.prod(graph.C)/total_pairings)**2, GRB.MINIMIZE)
+            # total_pairings = gp.quicksum(cf[i, n] for i in set_Instances for n in G.nodes)
+            # opt_model.Params.NodefileStart = 0.5
+            # opt_model.Params.PreSparsify = 1
+            # opt_model.Params.Threads = 4
+            # opt_model.setObjective((cf.prod(graph.C2))*total_pairings - (cf.prod(graph.C))**2, GRB.MINIMIZE)
+            opt_model.setObjective(max_burden - min_burden, GRB.MINIMIZE)
 
         # EXPERIMENT 5: Maximize effectiveness
         elif self.eff == True:
