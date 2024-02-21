@@ -1373,28 +1373,34 @@ def proximity_across_alpha_counterfair(datasets):
 
     OUTPUT: (None: plot stored)
     """
-    def get_original_instances_for_cf(cf, eval):
+    def get_original_instances_for_cf(cf, eval_df):
         """
         Gets the unique original instances for the CFs given
         """
-        original_instances_with_cf = eval.loc[eval['cf'].values == cf]['centroid'].values
+        position_list = list(np.prod(np.isin(np.concatenate((eval_df['cf'].values), axis=0), cf), axis=1))
+        indices = [eval_df.index[i] for i in range(len(position_list)) if position_list[i] == 1]
+        original_instances_with_cf = eval_df.loc[indices, 'centroid'].values
+        original_instances_with_cf = [i[:-1] for i in original_instances_with_cf]
         return original_instances_with_cf
 
     dataset_names = get_data_names(datasets)
-    fig, axes = plt.subplots(nrows=len(datasets), ncols=2)
+    fig, axes = plt.subplots(nrows=len(datasets), ncols=2, figsize=(11, 8))
     for dataset_idx in range(len(datasets)):
         data_str = datasets[dataset_idx]
         data_name = dataset_names[data_str]
-        eval_alpha_10 = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl').cf_df
-        eval_alpha_05 = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl').cf_df
-        eval_alpha_01 = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl').cf_df
-        all_alphas = pd.concat((eval_alpha_10, eval_alpha_05, eval_alpha_01), axis=0)
+        eval_alpha_10 = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl')
+        eval_alpha_05 = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl')
+        eval_alpha_01 = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl')
+        eval_alpha_10_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl').cf_df
+        eval_alpha_05_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl').cf_df
+        eval_alpha_01_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl').cf_df
+        all_alphas = pd.concat((eval_alpha_10_df, eval_alpha_05_df, eval_alpha_01_df), axis=0)
         b0 = sns.barplot(x=all_alphas['alpha'], y=all_alphas['Distance'], hue=all_alphas['Sensitive group'], ax=axes[dataset_idx, 0], errwidth=0.5, capsize=0.1, estimator=sum)
         
         secondary_ax_0 = axes[dataset_idx, 0].twinx()
-        n_different_cfs_alpha_10 = len(np.unique(eval_alpha_10['cf'].values))
-        n_different_cfs_alpha_05 = len(np.unique(eval_alpha_05['cf'].values))
-        n_different_cfs_alpha_01 = len(np.unique(eval_alpha_01['cf'].values))
+        n_different_cfs_alpha_10 = len(np.unique(np.concatenate((eval_alpha_10_df['cf'].values), axis=0), axis=0))
+        n_different_cfs_alpha_05 = len(np.unique(np.concatenate((eval_alpha_05_df['cf'].values), axis=0), axis=0))
+        n_different_cfs_alpha_01 = len(np.unique(np.concatenate((eval_alpha_01_df['cf'].values), axis=0), axis=0))
         x_alphas = [f'$\\alpha = 1.0$',f'$\\alpha = 0.5$',f'$\\alpha = 0.1$']
         y_n_different_cfs = [n_different_cfs_alpha_10,n_different_cfs_alpha_05,n_different_cfs_alpha_01]
         secondary_ax_0.plot(x_alphas, y_n_different_cfs, c='black')
@@ -1405,13 +1411,13 @@ def proximity_across_alpha_counterfair(datasets):
         axes[dataset_idx, 1].set(xlabel='Features')
         axes[dataset_idx, 1].set(ylabel='Feature values')
         axes[dataset_idx, 1].set_xticklabels(features, rotation = 45)
-        unique_cfs_np_array = np.unique(eval_alpha_01['cf'].values)
+        unique_cfs_np_array = np.unique(np.concatenate((eval_alpha_01_df['cf'].values), axis=0), axis=0)
         color_idx = 0
         for unique_cf in unique_cfs_np_array:
             color = colors_list[color_idx]
-            original_instances_with_cf = get_original_instances_for_cf(unique_cf, eval)
+            original_instances_with_cf = get_original_instances_for_cf(unique_cf, eval_alpha_01_df)
             for original_instance in original_instances_with_cf:
-                axes[dataset_idx, 1].plot(features, original_instance, color=color, alpha=0.2)
+                axes[dataset_idx, 1].plot(features, original_instance, color=color, alpha=0.1)
             group_mean = np.mean(original_instances_with_cf, axis=0)
             axes[dataset_idx, 1].plot(features, group_mean, color=color)
             color_idx += 1
@@ -1431,8 +1437,8 @@ def proximity_across_alpha_counterfair(datasets):
                     bottom=0.10,
                     right=0.8,
                     top=0.9,
-                    wspace=0.3,
-                    hspace=0.1)
+                    wspace=0.5,
+                    hspace=0.25)
     fig.suptitle('Proximity performance of CounterFair')
     plt.savefig(results_cf_plots_dir+'proximity_performance.pdf',format='pdf',dpi=400)
 
