@@ -189,7 +189,7 @@ class BIGRACE:
         
         # EXPERIMENT 1, 2, 3: alpha = [1.0, 0.5, 0.1]
         if self.dev == False and self.eff == False: 
-            opt_model.setObjective(cf.prod(graph.C)*self.alpha + gp.quicksum(limiter[n] for n in G.nodes)*(1 - self.alpha), GRB.MINIMIZE)
+            opt_model.setObjective(cf.prod(graph.C)*self.alpha + gp.quicksum(limiter[n] for n in G.nodes)/len(set_Instances)*(1 - self.alpha), GRB.MINIMIZE)
             
         # EXPERIMENT 4: Minimization of burden variance
         elif self.dev == True:
