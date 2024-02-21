@@ -1384,7 +1384,7 @@ def proximity_across_alpha_counterfair(datasets):
         return original_instances_with_cf
 
     dataset_names = get_data_names(datasets)
-    fig, axes = plt.subplots(nrows=len(datasets), ncols=2, figsize=(11, 8))
+    fig, axes = plt.subplots(nrows=len(datasets), ncols=3, figsize=(8, 11), gridspec_kw={'width_ratios': [2, 1, 4]})
     for dataset_idx in range(len(datasets)):
         data_str = datasets[dataset_idx]
         data_name = dataset_names[data_str]
@@ -1397,47 +1397,51 @@ def proximity_across_alpha_counterfair(datasets):
         all_alphas = pd.concat((eval_alpha_10_df, eval_alpha_05_df, eval_alpha_01_df), axis=0)
         b0 = sns.barplot(x=all_alphas['alpha'], y=all_alphas['Distance'], hue=all_alphas['Sensitive group'], ax=axes[dataset_idx, 0], errwidth=0.5, capsize=0.1, estimator=sum)
         
-        secondary_ax_0 = axes[dataset_idx, 0].twinx()
         n_different_cfs_alpha_10 = len(np.unique(np.concatenate((eval_alpha_10_df['cf'].values), axis=0), axis=0))
         n_different_cfs_alpha_05 = len(np.unique(np.concatenate((eval_alpha_05_df['cf'].values), axis=0), axis=0))
         n_different_cfs_alpha_01 = len(np.unique(np.concatenate((eval_alpha_01_df['cf'].values), axis=0), axis=0))
-        x_alphas = [f'$\\alpha = 1.0$',f'$\\alpha = 0.5$',f'$\\alpha = 0.1$']
-        y_n_different_cfs = [n_different_cfs_alpha_10,n_different_cfs_alpha_05,n_different_cfs_alpha_01]
-        secondary_ax_0.plot(x_alphas, y_n_different_cfs, c='black')
-        secondary_ax_0.set(ylabel='# Group CFs')
+        x_alphas = [0.1, 0.5, 1.0]
+        y_n_different_cfs = [n_different_cfs_alpha_01,n_different_cfs_alpha_05,n_different_cfs_alpha_10]
+        axes[dataset_idx, 1].plot(x_alphas, y_n_different_cfs)
+        axes[dataset_idx, 1].set(ylabel='Number of groups')
         
         features = eval_alpha_01.raw_data_cols
-        axes[dataset_idx, 1].set_title('Feature values per identified group')
-        axes[dataset_idx, 1].set(xlabel='Features')
-        axes[dataset_idx, 1].set(ylabel='Feature values')
-        axes[dataset_idx, 1].set_xticklabels(features, rotation = 45)
+        font_dict = {'horizontalalignment':'right'}
+        axes[dataset_idx, 2].set(ylabel='Feature values')
+        axes[dataset_idx, 2].set_xticklabels(features, rotation = 35, fontdict=font_dict)
         unique_cfs_np_array = np.unique(np.concatenate((eval_alpha_01_df['cf'].values), axis=0), axis=0)
         color_idx = 0
         for unique_cf in unique_cfs_np_array:
             color = colors_list[color_idx]
             original_instances_with_cf = get_original_instances_for_cf(unique_cf, eval_alpha_01_df)
-            for original_instance in original_instances_with_cf:
-                axes[dataset_idx, 1].plot(features, original_instance, color=color, alpha=0.1)
+            # for original_instance in original_instances_with_cf:
+            #     axes[dataset_idx, 2].plot(features, original_instance, color=color, alpha=0.1)
             group_mean = np.mean(original_instances_with_cf, axis=0)
-            axes[dataset_idx, 1].plot(features, group_mean, color=color)
+            axes[dataset_idx, 2].plot(features, group_mean, color=color)
             color_idx += 1
         
         b0.legend([], [], frameon=False)
-        b0.legend(bbox_to_anchor=(2.01,1), frameon=False, prop={'size': 6}) #
+        b0.legend(bbox_to_anchor=(10,1), frameon=False, prop={'size': 6}) #
         b0.set(xlabel=None)
         b0.set(ylabel=data_name)
         if dataset_idx == 0:
             b0.set_title(f'Burden vs. $\\alpha$')
+            axes[dataset_idx, 1].set_title('Number of different groups identified')
+            axes[dataset_idx, 2].set_title('Feature values per identified group')
         if dataset_idx < len(datasets) - 1:
             b0.set_xticklabels([])
+            axes[dataset_idx, 1].set_xticklabels([])
         if dataset_idx == len(datasets) - 1:
+            b0.set(xlabel=f'$\\alpha$')
+            axes[dataset_idx, 1].set(xlabel=f'$\\alpha$')
+            axes[dataset_idx, 2].set(xlabel='Features')
             xticklabels_alpha = x_alphas
-            b0.set_xticklabels(xticklabels_alpha, rotation = 45)
+            b0.set_xticklabels(xticklabels_alpha)
     fig.subplots_adjust(left=0.075,
                     bottom=0.10,
-                    right=0.8,
+                    right=0.95,
                     top=0.9,
-                    wspace=0.5,
+                    wspace=0.2,
                     hspace=0.25)
     fig.suptitle('Proximity performance of CounterFair')
     plt.savefig(results_cf_plots_dir+'proximity_performance.pdf',format='pdf',dpi=400)
