@@ -15,7 +15,7 @@ import os
 
 # LIST OF DATASETS TO RUN: 'synthetic_athlete','compass','german','student','dutch','oulad','adult','credit','law'
 datasets_zeus = ['oulad']
-datasets_home = ['synthetic_athlete','compass','german','student']
+datasets_home = ['compass','german','student']
 datasets_thor = ['law','dutch','credit']
 # Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
 
@@ -45,7 +45,7 @@ lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 likelihood_factors = [0.5] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5] This is used to calculate a minimum rho admitted for each CF found
 # t = 100 # Number of preselected close NN Training Counterfactuals
 # k = 10
-weight = 0.5
+weight = 0.1
 np.random.seed(seed_int)
 
 def percentage_close_train(dataset):
