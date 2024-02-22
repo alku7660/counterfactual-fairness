@@ -14,9 +14,9 @@ from support import save_obj
 import os
 
 # LIST OF DATASETS TO RUN: 'synthetic_athlete','compass','german','student','dutch','oulad','adult','credit'
-datasets_zeus = ['adult']
+datasets_zeus = ['dutch']
 datasets_home = ['synthetic_athlete','compass','german','student']
-datasets_thor = ['oulad','credit']
+datasets_thor = ['adult','credit']
 # Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
 
 print(os.getcwd())
