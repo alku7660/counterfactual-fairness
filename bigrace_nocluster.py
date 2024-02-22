@@ -212,7 +212,7 @@ class BIGRACE:
 
         # EXPERIMENT 5: Maximize effectiveness
         elif self.eff == True:
-            opt_model.setObjective(gp.quicksum(cf[c, i]*graph.eta[i] for i in G.nodes for c in set_Instances), GRB.MINIMIZE)
+            opt_model.setObjective(-gp.quicksum(cf[c, i]*graph.eta[i] for i in G.nodes for c in set_Instances), GRB.MINIMIZE)
 
         """
         OPTIMIZATION AND RESULTS
