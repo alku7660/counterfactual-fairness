@@ -1353,9 +1353,9 @@ def proximity_across_alpha_counterfair(datasets):
     fig.suptitle('Proximity and Number of Subgroups identified by CounterFair')
     plt.savefig(results_cf_plots_dir+'proximity_subgroups_counterfair.pdf',format='pdf',dpi=400)
 
-def parallel_coordinates(data, features):
+def parallel_coordinates(data, features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_list_per_group, max_list_per_group):
 
-    data_new = data[:,:-1].astype(float)
+    data_new = data[:,:-1]
     fig, host = plt.subplots()
     # features = features[:-1]
     # N1 = np.sum(data[:,-1] == 1)
@@ -1380,27 +1380,35 @@ def parallel_coordinates(data, features):
 
     # organize the data
     # ys = np.dstack([y1, y2, y3, y4, y5])[0]
-    data_new_min = data_new.min(axis=0)
-    data_new_max = data_new.max(axis=0)
+    # data_new_min = data_new.min(axis=0)
+    # data_new_max = data_new.max(axis=0)
+    # data_new_range = data_new_max - data_new_min
+    # data_new_min -= data_new_range * 0.05  # add 5% padding below and above
+    # data_new_max += data_new_range * 0.05
+    # data_new_range = data_new_max - data_new_min
+
+    data_new_min = min_all[:-1]
+    data_new_max = max_all[:-1]
     data_new_range = data_new_max - data_new_min
     data_new_min -= data_new_range * 0.05  # add 5% padding below and above
     data_new_max += data_new_range * 0.05
     data_new_range = data_new_max - data_new_min
-    data_new_mean = np.mean(data_new, axis=0)
-    data_new_std = np.std(data_new, axis=0)
-    data_new_mean_minus_std = data_new_mean - data_new_std
-    data_new_mean_plus_std = data_new_mean + data_new_std
 
     # transform all data_new to be compatible with the main axis
     norm_data = np.zeros_like(data_new)
-    mean_minus_std = np.zeros_like(data_new)
-    mean_plus_std = np.zeros_like(data_new)
     norm_data[:, 0] = data_new[:, 0]
-    mean_minus_std[:, 0] = data_new_mean_minus_std[:, 0]
-    mean_plus_std[:, 0] = data_new_mean_plus_std[:, 0]
     norm_data[:, 1:] = (data_new[:, 1:] - data_new_min[1:]) / data_new_range[1:] * data_new_range[0] + data_new_min[0]
-    mean_minus_std[:, 1:] = (data_new_mean_minus_std[:, 1:] - data_new_min[1:]) / data_new_range[1:] * data_new_range[0] + data_new_min[0]
-    mean_plus_std[:, 1:] = (data_new_mean_plus_std[:, 1:] - data_new_min[1:]) / data_new_range[1:] * data_new_range[0] + data_new_min[0]
+    norm_mean_minus_std_list, norm_mean_plus_std_list = [], []
+    for group in mean_minus_std_list:
+        group = (group[:-1] - data_new_min) / data_new_range * data_new_range[0] + data_new_min[0]
+        group[group < 0.0] = 0.0
+        norm_mean_minus_std_list.append(group)
+    for group in mean_plus_std_list:
+        group = (group[:-1] - data_new_min) / data_new_range * data_new_range[0] + data_new_min[0]
+        group[group < 0.0] = 0.0
+        norm_mean_plus_std_list.append(group)
+    norm_mean_minus_std_np = np.concatenate([norm_mean_minus_std_list]).astype(float)
+    norm_mean_plus_std_np = np.concatenate([norm_mean_plus_std_list]).astype(float)
 
     axes = [host] + [host.twinx() for i in range(data_new.shape[1] - 1)]
     for i, ax in enumerate(axes):
@@ -1421,10 +1429,15 @@ def parallel_coordinates(data, features):
     host.set_title('Parallel Coordinates Plot', fontsize=18)
 
     colors = plt.cm.tab10.colors
+    used_colors = []
     for j in range(N):
         # to just draw straight lines between the axes:
-        host.plot(range(data_new.shape[1]), norm_data[j,:], c=colors[(category[j] - 1) % len(colors)])
-        host.fill_between(range(data_new.shape[1]), mean_minus_std[j,:], mean_plus_std[j,:], c=colors[(category[j] - 1) % len(colors)], alpha=0.1)
+        color_to_use = colors[(category[j] - 1) % len(colors)]
+        if color_to_use not in used_colors:
+            used_colors.append(color_to_use)
+        host.plot(range(data_new.shape[1]), norm_data[j,:], c=color_to_use)
+    for i in range(len(used_colors)):
+        host.fill_between(range(data_new.shape[1]), norm_mean_minus_std_np[i], norm_mean_plus_std_np[i], color=used_colors[i], alpha=0.1)
         # create bezier curves
         # for each axis, there will a control vertex at the point itself, one at 1/3rd towards the previous and one
         #   at one third towards the next axis; the first and last axis have one less control vertex
@@ -1439,7 +1452,6 @@ def parallel_coordinates(data, features):
         # host.add_patch(patch)
     # plt.tight_layout()
     # plt.show()
-
     return plt
 
 def parallel_plots_alpha_01(datasets):
@@ -1482,16 +1494,30 @@ def parallel_plots_alpha_01(datasets):
         group_idx = 1
         colors_dict = {}
         features_with_sensitive_group.extend(['sensitive_group'])
-        compilation_df = pd.DataFrame(columns=features_with_sensitive_group)
+        compilation_mean_np_list, mean_minus_std_list, mean_plus_std_list, min_per_group_list, max_per_group_list = [], [], [], [], []
+        compilation_all_df = pd.DataFrame(columns=original_features)
         for unique_cf in unique_cfs_np_array:
             original_instances_with_cf_with_sensitive_group = get_original_instances_for_cf(unique_cf, eval_alpha_01_df, group_idx)
             original_instances_with_cf_with_sensitive_group_df = pd.DataFrame(data=original_instances_with_cf_with_sensitive_group, columns=features_with_sensitive_group)
             original_instances_with_cf_with_sensitive_group_df[original_features] = original_instances_with_cf_with_sensitive_group_df[original_features].apply(pd.to_numeric)
-            compilation_df = pd.concat([compilation_df, original_instances_with_cf_with_sensitive_group_df], axis=0)
+            mean_feature_value_per_group = np.mean(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
+            std_feature_value_per_group = np.std(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
+            min_feature_value_per_group = np.min(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
+            max_feature_value_per_group = np.max(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
+            mean_minus_std_feature_value_per_group = mean_feature_value_per_group - std_feature_value_per_group
+            mean_plus_std_feature_value_per_group = mean_feature_value_per_group + std_feature_value_per_group
+            compilation_mean_np_list.append(mean_feature_value_per_group)
+            mean_minus_std_list.append(mean_minus_std_feature_value_per_group)
+            mean_plus_std_list.append(mean_plus_std_feature_value_per_group)
+            min_per_group_list.append(min_feature_value_per_group)
+            max_per_group_list.append(max_feature_value_per_group)
             colors_dict.update({group_idx:colors_list[group_idx]})
+            compilation_all_df = pd.concat([compilation_all_df, original_instances_with_cf_with_sensitive_group_df], axis=0)
             group_idx += 1
-        compilation_np = compilation_df.values
-        parallel_coordinates(compilation_np, original_features).savefig(results_cf_plots_dir+str(data_str)+'_subgroups_details_counterfair.pdf', format='pdf', dpi=400)
+        min_all = np.min(compilation_all_df, axis=0).values
+        max_all = np.max(compilation_all_df, axis=0).values
+        compilation_mean_np = np.concatenate([compilation_mean_np_list])
+        parallel_coordinates(compilation_mean_np, original_features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_per_group_list, max_per_group_list).savefig(results_cf_plots_dir+str(data_str)+'_subgroups_details_counterfair.pdf', format='pdf', dpi=400)
         # fig.show()
         # fig.write_image(results_cf_plots_dir+str(data_str)+'_subgroups_details_counterfair.pdf')
     
