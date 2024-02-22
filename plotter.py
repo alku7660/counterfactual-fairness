@@ -1353,10 +1353,10 @@ def proximity_across_alpha_counterfair(datasets):
     fig.suptitle('Proximity and Number of Subgroups identified by CounterFair')
     plt.savefig(results_cf_plots_dir+'proximity_subgroups_counterfair.pdf',format='pdf',dpi=400)
 
-def parallel_coordinates(data, features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_list_per_group, max_list_per_group):
+def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_list_per_group, max_list_per_group):
 
     data_new = data[:,:-1]
-    fig, host = plt.subplots()
+    fig, host = plt.subplots(figsize=(8, 5))
     # features = features[:-1]
     # N1 = np.sum(data[:,-1] == 1)
     # N2 = np.sum(data[:,-1] == 2)
@@ -1416,17 +1416,19 @@ def parallel_coordinates(data, features, mean_minus_std_list, mean_plus_std_list
         ax.spines['top'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
         if ax != axes:
-            ax.spines['left'].set_visible(False)
+            # ax.spines['left'].set_visible(False)
             ax.yaxis.set_ticks_position('right')
             ax.spines["right"].set_position(("axes", i / (data_new.shape[1] - 1)))
 
     host.set_xlim(0, data_new.shape[1] - 1)
     host.set_xticks(range(data_new.shape[1]))
-    host.set_xticklabels(features, fontsize=14)
-    host.tick_params(axis='x', which='major', pad=7)
+    host.set_xticklabels(features, fontsize=12, rotation=30, va='bottom')
+    # host.xaxis.set_tick_params(which='both', top=False, labeltop=False,
+    #                         bottom=True, labelbottom=True)
+    host.tick_params(axis='x', which='major', pad=30)
     host.spines['right'].set_visible(False)
-    host.xaxis.tick_top()
-    host.set_title('Parallel Coordinates Plot', fontsize=18)
+    host.xaxis.tick_bottom()
+    host.set_title(f'{data_name}: CounterFair subgroups with $\\alpha = 0.1$', fontsize=16)
 
     colors = plt.cm.tab10.colors
     used_colors = []
@@ -1452,6 +1454,12 @@ def parallel_coordinates(data, features, mean_minus_std_list, mean_plus_std_list
         # host.add_patch(patch)
     # plt.tight_layout()
     # plt.show()
+    fig.subplots_adjust(left=0.05,
+                    bottom=0.15,
+                    right=0.9,
+                    top=0.9,
+                    wspace=0.2,
+                    hspace=0.2)
     return plt
 
 def parallel_plots_alpha_01(datasets):
@@ -1462,13 +1470,13 @@ def parallel_plots_alpha_01(datasets):
         """
         Gets the unique original instances for the CFs given
         """
-        position_list = list(np.prod(np.isin(np.concatenate((eval_df['cf'].values), axis=0), cf), axis=1))
-        indices = [eval_df.index[i] for i in range(len(position_list)) if position_list[i] == 1]
-        original_instances_with_cf = eval_df.loc[indices, 'centroid'].values
-        # sensitive_group_str = str(np.unique(eval_df.loc[indices, 'Sensitive group'].values))
+        indices = []
+        eval_cfs = np.concatenate((eval_df['cf'].values), axis=0)
+        for i, cf_in_eval in enumerate(eval_cfs):
+            if np.array_equal(cf_in_eval, cf):
+                indices.append(i)
+        original_instances_with_cf = eval_df.iloc[indices]['centroid']
         sensitive_group = group_idx
-        # sensitive_group.replace('[','')
-        # sensitive_group.replace(']','')
         original_instances_with_cf = [i[:-1] for i in original_instances_with_cf]
         original_instances_with_cf_with_sensitive_group = [np.concatenate([i,[sensitive_group]]) for i in original_instances_with_cf]
         original_instances_with_cf_with_sensitive_group = np.concatenate([original_instances_with_cf_with_sensitive_group], axis=0)
@@ -1478,10 +1486,6 @@ def parallel_plots_alpha_01(datasets):
     for dataset_idx in range(len(datasets)):
         data_str = datasets[dataset_idx]
         data_name = dataset_names[data_str]
-        # font_dict = {'horizontalalignment':'right'}
-        # axes[dataset_idx].set(ylabel='Feature values')
-        # axes[dataset_idx].set_xticks(range(len(original_features)))
-        # axes[dataset_idx].set_xticklabels(original_features, rotation = 35, fontdict=font_dict)
         eval_alpha_01 = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl')
         eval_alpha_01_df = eval_alpha_01.cf_df
         original_features = list(eval_alpha_01.raw_data_cols)
@@ -1517,17 +1521,9 @@ def parallel_plots_alpha_01(datasets):
         min_all = np.min(compilation_all_df, axis=0).values
         max_all = np.max(compilation_all_df, axis=0).values
         compilation_mean_np = np.concatenate([compilation_mean_np_list])
-        parallel_coordinates(compilation_mean_np, original_features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_per_group_list, max_per_group_list).savefig(results_cf_plots_dir+str(data_str)+'_subgroups_details_counterfair.pdf', format='pdf', dpi=400)
+        parallel_coordinates(data_name, compilation_mean_np, original_features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_per_group_list, max_per_group_list).savefig(results_cf_plots_dir+str(data_str)+'_subgroups_details_counterfair.pdf', format='pdf', dpi=400)
         # fig.show()
         # fig.write_image(results_cf_plots_dir+str(data_str)+'_subgroups_details_counterfair.pdf')
-    
-    # fig.subplots_adjust(left=0.075,
-    #                 bottom=0.10,
-    #                 right=0.95,
-    #                 top=0.9,
-    #                 wspace=0.2,
-    #                 hspace=0.25)
-    # fig.suptitle('Subgroups identified by CounterFair with $\\alpha = 0.1$')
 
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange', 'cyan', 'pink', 'black']
