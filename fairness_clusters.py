@@ -13,10 +13,10 @@ from sklearn.metrics import f1_score
 from support import save_obj
 import os
 
-# LIST OF DATASETS TO RUN: 'synthetic_athlete','compass','german','student','dutch','oulad','adult','credit','law'
-datasets_zeus = ['dutch']
+# LIST OF DATASETS TO RUN: 'synthetic_athlete','compass','german','student','dutch','oulad','adult','credit'
+datasets_zeus = ['adult']
 datasets_home = ['synthetic_athlete','compass','german','student']
-datasets_thor = ['law','dutch','credit']
+datasets_thor = ['oulad','credit']
 # Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
 
 print(os.getcwd())
@@ -58,10 +58,10 @@ def percentage_close_train(dataset):
     elif dataset in ['dutch']:
         percentage_close_train_cf = 0.1
         continuous_bins = 5
-    elif dataset in ['adult','credit']:
+    elif dataset in ['adult','credit','oulad']:
         percentage_close_train_cf = 0.05
         continuous_bins = 3
-    elif dataset in ['law','oulad']:
+    elif dataset in ['law']:
         percentage_close_train_cf = 0.01
         continuous_bins = 3
     return percentage_close_train_cf, continuous_bins
