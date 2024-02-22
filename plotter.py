@@ -14,11 +14,15 @@ from matplotlib.lines import Line2D
 from matplotlib import colors
 from matplotlib import cm
 from matplotlib.ticker import FormatStrFormatter
+from matplotlib.path import Path
+import matplotlib.patches as patches
 from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
 from fairness_clusters import datasets, methods_to_run, lagranges, likelihood_factors 
 import seaborn as sns
+# import plotly.express as px
+import matplotlib.ticker as ticker
 # sns.set_style("whitegrid")
 
 def extract_number_idx_instances_feat_val(original_x_df, feat_name, feat_unique_val):
@@ -1233,76 +1237,6 @@ def plot_centroids_cfs_ablation_lagrange_likelihood():
     fig.subplots_adjust(left=0.125, bottom=0.1, right=0.9, top=0.9, wspace=0.25, hspace=0.1)
     plt.savefig(f'{results_cf_plots_dir}{method_str}_lagrange_likelihood_ablation.pdf', format='pdf')
 
-# def proximity_all_datasets_all_methods_plot(datasets, methods, metric, colors_dict):
-#     """
-#     DESCRIPTION:        Obtains the accuracy weighted burden for each method and each dataset
-
-#     INPUT:
-#     datasets:           Names of the datasets
-#     methods:            Names of the methods
-#     metric:             Metric used (proximity, likelihood, effectiveness, variance)
-#     colors_dict:        Dictionary of colors to be used per feature
-
-#     OUTPUT: (None: plot stored)
-#     """
-#     methods_names = get_methods_names(methods)
-#     dataset_names = get_data_names(datasets)
-#     metric_names = get_metric_names([metric])
-#     metric_str = metric_names[metric]
-#     fig, ax = plt.subplots(nrows=len(datasets), ncols=len(methods), sharex=False, sharey=False, figsize=(8,13))
-#     for dataset_idx in range(len(datasets)):
-#         data_str = datasets[dataset_idx]
-
-
-
-#         for method_idx in range(len(methods)):
-#             method_str = methods[method_idx]
-#             eval_obj = load_obj(f'{data_str}_{method_str}_eval.pkl')
-#             protected_feat = eval_obj.feat_protected
-#             protected_feat_keys = list(protected_feat.keys())
-#             original_x_df = pd.concat(eval_obj.original_x.values(), axis=0)
-#             proximity_df = pd.DataFrame.from_dict(eval_obj.cf_proximity, orient='index', columns=['proximity'])
-#             nawb_list = []
-#             feat_list = []
-#             colors_list = []
-#             for feat_idx in range(len(protected_feat_keys)):
-#                 feat = protected_feat_keys[feat_idx]
-#                 feat_unique_val = eval_obj.desired_ground_truth_test_df[feat].unique()
-#                 len_feat_values, idx_feat_values = extract_number_idx_instances_feat_val(original_x_df, feat, feat_unique_val)
-#                 for feat_val_idx in range(len(feat_unique_val)):
-#                     feat_val_instances_idx = idx_feat_values[feat_val_idx]
-#                     feat_val_name = protected_feat[feat][np.round(feat_unique_val[feat_val_idx],2)]
-#                     total_ground_truth_feat_val = np.sum(eval_obj.desired_ground_truth_test_df[feat] == feat_unique_val[feat_val_idx])
-#                     total_false_undesired_feat_val = np.sum(eval_obj.false_undesired_test_df[feat] == feat_unique_val[feat_val_idx])
-#                     fnr = total_false_undesired_feat_val/total_ground_truth_feat_val
-#                     feat_method_data_values = proximity_df.loc[feat_val_instances_idx, 'proximity'].values
-#                     mean_burden = np.mean(feat_method_data_values)
-#                     nawb = fnr*mean_burden*100/len(eval_obj.data_cols)
-#                     if feat in ['isMale','isMarried']:
-#                         feat_val_name = feat+': '+feat_val_name
-#                     nawb_list.append(nawb)
-#                     feat_list.append(feat_val_name)
-#                     colors_list.append(colors_dict[feat_val_name])
-#             ax[dataset_idx, method_idx].bar(x=feat_list,height=nawb_list,color=colors_list)
-#             ax[dataset_idx, method_idx].set_xticklabels(feat_list, rotation = 30, ha='right')
-#             ax[dataset_idx, method_idx].axes.xaxis.set_visible(False)
-#             ax[dataset_idx, method_idx].yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-#     legend_handles = create_handles_awb(colors_dict)
-#     fig.subplots_adjust(wspace=0.1, hspace=0.1)
-#     for i in range(len(datasets)):
-#         ax[i,0].set_ylabel(dataset_names[datasets[i]])
-#     for j in range(len(methods)):
-#         ax[0,j].set_title(methods_names[methods[j]])
-#     fig.suptitle('Normalized Accuracy Weighted Burden ($NAWB_s$) (%)')
-#     fig.legend(loc='lower center', bbox_to_anchor=(0.5,0.00), ncol=6, fancybox=True, shadow=True, handles=legend_handles, prop={'size': 10})
-#     plt.subplots_adjust(left=0.09,
-#                     bottom=0.08,
-#                     right=0.975,
-#                     top=0.94,
-#                     wspace=0.25,
-#                     hspace=0.1)
-#     plt.savefig(results_cf_plots_dir+'normal_awb.pdf',format='pdf',dpi=400)
-
 def proximity_all_datasets_all_methods_plot(datasets, methods):
     """
     DESCRIPTION:        Obtains the accuracy weighted burden for each method and each dataset
@@ -1373,27 +1307,17 @@ def proximity_across_alpha_counterfair(datasets):
 
     OUTPUT: (None: plot stored)
     """
-    def get_original_instances_for_cf(cf, eval_df):
-        """
-        Gets the unique original instances for the CFs given
-        """
-        position_list = list(np.prod(np.isin(np.concatenate((eval_df['cf'].values), axis=0), cf), axis=1))
-        indices = [eval_df.index[i] for i in range(len(position_list)) if position_list[i] == 1]
-        original_instances_with_cf = eval_df.loc[indices, 'centroid'].values
-        original_instances_with_cf = [i[:-1] for i in original_instances_with_cf]
-        return original_instances_with_cf
-
     dataset_names = get_data_names(datasets)
-    fig, axes = plt.subplots(nrows=len(datasets), ncols=3, figsize=(8, 11), gridspec_kw={'width_ratios': [2, 1, 4]})
+    fig, axes = plt.subplots(nrows=len(datasets), ncols=2, figsize=(7, 10), gridspec_kw={'width_ratios': [5, 5]})
     for dataset_idx in range(len(datasets)):
         data_str = datasets[dataset_idx]
         data_name = dataset_names[data_str]
         eval_alpha_10 = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl')
         eval_alpha_05 = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl')
         eval_alpha_01 = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl')
-        eval_alpha_10_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl').cf_df
-        eval_alpha_05_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl').cf_df
-        eval_alpha_01_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl').cf_df
+        eval_alpha_10_df = eval_alpha_10.cf_df
+        eval_alpha_05_df = eval_alpha_05.cf_df
+        eval_alpha_01_df = eval_alpha_01.cf_df
         all_alphas = pd.concat((eval_alpha_10_df, eval_alpha_05_df, eval_alpha_01_df), axis=0)
         b0 = sns.barplot(x=all_alphas['alpha'], y=all_alphas['Distance'], hue=all_alphas['Sensitive group'], ax=axes[dataset_idx, 0], errwidth=0.5, capsize=0.1, estimator=sum)
         
@@ -1401,25 +1325,9 @@ def proximity_across_alpha_counterfair(datasets):
         n_different_cfs_alpha_05 = len(np.unique(np.concatenate((eval_alpha_05_df['cf'].values), axis=0), axis=0))
         n_different_cfs_alpha_01 = len(np.unique(np.concatenate((eval_alpha_01_df['cf'].values), axis=0), axis=0))
         x_alphas = [0.1, 0.5, 1.0]
-        y_n_different_cfs = [n_different_cfs_alpha_01,n_different_cfs_alpha_05,n_different_cfs_alpha_10]
-        axes[dataset_idx, 1].plot(x_alphas, y_n_different_cfs)
-        axes[dataset_idx, 1].set(ylabel='Number of groups')
-        
-        features = eval_alpha_01.raw_data_cols
-        font_dict = {'horizontalalignment':'right'}
-        axes[dataset_idx, 2].set(ylabel='Feature values')
-        axes[dataset_idx, 2].set_xticklabels(features, rotation = 35, fontdict=font_dict)
-        unique_cfs_np_array = np.unique(np.concatenate((eval_alpha_01_df['cf'].values), axis=0), axis=0)
-        color_idx = 0
-        for unique_cf in unique_cfs_np_array:
-            color = colors_list[color_idx]
-            original_instances_with_cf = get_original_instances_for_cf(unique_cf, eval_alpha_01_df)
-            # for original_instance in original_instances_with_cf:
-            #     axes[dataset_idx, 2].plot(features, original_instance, color=color, alpha=0.1)
-            group_mean = np.mean(original_instances_with_cf, axis=0)
-            axes[dataset_idx, 2].plot(features, group_mean, color=color)
-            color_idx += 1
-        
+        y_n_different_cfs = [n_different_cfs_alpha_01, n_different_cfs_alpha_05, n_different_cfs_alpha_10]
+        axes[dataset_idx, 1].bar(x=x_alphas, height=y_n_different_cfs)
+
         b0.legend([], [], frameon=False)
         b0.legend(bbox_to_anchor=(10,1), frameon=False, prop={'size': 6}) #
         b0.set(xlabel=None)
@@ -1427,24 +1335,174 @@ def proximity_across_alpha_counterfair(datasets):
         if dataset_idx == 0:
             b0.set_title(f'Burden vs. $\\alpha$')
             axes[dataset_idx, 1].set_title('Number of different groups identified')
-            axes[dataset_idx, 2].set_title('Feature values per identified group')
         if dataset_idx < len(datasets) - 1:
             b0.set_xticklabels([])
             axes[dataset_idx, 1].set_xticklabels([])
         if dataset_idx == len(datasets) - 1:
             b0.set(xlabel=f'$\\alpha$')
             axes[dataset_idx, 1].set(xlabel=f'$\\alpha$')
-            axes[dataset_idx, 2].set(xlabel='Features')
             xticklabels_alpha = x_alphas
             b0.set_xticklabels(xticklabels_alpha)
+            axes[dataset_idx, 1].set_xticklabels(x_alphas)
     fig.subplots_adjust(left=0.075,
                     bottom=0.10,
                     right=0.95,
                     top=0.9,
                     wspace=0.2,
                     hspace=0.25)
-    fig.suptitle('Proximity performance of CounterFair')
-    plt.savefig(results_cf_plots_dir+'proximity_performance.pdf',format='pdf',dpi=400)
+    fig.suptitle('Proximity and Number of Subgroups identified by CounterFair')
+    plt.savefig(results_cf_plots_dir+'proximity_subgroups_counterfair.pdf',format='pdf',dpi=400)
+
+def parallel_coordinates(data, features):
+
+    data_new = data[:,:-1].float()
+    fig, host = plt.subplots()
+    # features = features[:-1]
+    # N1 = np.sum(data[:,-1] == 1)
+    # N2 = np.sum(data[:,-1] == 2)
+    # N3 = np.sum(data[:,-1] == 3)
+    # category = np.concatenate([np.full(N1, 1), np.full(N2, 2), np.full(N3, 3)])
+    N = len(data_new)
+    category_list = []
+    group_values = np.unique(data[:,-1])
+    for group_value in group_values:
+        N_group = np.sum(data[:,-1] == group_value)
+        category_list.append(np.full(N_group, int(group_value)))
+    category = np.concatenate(category_list)
+    # create some dummy data
+    # N1, N2, N3 = 10, 5, 8
+    # N = N1 + N2 + N3
+    # y1 = np.random.uniform(0, 10, N) + 7 * category
+    # y2 = np.sin(np.random.uniform(0, np.pi, N)) ** category
+    # y3 = np.random.binomial(300, 1 - category / 10, N)
+    # y4 = np.random.binomial(200, (category / 6) ** 1/3, N)
+    # y5 = np.random.uniform(0, 800, N)
+
+    # organize the data
+    # ys = np.dstack([y1, y2, y3, y4, y5])[0]
+    data_new_min = data_new.min(axis=0)
+    data_new_max = data_new.max(axis=0)
+    data_new_range = data_new_max - data_new_min
+    data_new_min -= data_new_range * 0.05  # add 5% padding below and above
+    data_new_max += data_new_range * 0.05
+    data_new_range = data_new_max - data_new_min
+    data_new_mean = np.mean(data_new, axis=0)
+    data_new_std = np.std(data_new, axis=0)
+    data_new_mean_minus_std = data_new_mean - data_new_std
+    data_new_mean_plus_std = data_new_mean + data_new_std
+
+    # transform all data_new to be compatible with the main axis
+    norm_data = np.zeros_like(data_new)
+    mean_minus_std = np.zeros_like(data_new)
+    mean_plus_std = np.zeros_like(data_new)
+    norm_data[:, 0] = data_new[:, 0]
+    mean_minus_std[:, 0] = data_new_mean_minus_std[:, 0]
+    mean_plus_std[:, 0] = data_new_mean_plus_std[:, 0]
+    norm_data[:, 1:] = (data_new[:, 1:] - data_new_min[1:]) / data_new_range[1:] * data_new_range[0] + data_new_min[0]
+    mean_minus_std[:, 1:] = (data_new_mean_minus_std[:, 1:] - data_new_min[1:]) / data_new_range[1:] * data_new_range[0] + data_new_min[0]
+    mean_plus_std[:, 1:] = (data_new_mean_plus_std[:, 1:] - data_new_min[1:]) / data_new_range[1:] * data_new_range[0] + data_new_min[0]
+
+    axes = [host] + [host.twinx() for i in range(data_new.shape[1] - 1)]
+    for i, ax in enumerate(axes):
+        ax.set_ylim(data_new_min[i], data_new_max[i])
+        ax.spines['top'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        if ax != axes:
+            ax.spines['left'].set_visible(False)
+            ax.yaxis.set_ticks_position('right')
+            ax.spines["right"].set_position(("axes", i / (data_new.shape[1] - 1)))
+
+    host.set_xlim(0, data_new.shape[1] - 1)
+    host.set_xticks(range(data_new.shape[1]))
+    host.set_xticklabels(features, fontsize=14)
+    host.tick_params(axis='x', which='major', pad=7)
+    host.spines['right'].set_visible(False)
+    host.xaxis.tick_top()
+    host.set_title('Parallel Coordinates Plot', fontsize=18)
+
+    colors = plt.cm.tab10.colors
+    for j in range(N):
+        # to just draw straight lines between the axes:
+        host.plot(range(data_new.shape[1]), norm_data[j,:], c=colors[(category[j] - 1) % len(colors)])
+        host.fill_between(range(data_new.shape[1]), mean_minus_std[j,:], mean_plus_std[j,:], c=colors[(category[j] - 1) % len(colors)], alpha=0.1)
+        # create bezier curves
+        # for each axis, there will a control vertex at the point itself, one at 1/3rd towards the previous and one
+        #   at one third towards the next axis; the first and last axis have one less control vertex
+        # x-coordinate of the control vertices: at each integer (for the axes) and two inbetween
+        # y-coordinate: repeat every point three times, except the first and last only twice
+        # verts = list(zip([x for x in np.linspace(0, len(data_new) - 1, len(data_new) * 3 - 2, endpoint=True)],
+        #                 np.repeat(norm_data[j, :], 3)[1:-1]))
+        # # for x,y in verts: axes.plot(x, y, 'go') # to show the control points of the beziers
+        # codes = [Path.MOVETO] + [Path.CURVE4 for _ in range(len(verts) - 1)]
+        # path = Path(verts, codes)
+        # patch = patches.PathPatch(path, facecolor='none', lw=1, edgecolor=colors[category[j] - 1])
+        # host.add_patch(patch)
+    # plt.tight_layout()
+    # plt.show()
+
+    return plt
+
+def parallel_plots_alpha_01(datasets):
+    """
+    Plots parallel coordinates for each of the groups found
+    """
+    def get_original_instances_for_cf(cf, eval_df, group_idx):
+        """
+        Gets the unique original instances for the CFs given
+        """
+        position_list = list(np.prod(np.isin(np.concatenate((eval_df['cf'].values), axis=0), cf), axis=1))
+        indices = [eval_df.index[i] for i in range(len(position_list)) if position_list[i] == 1]
+        original_instances_with_cf = eval_df.loc[indices, 'centroid'].values
+        # sensitive_group_str = str(np.unique(eval_df.loc[indices, 'Sensitive group'].values))
+        sensitive_group = group_idx
+        # sensitive_group.replace('[','')
+        # sensitive_group.replace(']','')
+        original_instances_with_cf = [i[:-1] for i in original_instances_with_cf]
+        original_instances_with_cf_with_sensitive_group = [np.concatenate([i,[sensitive_group]]) for i in original_instances_with_cf]
+        original_instances_with_cf_with_sensitive_group = np.concatenate([original_instances_with_cf_with_sensitive_group], axis=0)
+        return original_instances_with_cf_with_sensitive_group
+    
+    dataset_names = get_data_names(datasets)
+    for dataset_idx in range(len(datasets)):
+        data_str = datasets[dataset_idx]
+        data_name = dataset_names[data_str]
+        # font_dict = {'horizontalalignment':'right'}
+        # axes[dataset_idx].set(ylabel='Feature values')
+        # axes[dataset_idx].set_xticks(range(len(original_features)))
+        # axes[dataset_idx].set_xticklabels(original_features, rotation = 35, fontdict=font_dict)
+        eval_alpha_01 = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl')
+        eval_alpha_01_df = eval_alpha_01.cf_df
+        original_features = list(eval_alpha_01.raw_data_cols)
+        labels_dict = {}
+        for feature in original_features:
+            labels_dict.update({feature:feature})
+        labels_dict.update({'sensitive_group':'Subgroup'})
+        features_with_sensitive_group = list(eval_alpha_01.raw_data_cols)
+        unique_cfs_np_array = np.unique(np.concatenate((eval_alpha_01_df['cf'].values), axis=0), axis=0)
+        group_idx = 1
+        colors_dict = {}
+        features_with_sensitive_group.extend(['sensitive_group'])
+        compilation_df = pd.DataFrame(columns=features_with_sensitive_group)
+        for unique_cf in unique_cfs_np_array:
+            original_instances_with_cf_with_sensitive_group = get_original_instances_for_cf(unique_cf, eval_alpha_01_df, group_idx)
+            original_instances_with_cf_with_sensitive_group_df = pd.DataFrame(data=original_instances_with_cf_with_sensitive_group, columns=features_with_sensitive_group)
+            original_instances_with_cf_with_sensitive_group_df[original_features] = original_instances_with_cf_with_sensitive_group_df[original_features].apply(pd.to_numeric)
+            compilation_df = pd.concat([compilation_df, original_instances_with_cf_with_sensitive_group_df], axis=0)
+            colors_dict.update({group_idx:colors_list[group_idx]})
+            group_idx += 1
+        compilation_np = compilation_df.values
+        parallel_coordinates(compilation_np, original_features).savefig(results_cf_plots_dir+str(data_str)+'_subgroups_details_counterfair.pdf', format='pdf', dpi=400)
+        # fig.show()
+        # fig.write_image(results_cf_plots_dir+str(data_str)+'_subgroups_details_counterfair.pdf')
+    
+    # fig.subplots_adjust(left=0.075,
+    #                 bottom=0.10,
+    #                 right=0.95,
+    #                 top=0.9,
+    #                 wspace=0.2,
+    #                 hspace=0.25)
+    # fig.suptitle('Subgroups identified by CounterFair with $\\alpha = 0.1$')
+
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange', 'cyan', 'pink', 'black']
 colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','Non-white':'dimgray',
@@ -1472,5 +1530,6 @@ metric = 'proximity'
 # plot_centroids_cfs_ablation_alpha_beta_gamma('oulad')
 # proximity_all_datasets_all_methods_plot(datasets, methods_to_run)
 proximity_across_alpha_counterfair(datasets)
+parallel_plots_alpha_01(datasets)
 
 
