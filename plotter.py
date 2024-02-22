@@ -1355,7 +1355,7 @@ def proximity_across_alpha_counterfair(datasets):
 
 def parallel_coordinates(data, features):
 
-    data_new = data[:,:-1].float()
+    data_new = data[:,:-1].astype(float)
     fig, host = plt.subplots()
     # features = features[:-1]
     # N1 = np.sum(data[:,-1] == 1)
