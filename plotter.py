@@ -217,7 +217,7 @@ def get_methods_names(methods):
         elif i == 'BIGRACE_e':
             method_dict[i] = 'CounterFair'
         elif i == 'BIGRACE_dev_dist':
-            method_dict[i] = 'CounterFair'
+            method_dict[i] = r'CounterFair$_{dev}$'
         elif i == 'BIGRACE_dev_like':
             method_dict[i] = r'$BR_{s-like}$'
         elif i == 'BIGRACE_dev_eff':
@@ -1337,7 +1337,6 @@ def proximity_across_alpha_counterfair(datasets):
         axes[dataset_idx, 1].set_xlim(np.min(x_alphas)-0.2, np.max(x_alphas)+0.2)
         axes[dataset_idx, 1].set_ylim(np.min(y_n_different_cfs)-5, np.max(y_n_different_cfs)+10)
         
-
         b0.legend([], [], frameon=False)
         b0.legend(frameon=False, prop={'size': 8}) #
         b0.set_xlabel(None)
@@ -1366,15 +1365,56 @@ def proximity_across_alpha_counterfair(datasets):
     fig.suptitle('CounterFair Proximity and Number of Subgroups', fontsize=16)
     plt.savefig(results_cf_plots_dir+'proximity_subgroups_counterfair.pdf',format='pdf',dpi=400)
 
+def actionability_oriented_fairness_plot(datasets, methods):
+    """
+    DESCRIPTION:        Obtains the plots of burden for the actionability-oriented CF obtained by CounterFair
+
+    INPUT:
+    datasets:           Names of the datasets
+
+    OUTPUT: (None: plot stored)
+    """
+    which_alpha = 1.0
+    methods_names = get_methods_names(methods)
+    dataset_names = get_data_names(datasets)
+    fig, axes = plt.subplots(nrows=len(datasets), ncols=2, figsize=(7, 9), gridspec_kw={'width_ratios': [5, 5]})
+    ax_flatten = axes.flatten()
+    for dataset_idx in range(len(datasets)):
+        data_str = datasets[dataset_idx]
+        data_name = dataset_names[data_str]
+        eval_dev = load_obj(f'{data_str}_BIGRACE_dev_dist_dev_eval.pkl')
+        if which_alpha == 0.1:
+            eval_alpha = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl')
+        elif which_alpha == 0.5:
+            eval_alpha = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl')
+        elif which_alpha == 1.0:
+            eval_alpha = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl')
+        eval_alpha_df = eval_alpha.cf_df
+        eval_dev_df = eval_dev.cf_df
+        all_df = pd.concat((eval_alpha_df, eval_dev_df), axis=0)
+        sns.barplot(x=all_df['Method'], y=all_df['Distance'], hue=all_df['Sensitive group'], ax=ax_flatten[dataset_idx], errwidth=0.5, capsize=0.1, estimator=sum)
+                
+        xticklabels_dist = [methods_names['BIGRACE_dist'], methods_names['BIGRACE_dev_dist']]
+        ax_flatten[dataset_idx].set_xticklabels(xticklabels_dist)
+        ax_flatten[dataset_idx].legend([], [], frameon=False)
+        ax_flatten[dataset_idx].legend(frameon=False, prop={'size': 8}) #
+        ax_flatten[dataset_idx].set_xlabel(None)
+        ax_flatten[dataset_idx].set_ylabel(None)
+        ax_flatten[dataset_idx].set_title(data_name, fontsize=12)
+    fig.subplots_adjust(left=0.075,
+                    bottom=0.05,
+                    right=0.975,
+                    top=0.925,
+                    wspace=0.15,
+                    hspace=0.175)
+    fig.suptitle('Burden vs. Counterfair version', fontsize=16)
+    plt.savefig(results_cf_plots_dir+'actionability_oriented_counterfair.pdf',format='pdf',dpi=400)
+
 def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_list_per_group, max_list_per_group):
 
     data_new = data[:,:-1]
     fig, host = plt.subplots(figsize=(8, 5))
-    # features = features[:-1]
-    # N1 = np.sum(data[:,-1] == 1)
-    # N2 = np.sum(data[:,-1] == 2)
-    # N3 = np.sum(data[:,-1] == 3)
-    # category = np.concatenate([np.full(N1, 1), np.full(N2, 2), np.full(N3, 3)])
+
     N = len(data_new)
     category_list = []
     group_values = np.unique(data[:,-1])
@@ -1382,23 +1422,6 @@ def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_pl
         N_group = np.sum(data[:,-1] == group_value)
         category_list.append(np.full(N_group, int(group_value)))
     category = np.concatenate(category_list)
-    # create some dummy data
-    # N1, N2, N3 = 10, 5, 8
-    # N = N1 + N2 + N3
-    # y1 = np.random.uniform(0, 10, N) + 7 * category
-    # y2 = np.sin(np.random.uniform(0, np.pi, N)) ** category
-    # y3 = np.random.binomial(300, 1 - category / 10, N)
-    # y4 = np.random.binomial(200, (category / 6) ** 1/3, N)
-    # y5 = np.random.uniform(0, 800, N)
-
-    # organize the data
-    # ys = np.dstack([y1, y2, y3, y4, y5])[0]
-    # data_new_min = data_new.min(axis=0)
-    # data_new_max = data_new.max(axis=0)
-    # data_new_range = data_new_max - data_new_min
-    # data_new_min -= data_new_range * 0.05  # add 5% padding below and above
-    # data_new_max += data_new_range * 0.05
-    # data_new_range = data_new_max - data_new_min
 
     data_new_min = min_all[:-1]
     data_new_max = max_all[:-1]
@@ -1408,11 +1431,10 @@ def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_pl
             data_new_min[feature_idx] = 0.0
             data_new_max[feature_idx] = 1.0
             data_new_range[feature_idx] = 1.0
-    data_new_min -= data_new_range * 0.05  # add 5% padding below and above
+    data_new_min -= data_new_range * 0.05
     data_new_max += data_new_range * 0.05
     data_new_range = data_new_max - data_new_min
 
-    # transform all data_new to be compatible with the main axis
     norm_data = np.zeros_like(data_new)
     norm_data[:, 0] = data_new[:, 0]
     norm_data[:, 1:] = (data_new[:, 1:] - data_new_min[1:]) / data_new_range[1:] * data_new_range[0] + data_new_min[0]
@@ -1434,15 +1456,12 @@ def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_pl
         ax.spines['top'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
         if ax != axes:
-            # ax.spines['left'].set_visible(False)
             ax.yaxis.set_ticks_position('right')
             ax.spines["right"].set_position(("axes", i / (data_new.shape[1] - 1)))
 
     host.set_xlim(0, data_new.shape[1] - 1)
     host.set_xticks(range(data_new.shape[1]))
     host.set_xticklabels(features, fontsize=10, rotation=30, va='bottom')
-    # host.xaxis.set_tick_params(which='both', top=False, labeltop=False,
-    #                         bottom=True, labelbottom=True)
     host.tick_params(axis='x', which='major', pad=35)
     host.spines['right'].set_visible(False)
     host.xaxis.tick_bottom()
@@ -1451,27 +1470,13 @@ def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_pl
     colors = plt.cm.tab10.colors
     used_colors = []
     for j in range(N):
-        # to just draw straight lines between the axes:
         color_to_use = colors[(category[j] - 1) % len(colors)]
         if color_to_use not in used_colors:
             used_colors.append(color_to_use)
         host.plot(range(data_new.shape[1]), norm_data[j,:], c=color_to_use)
     for i in range(len(used_colors)):
         host.fill_between(range(data_new.shape[1]), norm_mean_minus_std_np[i], norm_mean_plus_std_np[i], color=used_colors[i], alpha=0.1)
-        # create bezier curves
-        # for each axis, there will a control vertex at the point itself, one at 1/3rd towards the previous and one
-        #   at one third towards the next axis; the first and last axis have one less control vertex
-        # x-coordinate of the control vertices: at each integer (for the axes) and two inbetween
-        # y-coordinate: repeat every point three times, except the first and last only twice
-        # verts = list(zip([x for x in np.linspace(0, len(data_new) - 1, len(data_new) * 3 - 2, endpoint=True)],
-        #                 np.repeat(norm_data[j, :], 3)[1:-1]))
-        # # for x,y in verts: axes.plot(x, y, 'go') # to show the control points of the beziers
-        # codes = [Path.MOVETO] + [Path.CURVE4 for _ in range(len(verts) - 1)]
-        # path = Path(verts, codes)
-        # patch = patches.PathPatch(path, facecolor='none', lw=1, edgecolor=colors[category[j] - 1])
-        # host.add_patch(patch)
-    # plt.tight_layout()
-    # plt.show()
+
     fig.subplots_adjust(left=0.05,
                     bottom=0.15,
                     right=0.9,
@@ -1540,8 +1545,6 @@ def parallel_plots_alpha_01(datasets):
         max_all = np.max(compilation_all_df, axis=0).values
         compilation_mean_np = np.concatenate([compilation_mean_np_list])
         parallel_coordinates(data_name, compilation_mean_np, original_features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_per_group_list, max_per_group_list).savefig(results_cf_plots_dir+str(data_str)+'_subgroups_details_counterfair.pdf', format='pdf', dpi=400)
-        # fig.show()
-        # fig.write_image(results_cf_plots_dir+str(data_str)+'_subgroups_details_counterfair.pdf')
 
 
 colors_list = ['red', 'blue', 'green', 'purple', 'lightgreen', 'tab:brown', 'orange', 'cyan', 'pink', 'black']
@@ -1569,7 +1572,8 @@ metric = 'proximity'
 # plot_centroids_cfs_ablation_lagrange_likelihood()
 # plot_centroids_cfs_ablation_alpha_beta_gamma('oulad')
 # proximity_all_datasets_all_methods_plot(datasets, methods_to_run)
-proximity_across_alpha_counterfair(datasets)
-parallel_plots_alpha_01(datasets)
+# proximity_across_alpha_counterfair(datasets)
+# parallel_plots_alpha_01(datasets)
+actionability_oriented_fairness_plot(datasets, methods_to_run)
 
 

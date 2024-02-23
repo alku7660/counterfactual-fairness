@@ -160,10 +160,9 @@ class BIGRACE:
                 opt_model.addConstr(cf[i, n] <= limiter[n])
         
         # Constraints required for deviation minimization
-        for i in set_Instances:
-            for n in G.nodes:
-                opt_model.addConstr(cf[i, n]*graph.C[i, n] <= max_burden)
-                opt_model.addConstr(cf[i, n]*graph.C[i, n] >= min_burden)
+        for n in G.nodes:
+            opt_model.addConstr(gp.quicksum(cf[i, n]*graph.C[i, n] for i in set_Instances) <= max_burden)
+            opt_model.addConstr(gp.quicksum(cf[i, n]*graph.C[i, n] for i in set_Instances) >= min_burden)
 
         # def calculate_s_dist(cf, C, centroids_idx, nodes_idx):
         #     c_dist = cf.prod(C)/len(centroids_idx)
