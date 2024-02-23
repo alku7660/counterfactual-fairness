@@ -1295,7 +1295,7 @@ def proximity_all_datasets_all_methods_plot(datasets, methods):
                     top=0.9,
                     wspace=0.3,
                     hspace=0.1)
-    fig.suptitle('Proximity performance of CounterFair')
+    fig.suptitle('Proximity performance of CounterFair', fontsize=20)
     plt.savefig(results_cf_plots_dir+'proximity_performance.pdf',format='pdf',dpi=400)
 
 def proximity_across_alpha_counterfair(datasets):
@@ -1308,7 +1308,7 @@ def proximity_across_alpha_counterfair(datasets):
     OUTPUT: (None: plot stored)
     """
     dataset_names = get_data_names(datasets)
-    fig, axes = plt.subplots(nrows=len(datasets), ncols=2, figsize=(7, 10), gridspec_kw={'width_ratios': [5, 5]})
+    fig, axes = plt.subplots(nrows=len(datasets), ncols=2, figsize=(7, 9), gridspec_kw={'width_ratios': [6.5, 3.5]})
     for dataset_idx in range(len(datasets)):
         data_str = datasets[dataset_idx]
         data_name = dataset_names[data_str]
@@ -1324,33 +1324,46 @@ def proximity_across_alpha_counterfair(datasets):
         n_different_cfs_alpha_10 = len(np.unique(np.concatenate((eval_alpha_10_df['cf'].values), axis=0), axis=0))
         n_different_cfs_alpha_05 = len(np.unique(np.concatenate((eval_alpha_05_df['cf'].values), axis=0), axis=0))
         n_different_cfs_alpha_01 = len(np.unique(np.concatenate((eval_alpha_01_df['cf'].values), axis=0), axis=0))
-        x_alphas = [0.1, 0.5, 1.0]
-        y_n_different_cfs = [n_different_cfs_alpha_01, n_different_cfs_alpha_05, n_different_cfs_alpha_10]
-        axes[dataset_idx, 1].bar(x=x_alphas, height=y_n_different_cfs)
+        x_alphas = np.array([0.1, 0.5, 1.0]).astype(float)
+        y_n_different_cfs = np.array([n_different_cfs_alpha_01, n_different_cfs_alpha_05, n_different_cfs_alpha_10]).astype(int)
+        axes[dataset_idx, 1].plot(x_alphas, y_n_different_cfs, marker='D', markersize=5, linestyle='--')
+        for x,y in zip(x_alphas, y_n_different_cfs):
+            label = str(int(y))
+            axes[dataset_idx, 1].annotate(label, # this is the text
+                        (x,y), # these are the coordinates to position the label
+                        textcoords="offset points", # how to position the text
+                        xytext=(0, 10), # distance from text to points (x,y)
+                        ha='center', fontsize=8) # horizontal alignment can be left, right or center
+        axes[dataset_idx, 1].set_xlim(np.min(x_alphas)-0.2, np.max(x_alphas)+0.2)
+        axes[dataset_idx, 1].set_ylim(np.min(y_n_different_cfs)-5, np.max(y_n_different_cfs)+10)
+        
 
         b0.legend([], [], frameon=False)
-        b0.legend(bbox_to_anchor=(10,1), frameon=False, prop={'size': 6}) #
-        b0.set(xlabel=None)
-        b0.set(ylabel=data_name)
+        b0.legend(frameon=False, prop={'size': 8}) #
+        b0.set_xlabel(None)
+        b0.set_ylabel(data_name, fontsize=12)
         if dataset_idx == 0:
-            b0.set_title(f'Burden vs. $\\alpha$')
-            axes[dataset_idx, 1].set_title('Number of different groups identified')
+            b0.set_title(f'Burden vs. $\\alpha$', fontsize=12)
+            axes[dataset_idx, 1].set_title('Number of different groups vs. $\\alpha$', fontsize=12)
         if dataset_idx < len(datasets) - 1:
             b0.set_xticklabels([])
-            axes[dataset_idx, 1].set_xticklabels([])
+            # axes[dataset_idx, 1].set_xticklabels([])
+            axes[dataset_idx, 1].axes.get_xaxis().set_visible(False)
         if dataset_idx == len(datasets) - 1:
-            b0.set(xlabel=f'$\\alpha$')
-            axes[dataset_idx, 1].set(xlabel=f'$\\alpha$')
+            b0.set_xlabel(f'$\\alpha$', fontsize=10)
+            axes[dataset_idx, 1].set_xlabel(f'$\\alpha$', fontsize=10)
+            ticks = x_alphas
             xticklabels_alpha = x_alphas
             b0.set_xticklabels(xticklabels_alpha)
+            axes[dataset_idx, 1].set_xticks(ticks)
             axes[dataset_idx, 1].set_xticklabels(x_alphas)
     fig.subplots_adjust(left=0.075,
-                    bottom=0.10,
-                    right=0.95,
-                    top=0.9,
-                    wspace=0.2,
-                    hspace=0.25)
-    fig.suptitle('Proximity and Number of Subgroups identified by CounterFair')
+                    bottom=0.05,
+                    right=0.975,
+                    top=0.925,
+                    wspace=0.15,
+                    hspace=0.175)
+    fig.suptitle('CounterFair Proximity and Number of Subgroups', fontsize=16)
     plt.savefig(results_cf_plots_dir+'proximity_subgroups_counterfair.pdf',format='pdf',dpi=400)
 
 def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_list_per_group, max_list_per_group):
@@ -1390,6 +1403,11 @@ def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_pl
     data_new_min = min_all[:-1]
     data_new_max = max_all[:-1]
     data_new_range = data_new_max - data_new_min
+    for feature_idx in range(len(data_new_range)):
+        if np.isclose(data_new_range[feature_idx], 0.0):
+            data_new_min[feature_idx] = 0.0
+            data_new_max[feature_idx] = 1.0
+            data_new_range[feature_idx] = 1.0
     data_new_min -= data_new_range * 0.05  # add 5% padding below and above
     data_new_max += data_new_range * 0.05
     data_new_range = data_new_max - data_new_min
@@ -1422,10 +1440,10 @@ def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_pl
 
     host.set_xlim(0, data_new.shape[1] - 1)
     host.set_xticks(range(data_new.shape[1]))
-    host.set_xticklabels(features, fontsize=12, rotation=30, va='bottom')
+    host.set_xticklabels(features, fontsize=10, rotation=30, va='bottom')
     # host.xaxis.set_tick_params(which='both', top=False, labeltop=False,
     #                         bottom=True, labelbottom=True)
-    host.tick_params(axis='x', which='major', pad=30)
+    host.tick_params(axis='x', which='major', pad=35)
     host.spines['right'].set_visible(False)
     host.xaxis.tick_bottom()
     host.set_title(f'{data_name}: CounterFair subgroups with $\\alpha = 0.1$', fontsize=16)
