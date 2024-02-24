@@ -252,6 +252,7 @@ class Graph:
     def __init__(self, data, model, feat, feat_values, sensitive_group_dict, type, percentage, continuous_bins) -> None:
         self.percentage_train_cf_per_feat_value = percentage
         self.feat = feat
+        self.feat_values = feat_values
         self.continuous_bins = continuous_bins
         self.sensitive_group_dict = sensitive_group_dict
         self.sensitive_feature_instances, self.sensitive_group_idx_feat_value_dict, self.instance_idx_to_original_idx_dict = self.find_sensitive_feat_instances(data, feat_values)

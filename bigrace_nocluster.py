@@ -82,12 +82,20 @@ class BIGRACE:
         """
         Method that finds Foce CF prioritizing likelihood using Gurobi optimization package
         """
-        """
-        MODEL
-        """
-        opt_model = gp.Model(name='BIG-RACE')
-        G = nx.DiGraph()
-        G.add_nodes_from(graph.rho)
+
+        def get_list_set_instances_per_feat_value(set_Instances):
+            """
+            Obtains a list of indices per feature value
+            """
+            list_set_instances_per_feat_value = []
+            for feat_value in graph.feat_values:
+                list_idx_feat_value = []
+                for instance_idx in set_Instances:
+                    feat_value_instance = graph.sensitive_group_idx_feat_value_dict[graph.instance_idx_to_original_idx_dict[instance_idx]]
+                    if feat_value == feat_value_instance:
+                        list_idx_feat_value.append(instance_idx)
+                list_set_instances_per_feat_value.append(list_idx_feat_value)
+            return list_set_instances_per_feat_value
 
         def unfeasible_case(graph, type):
             """
@@ -129,11 +137,20 @@ class BIGRACE:
                 likelihood[sol_x_idx] = graph.rho[sol_x_idx]
                 effectiveness[sol_x_idx] = graph.eta[sol_x_idx]
             return sol_x, graph_nodes_solution, likelihood, effectiveness
+        
+        """
+        MODEL
+        """
+        opt_model = gp.Model(name='BIG-RACE')
+        G = nx.DiGraph()
+        G.add_nodes_from(graph.rho)
+
 
         """
         SETS
         """
-        set_Instances = range(1, len(graph.sensitive_feature_instances) + 1)               
+        set_Instances = range(1, len(graph.sensitive_feature_instances) + 1)
+        list_set_instances_per_feat_value = get_list_set_instances_per_feat_value(set_Instances)               
             
         """
         VARIABLES
@@ -160,9 +177,9 @@ class BIGRACE:
                 opt_model.addConstr(cf[i, n] <= limiter[n])
         
         # Constraints required for deviation minimization
-        for n in G.nodes:
-            opt_model.addConstr(gp.quicksum(cf[i, n]*graph.C[i, n] for i in set_Instances) <= max_burden)
-            opt_model.addConstr(gp.quicksum(cf[i, n]*graph.C[i, n] for i in set_Instances) >= min_burden)
+        for set_instances_per_feature_value in list_set_instances_per_feat_value:
+            opt_model.addConstr(gp.quicksum(cf[i, n]*graph.C[i, n] for i in set_instances_per_feature_value for n in G.nodes) <= max_burden)
+            opt_model.addConstr(gp.quicksum(cf[i, n]*graph.C[i, n] for i in set_instances_per_feature_value for n in G.nodes) >= min_burden)
 
         # def calculate_s_dist(cf, C, centroids_idx, nodes_idx):
         #     c_dist = cf.prod(C)/len(centroids_idx)
