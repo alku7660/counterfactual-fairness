@@ -224,7 +224,7 @@ class BIGRACE:
             # opt_model.Params.PreSparsify = 1
             # opt_model.Params.Threads = 4
             # opt_model.setObjective((cf.prod(graph.C2))*total_pairings - (cf.prod(graph.C))**2, GRB.MINIMIZE)
-            opt_model.setObjective(max_burden - min_burden + cf.prod(graph.C)*self.alpha, GRB.MINIMIZE)
+            opt_model.setObjective(max_burden - min_burden, GRB.MINIMIZE)
 
         # EXPERIMENT 5: Maximize effectiveness
         elif self.eff == True:
