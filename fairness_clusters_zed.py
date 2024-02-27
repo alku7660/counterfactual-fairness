@@ -33,7 +33,7 @@ else:
     print('Selected Datasets and cores for Local run')
     datasets = datasets_home
 datasets = ['synthetic_athlete','compass','german','student']
-methods_to_run = ['BIGRACE_e','ARES','FACTS'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
+methods_to_run = ['ARES'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -100,7 +100,7 @@ def select_parameters(method, weight):
 if __name__=='__main__':
     for data_str in datasets:
         percentage_close_train_cf, continuous_bins = percentage_close_train(data_str)
-        support_th = support_threshold(data_str)
+        support_th = 0.01
         data = load_dataset(data_str, train_fraction, seed_int, step)
         model = Model(data)
         data.undesired_test(model)
@@ -125,7 +125,7 @@ if __name__=='__main__':
             elif method == 'ARES':
                 graph_obj = None
                 alpha, dev, eff = select_parameters(method, weight)
-                counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, dev, eff, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th, continuous_bins=continuous_bins)
+                counterfactual = Counterfactual(data, model, method, alpha, dev, eff, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th, continuous_bins=continuous_bins, cluster=clusters_obj)
                 cf_evaluator.add_cf_data_ares(counterfactual)
             elif method == 'FACTS':
                 graph_obj = None

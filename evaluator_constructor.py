@@ -552,6 +552,7 @@ class Evaluator():
         rho = {}
         cfs_keys = list(cfs.keys())
         cfs_np = np.array([cfs[i].values[0] for i in cfs.keys()])
+        print(cfs_np.shape, data.transformed_train_np.shape)
         distance = distance_matrix(cfs_np, data.transformed_train_np, p=1)
         gaussian_kernel = np.exp(-(distance/self.epsilon)**2)
         sum_gaussian_kernel_col = np.sum(gaussian_kernel, axis=1)
@@ -796,9 +797,9 @@ class Evaluator():
             feat, feat_val = q.split('_')[0], int(float(q.split('_')[1]))
             len_positives_sensitive_group = self.find_centroid_for_ares(counterfactual, feat, feat_val)
             feat_val_name = counterfactual.data.feat_protected[feat][np.round(float(feat_val),2)] 
-            q = q if isinstance(q,str) else list(q) 
-            c = c if isinstance(c,str) else list(c) 
-            c_prime = c_prime if isinstance(c_prime,str) else list(c_prime)
+            # q = q if isinstance(q,str) else list(q)
+            # c = c if isinstance(c,str) else list(c) 
+            # c_prime = c_prime if isinstance(c_prime,str) else list(c_prime)
             normal_cf_df = cfs[instance_idx]
             normal_cf = normal_cf_df.values[0]
             original_cf = self.inverse_transform_original(normal_cf_df).values
