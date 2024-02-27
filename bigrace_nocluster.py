@@ -1,15 +1,11 @@
 import numpy as np
-import pandas as pd
-from itertools import product
 import networkx as nx
 import gurobipy as gp
-from gurobipy import GRB, tuplelist
-from evaluator_constructor import distance_calculation, verify_feasibility
-from nnt import nn_for_juice
+from gurobipy import GRB
+from evaluator_constructor import verify_feasibility
 import time
 from scipy.stats import norm
 from graph_constructor_nocluster import Graph
-import copy
 
 class BIGRACE:
 
@@ -17,9 +13,10 @@ class BIGRACE:
         self.percentage = counterfactual.percentage
         self.feat_protected = counterfactual.data.feat_protected
         self.false_undesired_test_df = counterfactual.data.false_undesired_test_df
+        self.continuous_bins = counterfactual.continuous_bins
         self.ioi_label = counterfactual.data.undesired_class
         self.sensitive_feat_idx_dict = self.select_instances_by_sensitive_group()
-        self.alpha, self.beta, self.gamma, self.delta1, self.delta2, self.delta3 = counterfactual.alpha, counterfactual.beta, counterfactual.gamma, counterfactual.delta1, counterfactual.delta2, counterfactual.delta3
+        self.alpha, self.dev, self.eff = counterfactual.alpha, counterfactual.dev, counterfactual.eff
         self.normal_x_cf, self.graph_nodes, self.likelihood_dict, self.effectiveness_dict, self.run_time, self.model_status, self.obj_val, self.sensitive_group_idx_feat_value_dict = self.solve_problem(counterfactual)
     
     def select_instances_by_sensitive_group(self):
@@ -46,7 +43,7 @@ class BIGRACE:
         for feature in self.feat_protected.keys():
             value_dict = self.feat_protected[feature]
             sensitive_group_dict = self.sensitive_feat_idx_dict[feature]
-            graph = Graph(counterfactual.data, counterfactual.model, feature, value_dict.keys(), sensitive_group_dict, counterfactual.type, self.percentage)
+            graph = Graph(counterfactual.data, counterfactual.model, feature, value_dict.keys(), sensitive_group_dict, counterfactual.type, self.percentage, self.continuous_bins)
             normal_x_cf, graph_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.Bigrace(counterfactual, graph)
             normal_x_cf, graph_nodes_solution = self.adapt_indices_results(graph, normal_x_cf, graph_nodes_solution)
             normal_x_cf_dict[feature] = normal_x_cf
@@ -77,6 +74,7 @@ class BIGRACE:
         """
         BIGRACE algorithm
         """
+        print(f'Solving CounterFair: alpha: {self.alpha}, deviation: {self.dev}, effectiveness: {self.eff}')
         normal_x_cf, graph_nodes_solution, likelihood, effectiveness, model_status, obj_val = self.do_optimize_all(counterfactual, graph)
         return normal_x_cf, graph_nodes_solution, likelihood, effectiveness, model_status, obj_val 
 
@@ -84,18 +82,29 @@ class BIGRACE:
         """
         Method that finds Foce CF prioritizing likelihood using Gurobi optimization package
         """
-        """
-        MODEL
-        """
-        opt_model = gp.Model(name='BIG-RACE')
-        G = nx.DiGraph()
-        G.add_nodes_from(graph.rho)
 
-        def unfeasible_case(graph):
+        def get_list_set_instances_per_feat_value(set_Instances):
+            """
+            Obtains a list of indices per feature value
+            """
+            list_set_instances_per_feat_value = []
+            for feat_value in graph.feat_values:
+                list_idx_feat_value = []
+                for instance_idx in set_Instances:
+                    feat_value_instance = graph.sensitive_group_idx_feat_value_dict[graph.instance_idx_to_original_idx_dict[instance_idx]]
+                    if feat_value == feat_value_instance:
+                        list_idx_feat_value.append(instance_idx)
+                list_set_instances_per_feat_value.append(list_idx_feat_value)
+            return list_set_instances_per_feat_value
+
+        def unfeasible_case(graph, type):
             """
             Obtains the feasible justified solution when the problem is unfeasible
             """
             sol_x, centroids_solved, nodes_solution, graph_nodes_solution, likelihood, effectiveness = {}, [], [], {}, {}, {}
+            data = counterfactual.data
+            model = counterfactual.model
+            feat_values = data.feat_protected[graph.feat].keys()
             potential_CF = {}
             for instance_idx in range(1, len(graph.sensitive_feature_instances) + 1):
                 for i in range(1, len(graph.all_nodes) + 1):
@@ -117,10 +126,10 @@ class BIGRACE:
             not_centroids_solved = [i for i in range(1, len(graph.sensitive_feature_instances) + 1) if i not in centroids_solved]
             for instance_idx in not_centroids_solved:
                 instance = graph.sensitive_feature_instances[instance_idx - 1]
-                train_cfs = graph.find_train_cf(counterfactual.data, counterfactual.model, counterfactual.type, extra_search=True)
+                train_cfs = graph.nearest_neighbor_train_cf(data, model, feat_values, type, extra_search=True)
                 for train_cf_idx in range(train_cfs.shape[0]):
                     train_cf = train_cfs[train_cf_idx,:]
-                    if verify_feasibility(instance, train_cf, counterfactual.data):
+                    if verify_feasibility(instance, train_cf, data):
                         cf_instance = train_cf
                 sol_x[instance_idx] = cf_instance
                 nodes_solution.append(sol_x_idx)
@@ -128,20 +137,31 @@ class BIGRACE:
                 likelihood[sol_x_idx] = graph.rho[sol_x_idx]
                 effectiveness[sol_x_idx] = graph.eta[sol_x_idx]
             return sol_x, graph_nodes_solution, likelihood, effectiveness
+        
+        """
+        MODEL
+        """
+        opt_model = gp.Model(name='BIG-RACE')
+        G = nx.DiGraph()
+        G.add_nodes_from(graph.rho)
+
 
         """
         SETS
         """
-        set_Instances = range(1, len(graph.sensitive_feature_instances) + 1)               
+        set_Instances = range(1, len(graph.sensitive_feature_instances) + 1)
+        list_set_instances_per_feat_value = get_list_set_instances_per_feat_value(set_Instances)               
             
         """
         VARIABLES
         """
-        # for c in set_Instances:
-        #     cf = opt_model.addVars(set_Instances, G.nodes, vtype=GRB.BINARY, name='Counterfactual')   # Node chosen as destination
         cf = opt_model.addVars(set_Instances, G.nodes, vtype=GRB.BINARY, name='Counterfactual')
         limiter = opt_model.addVars(G.nodes, vtype=GRB.BINARY, name='Limiter')
-            
+        
+        # Variables required for deviation minimization
+        max_burden = opt_model.addVar(vtype=GRB.CONTINUOUS, name='Max Burden')
+        min_burden = opt_model.addVar(vtype=GRB.CONTINUOUS, name='Min Burden')
+
         """
         CONSTRAINTS AND OBJECTIVE
         """
@@ -155,6 +175,11 @@ class BIGRACE:
         for i in set_Instances:
             for n in G.nodes:
                 opt_model.addConstr(cf[i, n] <= limiter[n])
+        
+        # Constraints required for deviation minimization
+        for set_instances_per_feature_value in list_set_instances_per_feat_value:
+            opt_model.addConstr(gp.quicksum(cf[i, n]*graph.C[i, n] for i in set_instances_per_feature_value for n in G.nodes) <= max_burden)
+            opt_model.addConstr(gp.quicksum(cf[i, n]*graph.C[i, n] for i in set_instances_per_feature_value for n in G.nodes) >= min_burden)
 
         # def calculate_s_dist(cf, C, centroids_idx, nodes_idx):
         #     c_dist = cf.prod(C)/len(centroids_idx)
@@ -188,15 +213,30 @@ class BIGRACE:
         #                        - gp.quicksum(cf[c, i]*graph.eta[i] for i in G.nodes for c in set_Instances)*self.gamma
         #                        + fairness_objective(cf, graph.C, graph.rho, graph.eta, set_Instances, G.nodes), GRB.MINIMIZE)
         
-        opt_model.setObjective(cf.prod(graph.C)*self.alpha + gp.quicksum(limiter[n] for n in G.nodes)*(1 - self.alpha), GRB.MINIMIZE)
+        # EXPERIMENT 1, 2, 3: alpha = [1.0, 0.5, 0.1]
+        if self.dev == False and self.eff == False: 
+            opt_model.setObjective(cf.prod(graph.C)*self.alpha + gp.quicksum(limiter[n] for n in G.nodes)/len(set_Instances)*(1 - self.alpha), GRB.MINIMIZE)
             
+        # EXPERIMENT 4: Minimization of burden variance
+        elif self.dev == True:
+            # total_pairings = gp.quicksum(cf[i, n] for i in set_Instances for n in G.nodes)
+            # opt_model.Params.NodefileStart = 0.5
+            # opt_model.Params.PreSparsify = 1
+            # opt_model.Params.Threads = 4
+            # opt_model.setObjective((cf.prod(graph.C2))*total_pairings - (cf.prod(graph.C))**2, GRB.MINIMIZE)
+            opt_model.setObjective(max_burden - min_burden, GRB.MINIMIZE)
+
+        # EXPERIMENT 5: Maximize effectiveness
+        elif self.eff == True:
+            opt_model.setObjective(-gp.quicksum(cf[c, i]*graph.eta[i] for i in G.nodes for c in set_Instances), GRB.MINIMIZE)
+
         """
         OPTIMIZATION AND RESULTS
         """
         opt_model.optimize()
         time.sleep(0.25)
         if opt_model.status == 3 or len(graph.all_nodes) == len(graph.train_cf):
-            sol_x, graph_nodes_solution, likelihood, effectiveness = unfeasible_case(self, graph)
+            sol_x, graph_nodes_solution, likelihood, effectiveness = unfeasible_case(graph, counterfactual.type)
             obj_val = 1000
         else:
             print(f'Optimizer solution status: {opt_model.status}') # 1: 'LOADED', 2: 'OPTIMAL', 3: 'INFEASIBLE', 4: 'INF_OR_UNBD', 5: 'UNBOUNDED', 6: 'CUTOFF', 7: 'ITERATION_LIMIT', 8: 'NODE_LIMIT', 9: 'TIME_LIMIT', 10: 'SOLUTION_LIMIT', 11: 'INTERRUPTED', 12: 'NUMERIC', 13: 'SUBOPTIMAL', 14: 'INPROGRESS', 15: 'USER_OBJ_LIMIT'

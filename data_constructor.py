@@ -54,6 +54,8 @@ class Dataset:
         self.bin_enc, self.cat_enc, self.bin_cat_enc, self.scaler = self.encoder_scaler_fit()
         self.bin_enc_cols, self.cat_enc_cols, self.bin_cat_enc_cols = self.encoder_scaler_cols()
         self.processed_features = list(self.bin_enc_cols) + list(self.cat_enc_cols) + self.ordinal + self.continuous
+        self.processed_features_dict_idx = self.get_idx_processed_features_dict()
+        self.processed_ordinal_continuous_idx_list = self.get_idx_ordinal_continuous_processed_features()
         self.transformed_train_df = self.transform_data(self.train_df)
         self.transformed_train_np = self.transformed_train_df.to_numpy()
         self.transformed_test_df = self.transform_data(self.test_df)
@@ -70,6 +72,29 @@ class Dataset:
         self.feat_cat = self.define_feat_cat()
         self.idx_cat_cols_dict = self.idx_cat_columns()
         self.feat_dist, self.processed_feat_dist = self.feature_distribution()
+
+    def get_idx_processed_features_dict(self):
+        """
+        Gets the indices of the processed features, and stores it as a dictionary
+        """
+        processed_features_idx_dict = {}
+        for feature in self.features:
+            feature_idx_list = []
+            for processed_feature_idx in range(len(self.processed_features)):
+                processed_feature = self.processed_features[processed_feature_idx]
+                if feature in processed_feature:
+                    feature_idx_list.extend([processed_feature_idx])
+            processed_features_idx_dict[feature] = feature_idx_list
+        return processed_features_idx_dict
+
+    def get_idx_ordinal_continuous_processed_features(self):
+        """
+        Gets the indices of the ordinal and continuous processed features
+        """
+        processed_ordinal_continuous_idx_list = []
+        for ordinal_continuous_feature in self.ordinal+self.continuous:
+            processed_ordinal_continuous_idx_list.extend(self.processed_features_dict_idx[ordinal_continuous_feature])
+        return processed_ordinal_continuous_idx_list
 
     def balance_train_data(self):
         """
@@ -396,7 +421,8 @@ class Dataset:
         elif self.name == 'credit':
             feat_protected['isMale'] = {1.00:'True', 0.00:'False'}
             feat_protected['isMarried'] = {1.00:'True', 0.00:'False'}
-            feat_protected['EducationLevel'] = {1.00:'Other', 2.00:'HS', 3.00:'University', 4.00:'Graduate'}
+            # feat_protected['AgeGroup'] = {}
+            # feat_protected['EducationLevel'] = {1.00:'Other', 2.00:'HS', 3.00:'University', 4.00:'Graduate'}
         elif self.name == 'compass':
             feat_protected['Race'] = {1.00:'African-American', 2.00:'Caucasian'}
             feat_protected['Sex'] = {1.00:'Male', 2.00:'Female'}
@@ -434,6 +460,20 @@ class Dataset:
             feat = [feat_list[j] for j in idx_feat_protected]
             for j in feat:
                 feat_mutable[j] = 0
+        if self.name in ['adult','dutch']:
+            immutable_not_protected = ['MaritalStatus']
+        elif self.name == 'german':
+            immutable_not_protected = ['Single']
+        elif self.name == 'student':
+            immutable_not_protected = ['ParentStatus']
+        elif self.name == 'oulad':
+            immutable_not_protected = ['Disability']
+        else:
+            immutable_not_protected = []
+        for feat_immutable_not_protected in immutable_not_protected:
+            feat = [j for j in feat_list if feat_immutable_not_protected in j]
+            for j in feat:
+                feat_mutable[j] = 0
         feat_mutable = pd.Series(feat_mutable)
         return feat_mutable
     
@@ -455,7 +495,7 @@ class Dataset:
         feat_list = feat_directionality.index.tolist()
         if self.name == 'adult':
             for i in feat_list:
-                if 'Age' in i or 'Sex' in i or 'Race' in i or 'Native' in i:
+                if 'Age' in i or 'Sex' in i or 'Race' in i or 'Native' in i or 'MaritalStatus' in i:
                     feat_directionality[i] = 0
                 elif 'Education' in i:
                     feat_directionality[i] = 'pos'
@@ -469,7 +509,7 @@ class Dataset:
                     feat_directionality[i] = 'any'
         elif self.name == 'german':
             for i in feat_list:
-                if 'Sex' in i:
+                if 'Sex' in i or 'Single' in i:
                     feat_directionality[i] = 0
                 elif 'Age' in i:
                     feat_directionality[i] = 'pos'
@@ -477,9 +517,9 @@ class Dataset:
                     feat_directionality[i] = 'any'
         elif self.name == 'dutch':
             for i in feat_list:
-                if 'Sex' in i or 'Country' in i:
+                if 'Sex' in i or 'Country' in i or 'MaritalStatus' in i:
                     feat_directionality[i] = 0
-                elif 'HouseholdPosition' in i or 'HouseholdSize' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i or 'MaritalStatus' in i:
+                elif 'HouseholdPosition' in i or 'HouseholdSize' in i or 'EconomicStatus' in i or 'CurEcoActivity' in i:
                     feat_directionality[i] = 'any'
                 elif 'EducationLevel' in i or 'Age' in i:
                     feat_directionality[i] = 'pos'
@@ -515,7 +555,7 @@ class Dataset:
                     feat_directionality[i] = 'any'
         elif self.name == 'student':
             for i in feat_list:
-                if 'Sex' in i or 'Age' in i:
+                if 'Sex' in i or 'Age' in i or 'ParentStatus' in i:
                     feat_directionality[i] = 0
                 elif 'MotherEducation' in i or 'FatherEducation' in i:
                     feat_directionality[i] = 'pos'
