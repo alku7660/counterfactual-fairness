@@ -135,7 +135,7 @@ class Dataset:
         all_df = pd.concat((discretized_bin_cat_ord_df, discretized_cont_df), axis=1)
         return all_df
 
-    def transform_data(self, encoded_df):
+    def decode_df(self, encoded_df):
         """
         Performs a the inverse operation of the discretization of the df (uses the encoder and discretizer)
         """

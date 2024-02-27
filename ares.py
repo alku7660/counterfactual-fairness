@@ -3,7 +3,6 @@ import pandas as pd
 from collections import Counter
 from evaluator_constructor import distance_calculation
 import time
-from scipy.stats import norm
 from functools import partial
 from mlxtend.frequent_patterns import apriori
 import time
@@ -442,10 +441,10 @@ class ARES:
         recourse_set = self.extract_recourses_x(x)
         # 99% of bottleneck comes from here
         results_x = self.results_recourse_rules_x(recourse_set, x, data, model)
+        
         end_time = time.time()
         print(f'Dataset: {data.name}. Instance {x_fn_idx} ({idx}/{len_ins}) done (time: {np.round(end_time - start_time, 2)} s)')
         return results_x
-
     # SLOW: NEED TO FIX FROM HERE
     def get_recourses_for_fn_instances(self, data, model):
         """
@@ -453,6 +452,7 @@ class ARES:
         """
         set_instances = self.fn_instances.index
         ins_idx = zip(set_instances, range(len(set_instances)))
+
         pool = multiprocessing.Pool(processes=30) 
         func = partial(self.get_recourses_for_fn_one_instance, data, model, len(set_instances))
         outputs = pool.starmap(func, ins_idx)
@@ -460,6 +460,7 @@ class ARES:
         pool.join()
         for i in outputs:
             self.add_results(i)
+        # for x_fn_idx in set_instances:
         
     def get_recourses_for_centroids(self, data, model):
         """
