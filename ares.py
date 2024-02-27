@@ -7,6 +7,8 @@ from functools import partial
 from mlxtend.frequent_patterns import apriori
 import time
 import copy
+import warnings
+warnings.filterwarnings("ignore")
 import multiprocessing
 
 """
