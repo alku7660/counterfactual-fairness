@@ -16,8 +16,8 @@ import time
 
 # LIST OF DATASETS TO RUN: 'synthetic_athlete','compass','german','student','dutch','oulad','adult','credit'
 datasets_zeus = ['dutch']
-datasets_home = ['synthetic_athlete','compass','german','student']
-datasets_thor = ['adult','credit']
+datasets_home = ['adult']
+datasets_thor = ['credit']
 # Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
 
 print(os.getcwd())
@@ -32,7 +32,7 @@ if 'dsv' in os.getcwd():
 else:
     print('Selected Datasets and cores for Local run')
     datasets = datasets_home
-datasets = ['adult']
+# datasets = ['adult']
 methods_to_run = ['BIGRACE_dist'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -57,7 +57,7 @@ def percentage_close_train(dataset):
         percentage_close_train_cf = 1
         continuous_bins = 10
     elif dataset in ['dutch','adult']:
-        percentage_close_train_cf = 0.3
+        percentage_close_train_cf = 0.1
         continuous_bins = 5
     elif dataset in ['credit','oulad']:
         percentage_close_train_cf = 0.05

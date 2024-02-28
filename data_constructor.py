@@ -407,7 +407,7 @@ class Dataset:
         if self.name == 'adult':
             feat_protected['Sex'] = {1.00:'Male', 2.00:'Female'}
             feat_protected['Race'] = {1.00:'White', 2.00:'Non-white'}
-            feat_protected['AgeGroup'] = {1.00:'<25', 2.00:'25-60', 3.00:'>60'}
+            # feat_protected['AgeGroup'] = {1.00:'<25', 2.00:'25-60', 3.00:'>60'}
         elif self.name == 'kdd_census':
             feat_protected['Sex'] = {1.00:'Male', 2.00:'Female'}
             feat_protected['Race'] = {1.00:'White', 2.00:'Non-white'}

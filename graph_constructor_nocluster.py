@@ -12,7 +12,7 @@ import os
 
 number_cores_zeus = 16
 number_cores_thor = 64
-number_cores_home = 16
+number_cores_home = 12
 
 if 'dsv' in os.getcwd():
     if '/data0/' in os.getcwd():
