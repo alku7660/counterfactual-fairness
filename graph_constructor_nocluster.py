@@ -238,7 +238,7 @@ def get_nearest_neighbor_parallel(data, model, feat, feat_value, extra_search, s
     sensitive_group_instances = find_sensitive_group_instances(data, feat_value, sensitive_group_dict).values
     neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type}, n_jobs=number_cores)
     neigh.fit(train_desired_label_np)
-    print(f'NearestNeighbors fit for feat_value {feat_value}.')
+    print(f'NearestNeighbors fit for feat {feat}, feat_value {feat_value}.')
     closest_distances, closest_cf_idx = neigh.kneighbors(sensitive_group_instances, return_distance=True)
     filtered_closest_distances, filtered_closest_cf_idx = filter_nearest_neighbors(closest_distances, closest_cf_idx, percentage_train_cf_per_feat_value)
     avg_filtered_distance = np.mean(filtered_closest_distances)
