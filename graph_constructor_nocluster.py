@@ -273,19 +273,17 @@ def get_nearest_neighbor_parallel(data, model, feat, feat_value, extra_search, s
     counter = 0
     for sensitive_group_instance in sensitive_group_instances:
         counter += 1
-        # print(f'Counter: {counter} out of {len(sensitive_group_instances)}')
         closest_feasible_train_tuple = get_closest_feasible_train_desired_label(data, type, sensitive_group_instance, train_desired_label_np)
-        if len(closest_feasible_train_tuple) == 0:
+        if len(closest_feasible_train_tuple) == 0 or any(np.array_equal(closest_feasible_train_tuple[0], x[0]) for x in closest_feasible_train_tuple_list):
             continue
         else:
             closest_feasible_train_tuple_list.append(closest_feasible_train_tuple)
-    unique_closest_feasible_train_tuple_list = list(set(closest_feasible_train_tuple_list))
-    all_unique_closest_feasible_train_np = np.array(unique_closest_feasible_train_tuple_list)
+    all_unique_closest_feasible_train_np = np.array([i[0] for i in closest_feasible_train_tuple_list])
     # neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type}, n_jobs=number_cores)
     # neigh.fit(train_desired_label_np)
     # closest_distances, closest_cf_idx = neigh.kneighbors(sensitive_group_instances, return_distance=True)
     # print(f'NearestNeighbors fit for feat {feat}, feat_value {feat_value}.')
-    filtered_closest_feasible_train_instances_list = filter_nearest_neighbors(unique_closest_feasible_train_tuple_list, percentage_train_cf_per_feat_value)
+    filtered_closest_feasible_train_instances_list = filter_nearest_neighbors(closest_feasible_train_tuple_list, percentage_train_cf_per_feat_value)
     filtered_closest_feasible_train_np = np.array([i[0] for i in filtered_closest_feasible_train_instances_list])
     avg_filtered_closest_feasible_train_instances_distance = np.mean([i[1] for i in filtered_closest_feasible_train_instances_list])
     print(f'Found {len(all_unique_closest_feasible_train_np)} unique close training CF and distance-filtered to {len(filtered_closest_feasible_train_np)} for {feat} and feat_value {feat_value} under percentage {percentage_train_cf_per_feat_value}, with len instances {len(sensitive_group_instances)}')
@@ -347,6 +345,8 @@ class Graph:
                                                                               self.percentage_train_cf_per_feat_value,
                                                                               ) for feat_value in feat_values) 
         filtered_train_cf_array, all_train_cf_array, closest_filtered_distances = zip(*results_list)
+        filtered_train_cf_array = np.concatenate(filtered_train_cf_array, axis=0)
+        all_train_cf_array = np.concatenate(all_train_cf_array, axis=0)
         if data.name in ['synthetic_athlete','compass','german','oulad','dutch','adult','student','law','credit']:
             distance_threshold = np.max(closest_filtered_distances)
         elif data.name in []:

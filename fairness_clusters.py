@@ -15,7 +15,7 @@ import os
 import time
 
 # LIST OF DATASETS TO RUN: 'synthetic_athlete','compass','german','student','dutch','oulad','adult','credit'
-datasets_zeus = ['dutch']
+datasets_zeus = ['adult']
 datasets_home = ['adult']
 datasets_thor = ['credit']
 # Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
