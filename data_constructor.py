@@ -407,7 +407,7 @@ class Dataset:
         if self.name == 'adult':
             feat_protected['Sex'] = {1.00:'Male', 2.00:'Female'}
             feat_protected['Race'] = {1.00:'White', 2.00:'Non-white'}
-            # feat_protected['AgeGroup'] = {1.00:'<25', 2.00:'25-60', 3.00:'>60'}
+            feat_protected['AgeGroup'] = {1.00:'<25', 2.00:'25-60', 3.00:'>60'}
         elif self.name == 'kdd_census':
             feat_protected['Sex'] = {1.00:'Male', 2.00:'Female'}
             feat_protected['Race'] = {1.00:'White', 2.00:'Non-white'}
@@ -460,9 +460,9 @@ class Dataset:
             feat = [feat_list[j] for j in idx_feat_protected]
             for j in feat:
                 feat_mutable[j] = 0
-        if self.name in ['adult','dutch']:
-            immutable_not_protected = ['MaritalStatus']
-        elif self.name == 'german':
+        # if self.name in ['adult','dutch']:
+        #     immutable_not_protected = ['MaritalStatus']
+        if self.name == 'german':
             immutable_not_protected = ['Single']
         elif self.name == 'student':
             immutable_not_protected = ['ParentStatus']

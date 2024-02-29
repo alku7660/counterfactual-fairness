@@ -127,8 +127,8 @@ def get_feat_possible_values_parallel(data, model, sensitive_feature_instances, 
     Method that obtains the features possible values
     """
     instance = sensitive_feature_instances[instance_idx]
-    train_cf_k = points[k]
-    v = train_cf_k - instance 
+    filtered_train_cf_k = points[k]
+    v = filtered_train_cf_k - instance 
     nonzero_index = list(np.nonzero(v)[0])
     feat_checked = []
     feat_possible_values = []
@@ -137,14 +137,14 @@ def get_feat_possible_values_parallel(data, model, sensitive_feature_instances, 
             feat_i = data.processed_features[i]
             if feat_i in data.bin_enc_cols:
                 if i in nonzero_index:
-                    value = [train_cf_k[i], instance[i]]
+                    value = [filtered_train_cf_k[i], instance[i]]
                     value = verify_prediction_feasibility(data, model, instance, value, i)
                 else:
-                    value = [train_cf_k[i]]
+                    value = [filtered_train_cf_k[i]]
                 feat_checked.extend([i])
             elif feat_i in data.cat_enc_cols:
                 idx_cat_i = data.idx_cat_cols_dict[feat_i[:-4]]
-                nn_cat_idx = list(train_cf_k[idx_cat_i])
+                nn_cat_idx = list(filtered_train_cf_k[idx_cat_i])
                 if any(item in idx_cat_i for item in nonzero_index):
                     ioi_cat_idx = list(instance[idx_cat_i])
                     value = [nn_cat_idx, ioi_cat_idx]
@@ -155,19 +155,19 @@ def get_feat_possible_values_parallel(data, model, sensitive_feature_instances, 
             elif feat_i in data.ordinal:
                 if i in nonzero_index:
                     values_i = list(data.processed_feat_dist[feat_i].keys())
-                    max_val_i, min_val_i = max(instance[i], train_cf_k[i]), min(instance[i], train_cf_k[i])
+                    max_val_i, min_val_i = max(instance[i], filtered_train_cf_k[i]), min(instance[i], filtered_train_cf_k[i])
                     value = [j for j in values_i if j <= max_val_i and j >= min_val_i]
                     value = verify_prediction_feasibility(data, model, instance, value, i)
                 else:
-                    value = [train_cf_k[i]]
+                    value = [filtered_train_cf_k[i]]
                 feat_checked.extend([i])
             elif feat_i in data.continuous:
                 if i in nonzero_index:
-                    max_val_i, min_val_i = max(instance[i], train_cf_k[i]), min(instance[i], train_cf_k[i])
+                    max_val_i, min_val_i = max(instance[i], filtered_train_cf_k[i]), min(instance[i], filtered_train_cf_k[i])
                     value = continuous_feat_values(i, min_val_i, max_val_i, data, continuous_bins)
                     value = verify_prediction_feasibility(data, model, instance, value, i)
                 else:
-                    value = [train_cf_k[i]]
+                    value = [filtered_train_cf_k[i]]
                 feat_checked.extend([i])
             feat_possible_values.append(value)
     return instance_idx, k, feat_possible_values
@@ -194,7 +194,7 @@ def get_all_costs_weights_parallel(data, feat, sensitive_feature_instances, all_
     distance2 = distance**2
     return instance_idx, k, distance, distance2
     
-def get_graph_nodes_parallel(data, model, sensitive_feature_instances, train_cf, distance_threshold, feat_possible_values, k, instance_idx, ioi_label, type):
+def get_graph_nodes_parallel(data, model, sensitive_feature_instances, distance_threshold, feat_possible_values, k, instance_idx, ioi_label, type):
     """
     Parallelization of the graph nodes search
     """
@@ -210,42 +210,86 @@ def get_graph_nodes_parallel(data, model, sensitive_feature_instances, train_cf,
                     permutations_list.append(perm_i)
     return permutations_list
 
-def filter_nearest_neighbors(closest_distances, closest_cf_idx, percentage_train_cf_per_feat_value):
+# def filter_nearest_neighbors(closest_distances, closest_cf_idx, percentage_train_cf_per_feat_value):
+#     """
+#     Nearest neighbor filtering according to percentage train cf per feat value
+#     """
+#     filtered_closest_distances, filtered_closest_cf_idx = [], []
+#     if percentage_train_cf_per_feat_value < 1:
+#         print(f'Filtering to {percentage_train_cf_per_feat_value} of the training CFs found')
+#         closest_distances_sorted = np.sort(closest_distances, axis=0)
+#         threshold_position_idx = int(np.ceil(len(closest_distances_sorted)*percentage_train_cf_per_feat_value))
+#         distance_threshold_cf = closest_distances_sorted[threshold_position_idx]
+#         for cf_idx in range(len(closest_distances)):
+#             if closest_distances[cf_idx] < distance_threshold_cf:
+#                 filtered_closest_distances.append(closest_distances[cf_idx])
+#                 filtered_closest_cf_idx.append(closest_cf_idx[cf_idx])
+#     else:
+#         filtered_closest_distances, filtered_closest_cf_idx = closest_distances, closest_cf_idx
+#     return filtered_closest_distances, filtered_closest_cf_idx
+
+def filter_nearest_neighbors(unique_closest_feasible_train_tuple_list, percentage_train_cf_per_feat_value):
     """
     Nearest neighbor filtering according to percentage train cf per feat value
     """
-    filtered_closest_distances, filtered_closest_cf_idx = [], []
+    filtered_closest_train_instances_list = []
     if percentage_train_cf_per_feat_value < 1:
         print(f'Filtering to {percentage_train_cf_per_feat_value} of the training CFs found')
-        closest_distances_sorted = np.sort(closest_distances, axis=0)
-        threshold_position_idx = int(np.ceil(len(closest_distances_sorted)*percentage_train_cf_per_feat_value))
-        distance_threshold_cf = closest_distances_sorted[threshold_position_idx]
-        for cf_idx in range(len(closest_distances)):
-            if closest_distances[cf_idx] < distance_threshold_cf:
-                filtered_closest_distances.append(closest_distances[cf_idx])
-                filtered_closest_cf_idx.append(closest_cf_idx[cf_idx])
+        unique_closest_feasible_train_tuple_list.sort(key=lambda x: x[1])
+        threshold_position_idx = int(np.ceil(len(unique_closest_feasible_train_tuple_list)*percentage_train_cf_per_feat_value))
+        distance_threshold_cf = unique_closest_feasible_train_tuple_list[threshold_position_idx][1]
+        for cf_idx in range(len(unique_closest_feasible_train_tuple_list)):
+            if unique_closest_feasible_train_tuple_list[cf_idx][1] < distance_threshold_cf:
+                filtered_closest_train_instances_list.append(unique_closest_feasible_train_tuple_list[cf_idx])
     else:
-        filtered_closest_distances, filtered_closest_cf_idx = closest_distances, closest_cf_idx
-    return filtered_closest_distances, filtered_closest_cf_idx
+        filtered_closest_train_instances_list = unique_closest_feasible_train_tuple_list
+    return filtered_closest_train_instances_list
+
+def get_closest_feasible_train_desired_label(data, type, x, train_instances):
+    """
+    Gets the feasible training observations for a given instance
+    """
+    feasible_train_instances_tuple_list = []
+    for train_instance in train_instances:
+        if verify_feasibility(x, train_instance, data):
+            distance_x_train_instance = distance_calculation(x, train_instance, kwargs={'dat':data, 'type':type})
+            feasible_train_instances_tuple_list.append((train_instance, distance_x_train_instance))
+    if len(feasible_train_instances_tuple_list) == 0:
+        closest_feasible_train_tuple = feasible_train_instances_tuple_list
+    else:
+        feasible_train_instances_tuple_list.sort(key=lambda x: x[1])
+        closest_feasible_train_tuple = feasible_train_instances_tuple_list[0]
+    return closest_feasible_train_tuple
 
 def get_nearest_neighbor_parallel(data, model, feat, feat_value, extra_search, sensitive_group_dict, type, percentage_train_cf_per_feat_value):
     """
     Nearest neighbor parallelization
     """
+    sensitive_group_instances = find_sensitive_group_instances(data, feat_value, sensitive_group_dict).values
     train_feat_val_np, target_feat_val = find_train_specific_feature_val(data, feat, feat_value)
     train_np_feat_val_pred = model.model.predict(train_feat_val_np)
     train_desired_label_np = find_train_desired_label(train_feat_val_np, target_feat_val, train_np_feat_val_pred, extra_search, data.undesired_class)
-    sensitive_group_instances = find_sensitive_group_instances(data, feat_value, sensitive_group_dict).values
-    neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type}, n_jobs=number_cores)
-    neigh.fit(train_desired_label_np)
-    print(f'NearestNeighbors fit for feat {feat}, feat_value {feat_value}.')
-    closest_distances, closest_cf_idx = neigh.kneighbors(sensitive_group_instances, return_distance=True)
-    filtered_closest_distances, filtered_closest_cf_idx = filter_nearest_neighbors(closest_distances, closest_cf_idx, percentage_train_cf_per_feat_value)
-    avg_filtered_distance = np.mean(filtered_closest_distances)
-    unique_filtered_closest_cf_idx = np.unique(filtered_closest_cf_idx).tolist()
-    print(f'Found {len(unique_filtered_closest_cf_idx)} unique close training CF for feat_value {feat_value} under the percentage of train {percentage_train_cf_per_feat_value} per feature value, with len instances {len(sensitive_group_instances)}')
-    train_cf = train_desired_label_np[unique_filtered_closest_cf_idx]
-    return train_cf, avg_filtered_distance
+    closest_feasible_train_tuple_list = []
+    counter = 0
+    for sensitive_group_instance in sensitive_group_instances:
+        counter += 1
+        # print(f'Counter: {counter} out of {len(sensitive_group_instances)}')
+        closest_feasible_train_tuple = get_closest_feasible_train_desired_label(data, type, sensitive_group_instance, train_desired_label_np)
+        if len(closest_feasible_train_tuple) == 0:
+            continue
+        else:
+            closest_feasible_train_tuple_list.append(closest_feasible_train_tuple)
+    unique_closest_feasible_train_tuple_list = list(set(closest_feasible_train_tuple_list))
+    all_unique_closest_feasible_train_np = np.array(unique_closest_feasible_train_tuple_list)
+    # neigh = NearestNeighbors(n_neighbors=1, algorithm='ball_tree', metric=distance_calculation, metric_params={'dat':data, 'type':type}, n_jobs=number_cores)
+    # neigh.fit(train_desired_label_np)
+    # closest_distances, closest_cf_idx = neigh.kneighbors(sensitive_group_instances, return_distance=True)
+    # print(f'NearestNeighbors fit for feat {feat}, feat_value {feat_value}.')
+    filtered_closest_feasible_train_instances_list = filter_nearest_neighbors(unique_closest_feasible_train_tuple_list, percentage_train_cf_per_feat_value)
+    filtered_closest_feasible_train_np = np.array([i[0] for i in filtered_closest_feasible_train_instances_list])
+    avg_filtered_closest_feasible_train_instances_distance = np.mean([i[1] for i in filtered_closest_feasible_train_instances_list])
+    print(f'Found {len(all_unique_closest_feasible_train_np)} unique close training CF and distance-filtered to {len(filtered_closest_feasible_train_np)} for {feat} and feat_value {feat_value} under percentage {percentage_train_cf_per_feat_value}, with len instances {len(sensitive_group_instances)}')
+    return filtered_closest_feasible_train_np, all_unique_closest_feasible_train_np, avg_filtered_closest_feasible_train_instances_distance
 
 class Graph:
 
@@ -260,7 +304,7 @@ class Graph:
         print('-------------------------------------------------------------------------')
         print('-------------Starting Nearest Training Counterfactual Search-------------')
         print('-------------------------------------------------------------------------')
-        self.train_cf, self.distance_threshold = self.nearest_neighbor_train_cf(data, model, feat_values, type)
+        self.filtered_train_cf, self.train_cf, self.distance_threshold = self.nearest_neighbor_train_cf(data, model, feat_values, type)
         print('-------------------------------------------------------------------------')
         print('----------------Finding Epsilon for Likelihood calculation---------------')
         print('-------------------------------------------------------------------------')
@@ -284,6 +328,7 @@ class Graph:
                 sensitive_group_idx_feat_value_dict[idx] = feat_value
                 instance_idx_to_original_idx_dict[counter] = idx
                 counter += 1
+        # filtered_sensitive_feature_instances = filter_infeasible_instances
         sensitive_feature_instances = np.concatenate(sensitive_feature_instances, axis=0)
         return sensitive_feature_instances, sensitive_group_idx_feat_value_dict, instance_idx_to_original_idx_dict
 
@@ -301,17 +346,16 @@ class Graph:
                                                                               type,
                                                                               self.percentage_train_cf_per_feat_value,
                                                                               ) for feat_value in feat_values) 
-        train_cf_list, closest_distances = zip(*results_list)
-        train_cf_array = np.concatenate(train_cf_list, axis=0)
+        filtered_train_cf_array, all_train_cf_array, closest_filtered_distances = zip(*results_list)
         if data.name in ['synthetic_athlete','compass','german','oulad','dutch','adult','student','law','credit']:
-            distance_threshold = np.max(closest_distances)
+            distance_threshold = np.max(closest_filtered_distances)
         elif data.name in []:
-            distance_threshold = np.mean(closest_distances)
+            distance_threshold = np.mean(closest_filtered_distances)
         elif data.name in []:
-            distance_threshold = np.min(closest_distances)
+            distance_threshold = np.min(closest_filtered_distances)
         end_time = time.time()
-        print(f'Found closest training CFs {len(train_cf_array)} for len instances {len(self.sensitive_feature_instances)}. (Total time: {(end_time - start_time)})')
-        return train_cf_array, distance_threshold
+        print(f'Found closest training CFs {len(filtered_train_cf_array)} for len instances {len(self.sensitive_feature_instances)}. (Total time: {(end_time - start_time)})')
+        return filtered_train_cf_array, all_train_cf_array, distance_threshold
 
     def construct_graph(self, data, model, type):
         """
@@ -342,7 +386,7 @@ class Graph:
         else:
             sensitive_feature_instances = obj
         if points is None:
-            points = self.train_cf
+            points = self.filtered_train_cf
         else:
             points = points
         feat_possible_values_all = {}
@@ -368,7 +412,6 @@ class Graph:
         graph_nodes = Parallel(n_jobs=number_cores, verbose=10, prefer='processes')(delayed(get_graph_nodes_parallel)(data,
                                                                               model,
                                                                               self.sensitive_feature_instances,
-                                                                              self.train_cf,
                                                                               self.distance_threshold,
                                                                               feat_possible_values,
                                                                               k,
