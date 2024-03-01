@@ -418,7 +418,7 @@ class Graph:
                                                                               instance_idx,
                                                                               self.ioi_label,
                                                                               type
-                                                                              ) for k in range(len(self.train_cf)) for instance_idx in range(len(self.sensitive_feature_instances)) 
+                                                                              ) for k in range(len(self.filtered_train_cf)) for instance_idx in range(len(self.sensitive_feature_instances)) 
                                             )
         graph_nodes_flat_list = list(chain.from_iterable(graph_nodes))
         graph_nodes_array = np.vstack(graph_nodes_flat_list)
