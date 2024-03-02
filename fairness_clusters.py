@@ -15,8 +15,8 @@ import os
 import time
 
 # LIST OF DATASETS TO RUN: 'synthetic_athlete','compass','german','student','dutch','oulad','adult','credit'
-datasets_zeus = ['adult']
-datasets_home = ['dutch']
+datasets_zeus = ['dutch']
+datasets_home = ['adult']
 datasets_thor = ['credit']
 # Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
 
@@ -32,7 +32,7 @@ if 'dsv' in os.getcwd():
 else:
     print('Selected Datasets and cores for Local run')
     datasets = datasets_home
-datasets = ['synthetic_athlete','compass','german','student']
+# datasets = ['synthetic_athlete','compass','german','student']
 methods_to_run = ['BIGRACE_dist'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -46,7 +46,7 @@ lagranges = [0.5]  # [0.5] [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 likelihood_factors = [0.5] # [0.5] [0.0, 0.1, 0.2, 0.3, 0.4, 0.5] This is used to calculate a minimum rho admitted for each CF found
 # t = 100 # Number of preselected close NN Training Counterfactuals
 # k = 10
-weight = 1.0
+weight = 0.1
 np.random.seed(seed_int)
 
 def percentage_close_train(dataset):
