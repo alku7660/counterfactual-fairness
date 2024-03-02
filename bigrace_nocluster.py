@@ -156,6 +156,7 @@ class BIGRACE:
         VARIABLES
         """
         cf = opt_model.addVars(set_Instances, G.nodes, vtype=GRB.BINARY, name='Counterfactual')
+        allow = opt_model.addVars(set_Instances, G.nodes, vtype=GRB.BINARY, name='Allowance')
         limiter = opt_model.addVars(G.nodes, vtype=GRB.BINARY, name='Limiter')
         
         # Variables required for deviation minimization
@@ -167,7 +168,7 @@ class BIGRACE:
         """
         for i in set_Instances:
             for n in G.nodes:
-                opt_model.addConstr(cf[i, n] <= graph.F[i, n])
+                opt_model.addConstr(cf[i, n] <= graph.F[i, n] + allow[i, n])
         
         for i in set_Instances:
             opt_model.addConstr(gp.quicksum(cf[i, n] for n in G.nodes) == 1)
@@ -215,7 +216,7 @@ class BIGRACE:
         
         # EXPERIMENT 1, 2, 3: alpha = [1.0, 0.5, 0.1]
         if self.dev == False and self.eff == False: 
-            opt_model.setObjective(cf.prod(graph.C)*self.alpha + gp.quicksum(limiter[n] for n in G.nodes)/len(set_Instances)*(1 - self.alpha), GRB.MINIMIZE)
+            opt_model.setObjective(cf.prod(graph.C)*self.alpha + gp.quicksum(limiter[n] for n in G.nodes)/len(set_Instances)*(1 - self.alpha) + gp.quicksum(allow[i, n] for i in set_Instances for n in G.nodes), GRB.MINIMIZE)
             
         # EXPERIMENT 4: Minimization of burden variance
         elif self.dev == True:
@@ -224,11 +225,11 @@ class BIGRACE:
             # opt_model.Params.PreSparsify = 1
             # opt_model.Params.Threads = 4
             # opt_model.setObjective((cf.prod(graph.C2))*total_pairings - (cf.prod(graph.C))**2, GRB.MINIMIZE)
-            opt_model.setObjective(max_burden - min_burden, GRB.MINIMIZE)
+            opt_model.setObjective(max_burden - min_burden + gp.quicksum(allow[i, n] for i in set_Instances for n in G.nodes), GRB.MINIMIZE)
 
         # EXPERIMENT 5: Maximize effectiveness
         elif self.eff == True:
-            opt_model.setObjective(-gp.quicksum(cf[c, i]*graph.eta[i] for i in G.nodes for c in set_Instances), GRB.MINIMIZE)
+            opt_model.setObjective(-gp.quicksum(cf[c, i]*graph.eta[i] for i in G.nodes for c in set_Instances) + gp.quicksum(allow[i, n] for i in set_Instances for n in G.nodes), GRB.MINIMIZE)
 
         """
         OPTIMIZATION AND RESULTS
@@ -243,6 +244,7 @@ class BIGRACE:
             print(f'Solution:')
             obj_val = opt_model.ObjVal
             sol_x, graph_nodes_solution, likelihood, effectiveness = {}, {}, {}, {}
+            counter_allowed = 0
             for i in set_Instances:
                 time.sleep(0.25)
                 for n in G.nodes:
@@ -251,8 +253,11 @@ class BIGRACE:
                         graph_nodes_solution[i] = n
                         likelihood[n] = graph.rho[n]
                         effectiveness[n] = graph.eta[n]
-                        print(f'cf{i, n}: {cf[i, n].x}')
-                        print(f'Node {n}: {graph.all_nodes[n - 1]}')
-                        print(f'Instance: {graph.sensitive_feature_instances[i - 1]}')
-                        print(f'Distance: {np.round(graph.C[i, n], 4)}')
+                        if allow[i, n].x > 0.1:
+                            counter_allowed += 1
+                            print(f'Allowance given to this instance! (Total: {counter_allowed})')
+                        print(f'cf{i, n}: {cf[i, n].x}. Distance: {np.round(graph.C[i, n], 3)}')
+                        # print(f'Node {n}: {graph.all_nodes[n - 1]}')
+                        # print(f'Instance: {graph.sensitive_feature_instances[i - 1]}')
+            print(f'Total allowance: {counter_allowed}')
         return sol_x, graph_nodes_solution, likelihood, effectiveness, opt_model.status, obj_val

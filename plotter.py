@@ -1715,10 +1715,10 @@ metric = 'proximity'
 # plot_centroids_cfs_ablation_lagrange_likelihood()
 # plot_centroids_cfs_ablation_alpha_beta_gamma('oulad')
 # proximity_all_datasets_all_methods_plot(datasets, methods_to_run)
-# proximity_across_alpha_counterfair(datasets)
+proximity_across_alpha_counterfair(datasets)
 # parallel_plots_alpha_01(datasets)
 # actionability_oriented_fairness_plot(datasets, methods_to_run)
-effectiveness_across_methods(datasets, methods_to_run)
+# effectiveness_across_methods(datasets, methods_to_run)
 
 
 
