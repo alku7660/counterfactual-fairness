@@ -15,6 +15,8 @@ from mlxtend.frequent_patterns import apriori
 from mlxtend.frequent_patterns import fpgrowth
 import time
 import copy
+import multiprocessing
+from functools import partial
 
 """
 This method is based on:
@@ -46,7 +48,9 @@ class FACTS:
         self.actions_fpgrowth_set = self.get_actions_fpgrowth_set()
         self.subgroup_same_cost_actions = self.get_same_cost_actions_per_subgroup(data)
         self.effectiveness_df = self.estimate_effectiveness_per_action_per_sensitive_group(data, model)
+        print("G")
         self.best_effectiveness_df = self.select_best_action_per_subgroup()
+        print("H")
         self.normal_x_cf, self.actions_x = self.get_cfs_all_fn_instances(data)
         end_time = time.time()
         self.run_time = end_time - start_time
@@ -233,9 +237,20 @@ class FACTS:
             x_transformed = data.transformed_test_df.loc[x.index,:]
             x_prime = self.get_x_discretized_prime_from_discretized_x(action, x)
             x_prime_normal = self.adjust_continuous_feat_normal_x_prime(x_prime, x_transformed, action, data)
-            cost = distance_calculation(np.array(x_transformed), np.array(x_prime_normal), {'dat':data, 'type':'L1_L0'})
+            cost = distance_calculation(np.array(x_transformed)[0], np.array(x_prime_normal).flatten(), kwargs={'dat':data, 'type':'L1_L0'})
             cost_instances.append(cost)
         return len(set(cost_instances)) == 1
+
+    def get_same_cost_actions_per_subgroup_row(self, subgroups, data, sensitive_feat, subgroup, counter):
+        subgroup_instances_idx = self.get_instances_idx_belonging_to_subgroup(subgroup)
+        subgroup_instances = self.get_instances_with_idx(subgroup_instances_idx)
+        same_cost_actions_list = []
+        for action in self.actions_fpgrowth_set:
+            if self.verify_same_cost_subgroup_action(subgroup_instances, action, data):
+                same_cost_actions_list.append(action)
+        
+        print(f'Analyzing sensitive feature: {sensitive_feat}, Subgroup: {subgroup}. Total subgroups analyzed: {counter}/{len(subgroups)}')
+        return same_cost_actions_list, subgroup
 
     def get_same_cost_actions_per_subgroup(self, data):
         """
@@ -244,18 +259,48 @@ class FACTS:
         action_per_subgroup_dict = {}
         for sensitive_feat in self.protected_groups.keys():
             subgroups = list(self.fpgrowth_per_feat[sensitive_feat])
-            counter = 0
-            for subgroup in subgroups:
-                subgroup_instances_idx = self.get_instances_idx_belonging_to_subgroup(subgroup)
-                subgroup_instances = self.get_instances_with_idx(subgroup_instances_idx)
-                same_cost_actions_list = []
-                for action in self.actions_fpgrowth_set:
-                    if self.verify_same_cost_subgroup_action(subgroup_instances, action, data):
-                        same_cost_actions_list.append(action)
-                counter += 1
-                action_per_subgroup_dict[subgroup] = same_cost_actions_list
-                print(f'Analyzing sensitive feature: {sensitive_feat}, Subgroup: {subgroup}. Total subgroups analyzed: {counter}/{len(subgroups)}')
+            ins_idx = zip(subgroups, range(len(subgroups)))
+
+            pool = multiprocessing.Pool(processes=40) 
+            func = partial(self.get_same_cost_actions_per_subgroup_row, subgroups, data, sensitive_feat)
+            outputs = pool.starmap(func, ins_idx)
+            pool.close()
+            pool.join()
+            for i in outputs:
+                 action_per_subgroup_dict[i[1]] = i[0]
+
+            # for subgroup in subgroups:
+                # action_per_subgroup_dict[subgroup] = same_cost_actions_list
         return action_per_subgroup_dict
+
+
+    def get_recourses_for_fn_one_instance(self, data, model, len_ins, x_fn_idx, idx):
+        start_time = time.time()
+        x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T
+        # print(type(x))
+        recourse_set = self.extract_recourses_x(x)
+        # 99% of bottleneck comes from here
+        results_x = self.results_recourse_rules_x(recourse_set, x, data, model)
+        
+        end_time = time.time()
+        print(f'Dataset: {data.name}. Instance {x_fn_idx} ({idx}/{len_ins}) done (time: {np.round(end_time - start_time, 2)} s)')
+        return results_x
+    
+    def get_recourses_for_fn_instances(self, data, model):
+        """
+        Obtains all the best recourses for all FN instances
+        """
+        set_instances = self.fn_instances.index
+        ins_idx = zip(set_instances, range(len(set_instances)))
+
+        pool = multiprocessing.Pool(processes=30) 
+        func = partial(self.get_recourses_for_fn_one_instance, data, model, len(set_instances))
+        outputs = pool.starmap(func, ins_idx)
+        pool.close()
+        pool.join()
+        for i in outputs:
+            self.add_results(i)
+
 
     def calculate_action_effectiveness(self, subgroup, sensitive_group, action, data, model):
         """
@@ -282,7 +327,55 @@ class FACTS:
             effectiveness = 0
         return effectiveness
 
+    def estimate_effectiveness_per_action_per_sensitive_group_row(self, data, model, subgroup, count):
+        """
+        Estimates the effectiveness of each of the actions for each of the subgroups they apply to. Effectiveness here is simply whether they change the label or not (feasibility is not considered)
+        """
+        effectiveness_df = pd.DataFrame(columns=cols)
+
+        cols = ['subgroup','sensitive_group','action','effectiveness']
+        actions_list = self.subgroup_same_cost_actions[subgroup]
+        for sensitive_group in self.sensitive_groups:
+            for action in actions_list:
+                effectiveness = self.calculate_action_effectiveness(subgroup, sensitive_group, action, data, model)
+                effectiveness_row = pd.DataFrame(data=[[subgroup, sensitive_group, action, effectiveness]], index = [count], columns=cols)
+                effectiveness_df = pd.concat((effectiveness_df, effectiveness_row))
+        print(f'Estimated effectiveness of subgroup actions in: {subgroup}. Total subgroups analyzed for actions effectiveness: {count}/{len(self.subgroup_same_cost_actions.keys())}')
+        
+        return effectiveness_df
+    
+        return effectiveness_df
+    
     def estimate_effectiveness_per_action_per_sensitive_group(self, data, model):
+        """
+        Estimates the effectiveness of each of the actions for each of the subgroups they apply to. Effectiveness here is simply whether they change the label or not (feasibility is not considered)
+        """
+        cols = ['subgroup','sensitive_group','action','effectiveness']
+        effectiveness_df = pd.DataFrame(columns=cols)
+        count = 0
+        subgroups = self.subgroup_same_cost_actions.keys()
+        ins_idx = zip(subgroups, range(len(subgroups)))
+
+        pool = multiprocessing.Pool(processes=40) 
+        func = partial(self.estimate_effectiveness_per_action_per_sensitive_group_row, data, model)
+        outputs = pool.starmap(func, ins_idx)
+        pool.close()
+        pool.join()
+        effectiveness_df = pd.concat(outputs)
+
+        # for subgroup in self.subgroup_same_cost_actions.keys():
+        #     count += 1
+        #     actions_list = self.subgroup_same_cost_actions[subgroup]
+        #     for sensitive_group in self.sensitive_groups:
+        #         for action in actions_list:
+        #             effectiveness = self.calculate_action_effectiveness(subgroup, sensitive_group, action, data, model)
+        #             effectiveness_row = pd.DataFrame(data=[[subgroup, sensitive_group, action, effectiveness]], index = [count], columns=cols)
+        #             effectiveness_df = pd.concat((effectiveness_df, effectiveness_row))
+        #     print(f'Estimated effectiveness of subgroup actions in: {subgroup}. Total subgroups analyzed for actions effectiveness: {count}/{len(self.subgroup_same_cost_actions.keys())}')
+        effectiveness_df.sort_values('effectiveness', ascending=False)
+        return effectiveness_df
+    
+    def estimate_effectiveness_per_action_per_sensitive_group_old(self, data, model):
         """
         Estimates the effectiveness of each of the actions for each of the subgroups they apply to. Effectiveness here is simply whether they change the label or not (feasibility is not considered)
         """

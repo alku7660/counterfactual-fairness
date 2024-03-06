@@ -1,16 +1,17 @@
 import numpy as np
 import pandas as pd
-from collections import Counter
-from evaluator_constructor import distance_calculation
-import time
 from functools import partial
+from collections import Counter
+from model_constructor import Model
+from evaluator_constructor import distance_calculation, verify_feasibility
+import time
+from scipy.stats import norm
 from mlxtend.frequent_patterns import apriori
 import time
 import copy
 import warnings
 warnings.filterwarnings("ignore")
 import multiprocessing
-
 """
 This method is based on:
 Rawal, Kaivalya, and Himabindu Lakkaraju. "Beyond individualized recourse: Interpretable and interactive summaries of actionable recourses." Advances in Neural Information Processing Systems 33 (2020): 12187-12198.
@@ -54,7 +55,7 @@ class ARES:
         Obtains the apriori conjunction predicates from the frequent itemsets from the apriori algorithm, as explained in:
         Rawal, Kaivalya, and Himabindu Lakkaraju. "Beyond individualized recourse: Interpretable and interactive summaries of actionable recourses." Advances in Neural Information Processing Systems 33 (2020): 12187-12198.
         """
-        apriori_df = apriori(self.discretized_train_df, min_support=self.support_th, use_colnames=True)
+        apriori_df = apriori(self.discretized_train_df, min_support=self.support_th, use_colnames=True, low_memory=True)
         return apriori_df
 
     def get_sensitive_groups(self):
@@ -71,7 +72,6 @@ class ARES:
         Obtains a Dict object containing the frequent itemsets (recourse predicates) for each of the sensitive groups.
         """
         predicate_dict = {}
-
         for sensitive_group in self.sensitive_groups:
             itemset_list = [list(itemset) for itemset in self.apriori_df.itemsets.values if sensitive_group in itemset]
             for itemset in itemset_list:
@@ -120,7 +120,8 @@ class ARES:
         """
         q_list = []
         for q in self.sensitive_groups:
-            if int(x[q].values) == 1:
+            # if int(x[q].values) == 1:
+            if int(x[q]) == 1:
                 q_list.append(q)
         return q_list
 
@@ -133,7 +134,8 @@ class ARES:
             recourse_predicates_q = self.recourse_predicates_per_group[q]
             c_i_list = []
             for c in recourse_predicates_q:
-                c_values = [int(x[c_feat].values) for c_feat in c]
+                # c_values = [int(x[c_feat].values) for c_feat in c]
+                c_values = [int(x[c_feat]) for c_feat in c]
                 if c_values == [1]*len(c):
                     c_i_list.append(c)
                     c_key = tuple([q] + c)
@@ -145,75 +147,20 @@ class ARES:
     def find_recourse_rules(self, q, c):
         """
         Given a Q and a C, obtains the C's available in the frequent itemsets belonging to Q
-        """        
-        c_prime_list = self.recourse_predicates_per_group[q]
-        c_prime_list_new = []
-
-        # C is already given here (it is one C though).
-        c_name_list = set([i.split('_')[0] for i in c])
-        for c_i in c_prime_list:
-            # check mapping
-            c_i_name_list = set([i.split('_')[0] for i in c_i])
-            if c_name_list == c_i_name_list:
-                c_prime_list_new.append(c_i)
-        if c in c_prime_list_new:
-            # c_prime_list.remove(c)
-            c_prime_list_new.remove(c)
-        # for features in c:
-        #     # features = Sex_1, Agegroup_2 ...
-        #     # for each C only take the first part 
-        #     feat_name, _ = features.split('_')
-        #     # feat_name = Sex, Agegroup ...
-
-        #     # we look the original c_prime_list we have here (= q)
-        #     # the goal of this function is to make c' which is not overlapping c
-        #     for c_i in c_prime_list: #q candidates
-        #         #again we take the names (no number)
-        #         # feature combinations of q -> e.g. ['Sex', 'Age']... 
-        #         c_i_name_list = [i.split('_')[0] for i in c_i]
-        #         print(feat_name)
-        #         # if feat_name not in c_i_name_list or len(c) != len(c_i_name_list):
-        #         if feat_name in c_i_name_list and len(c) == len(c_i_name_list):
-        #             # we remove those things found in c from original q
-        #             if c_i not in c_prime_list_new:
-        #             # if c_i in c_prime_list:
-        #                 # c_prime_list.remove(c_i)
-        #                 c_prime_list_new.append(c_i)
-        #                 # print(c_i)
-
-        #     # kind of sanity check - no duplication.
-        #     if c in c_prime_list_new:
-        #         # c_prime_list.remove(c)
-        #         c_prime_list_new.remove(c)
-        # print("modified")
-        # print("C:", c)
-        # print("C_prime:", c_prime_list_new)
-        return c_prime_list_new
-    
-    def find_recourse_rules_org(self, q, c):
-        """
-        Given a Q and a C, obtains the C's available in the frequent itemsets belonging to Q
         """
         c_prime_list = copy.deepcopy(self.recourse_predicates_per_group[q])
         c_list_copy = copy.deepcopy(c_prime_list)
-        
         for features in c:
-            # for each C only take the first part 
             feat_name, _ = features.split('_')
             for c_i in c_list_copy:
-                #again we take the first one only
                 c_i_name_list = [i.split('_')[0] for i in c_i]
-                # we take some mismatch (feature name in c but not in c_i)
                 if feat_name not in c_i_name_list or len(c) != len(c_i_name_list):
-                    # we remove those things found in c from original q
                     if c_i in c_prime_list:
                         c_prime_list.remove(c_i)
-
             if c in c_prime_list:
                 c_prime_list.remove(c)
-
         return c_prime_list
-    
+                    
     def get_all_recourse_rules_x(self, sensitive_groups_x, recourse_predicates_x):
         """
         Obtains all recourse rules for instance x
@@ -223,8 +170,7 @@ class ARES:
             c_to_c_prime_dict = dict()
             for c in recourse_predicates_x[q]:
                 c_prime = self.find_recourse_rules(q, c)
-                # c_key = tuple(c)[0] if len(c) == 1 else tuple(c)
-                c_key = tuple(c)
+                c_key = tuple(c)[0] if len(c) == 1 else tuple(c)
                 c_to_c_prime_dict[c_key] = c_prime
             q_to_c_dict[q] = c_to_c_prime_dict
         return q_to_c_dict
@@ -253,8 +199,7 @@ class ARES:
                 correct = dict()
                 feat_change = dict()
                 for c_prime in c_prime_list:
-                    # c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
-                    c_prime_key = tuple(c_prime)
+                    c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
                     correct[c_prime_key] = 0
                     feat_change[c_prime_key] = 0
                 c_prime_dict_corr[c] = correct
@@ -324,37 +269,45 @@ class ARES:
                 q_c = (q, c_key)
                 for c_prime in c_dict[c]:
                     x_prime = x.copy(deep=True)
-                    x_prime[c_list] = 0
+                    # x_prime[c_list] = 0
                     c_prime_key = tuple(c_prime)
                     q_c_c_prime = (q, c_key, c_prime_key)
                     x_prime[c_prime] = np.array([1]*len(c_prime_key))
 
                     # INVERSE TRANSFORMATION 1
-                    x_prime_transformed = self.transform_to_normal_x(x_prime, data)
-                    # x_prime_transformed = x_prime
+                    # x_prime_transformed = self.transform_to_normal_x(x_prime, data)
+                    x_prime_transformed = x_prime
                     c_prime_key_name_list = [i.split('_')[0] for i in c_prime_key]
-
                     for cont_feat in data.continuous:
                         if cont_feat not in c_prime_key_name_list:
-                            x_prime_transformed[cont_feat] = x_transformed[cont_feat].values
-                    x_pred = model.model.predict(x_transformed.values)
-                    x_prime_pred = model.model.predict(x_prime_transformed.values)
-                    
+                            # print(cont_feat, x_transformed[cont_feat].iloc[0])
+                            # x_prime_transformed[cont_feat] = x_transformed[cont_feat]
+                            x_prime_transformed[cont_feat] = x_transformed[cont_feat].iloc[0]
+                        
+                    # print("x_prime:", x_prime_transformed.to_frame().T[x_transformed.columns])
+                    x_pred = model.model.predict(x_transformed)
+                    try:
+                        x_prime_pred = model.model.predict(x_prime_transformed.to_frame().T[x_transformed.columns])
+                    except:
+                        x_prime_pred = x_pred
+                        # print("error")
                     if x_pred[0] == data.undesired_class and x_prime_pred[0] != data.undesired_class:
                         correctness_q_c_c_prime = 1
                     else:
                         correctness_q_c_c_prime = 0
                 
                     # INVERSE TRANSFORMATION 2
-                    feat_change_q_c_c_prime = distance_calculation(np.array(x_transformed), np.array(x_prime_transformed), kwargs={'dat':data, 'type':'L1_L0'})
+                    # print(np.array(x_transformed)[0], np.array(x_prime_transformed))
+                    feat_change_q_c_c_prime = distance_calculation(np.array(x_transformed)[0], np.array(x_prime_transformed).flatten(), kwargs={'dat':data, 'type':'L1_L0'})
                     result_x = [x_idx, q, q_c, q_c_c_prime, correctness_q_c_c_prime, feat_change_q_c_c_prime]
                     results_x_list.append(result_x)
         return results_x_list
     
-    def results_recourse_rules_x_org(self, recourse_rules_x, x, data, model):
+    def results_recourse_rules_x(self, recourse_rules_x, x, data, model):
         """
         Adds the recourse rules obtained for x, their correctness to the correctness dictionary and the feature change to the change dictionary
         """
+        
         if not isinstance(x.index[0], str):
             x_idx = int(x.index[0])
             x_transformed = data.transformed_test_df.loc[x.index,:]
@@ -367,49 +320,35 @@ class ARES:
             c_dict = recourse_rules_x[q]
             for c in c_dict.keys():
                 c_prime_list = c_dict[c]
-                # c_key = c if isinstance(c, str) else tuple(c)
-                # c_list = c if isinstance(c, str) else list(c)
-                c_key =  tuple(c)
-                c_list = list(c)
+                c_key = c if isinstance(c, str) else tuple(c)
+                c_list = c if isinstance(c, str) else list(c)
                 q_c = (q, c_key)
-                # len_c = 1 if isinstance(c, str) else len(c)
-                # len_c = len(c)
+                len_c = 1 if isinstance(c, str) else len(c)
                 for c_prime in c_prime_list:
-                    # x_prime = copy.deepcopy(x)
-                    x_prime = x.copy(deep=True)
-                    # print(x_prime, c_list)
+                    x_prime = copy.deepcopy(x)
                     # x_prime[c_list] = [0]*len_c
-                    x_prime[c_list] = 0
-                    # if len(c_prime) == 1:
-                    #     c_prime_key = c_prime[0]
-                    #     len_c_prime_key = 1 
-                    # else:
-                    c_prime_key = tuple(c_prime)
-                    len_c_prime_key = len(c_prime_key)
-                        # if isinstance(c_prime_key, str) else len(c_prime_key)
-                    #  = c_prime[0] if len(c_prime) == 1 else tuple(c_prime)
+                    c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
                     q_c_c_prime = (q, c_key, c_prime_key)
+                    len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
                     x_prime[c_prime] = np.array([1]*len_c_prime_key)
+                    # print(x_prime)
+                    # x_prime = x_prime.to_frame().T
                     x_prime_transformed = self.transform_to_normal_x(x_prime, data)
-                    # c_prime_key_name_list = [c_prime_key.split('_')[0]] if len_c_prime_key == 1 else [i.split('_') for i in c_prime_key]
-                    c_prime_key_name_list = [i.split('_')[0] for i in c_prime_key]
-
+                    # x_prime_transformed = x_prime
+                    c_prime_key_name_list = [c_prime_key.split('_')[0]] if len_c_prime_key == 1 else [i.split('_') for i in c_prime_key]
                     for cont_feat in data.continuous:
                         if cont_feat not in c_prime_key_name_list:
                             x_prime_transformed[cont_feat] = x_transformed[cont_feat].values
+                            # x_prime_transformed[cont_feat] = x_transformed[cont_feat].iloc[0]
                     x_pred = model.model.predict(x_transformed.values)
-                    x_prime_pred = model.model.predict(x_prime_transformed.values)
-                    # print(x_pred, x_prime_pred, data.undesired_class)
-
-                    # this is always False you know :P. [1] = 1, [0] = 0...
-                    if x_pred[0] == data.undesired_class and x_prime_pred[0] != data.undesired_class:
+                    # x_prime_pred = model.model.predict(x_prime_transformed.values)
+                    x_prime_pred = model.model.predict(x_prime_transformed[x_transformed.columns])
+                    if x_pred == data.undesired_class and x_prime_pred != data.undesired_class:
                         correctness_q_c_c_prime = 1
                     else:
                         correctness_q_c_c_prime = 0
-                    
-                    # Doing multiple NP->PD->NP transformation for this simple distance calculation causes hell problem.
-                    feat_change_q_c_c_prime = distance_calculation(np.array(x_transformed), np.array(x_prime_transformed), kwargs={'dat':data, 'type':'L1_L0'})
-                    # feat_change_q_c_c_prime = 0
+                    # print(np.array(x_transformed)[0], np.array(x_prime_transformed))
+                    feat_change_q_c_c_prime = distance_calculation(np.array(x_transformed)[0], np.array(x_prime_transformed)[0], kwargs={'dat':data, 'type':'L1_L0'})
                     result_x = [x_idx, q, q_c, q_c_c_prime, correctness_q_c_c_prime, feat_change_q_c_c_prime]
                     results_x_list.append(result_x)
         return results_x_list
@@ -432,14 +371,12 @@ class ARES:
         """
         Joins the list of results of x holding all the results with new instance dictionaries from ARES to the DataFrame containing everything
         """
-        # print(results_x)
         results_x_df = pd.DataFrame(data=results_x, columns=self.results_df.columns)
         self.results_df = pd.concat((self.results_df, results_x_df))
-    
-
     def get_recourses_for_fn_one_instance(self, data, model, len_ins, x_fn_idx, idx):
         start_time = time.time()
         x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T
+        # print(type(x))
         recourse_set = self.extract_recourses_x(x)
         # 99% of bottleneck comes from here
         results_x = self.results_recourse_rules_x(recourse_set, x, data, model)
@@ -447,7 +384,7 @@ class ARES:
         end_time = time.time()
         print(f'Dataset: {data.name}. Instance {x_fn_idx} ({idx}/{len_ins}) done (time: {np.round(end_time - start_time, 2)} s)')
         return results_x
-    # SLOW: NEED TO FIX FROM HERE
+    
     def get_recourses_for_fn_instances(self, data, model):
         """
         Obtains all the best recourses for all FN instances
@@ -462,8 +399,23 @@ class ARES:
         pool.join()
         for i in outputs:
             self.add_results(i)
-        # for x_fn_idx in set_instances:
-        
+
+    def get_recourses_for_fn_instances_old(self, data, model):
+        """
+        Obtains all the best recourses for all FN instances
+        """
+        counter = 1
+        set_instances = self.fn_instances.index
+        for x_fn_idx in set_instances:
+            start_time = time.time()
+            x = data.discretized_test_df.loc[x_fn_idx,:].to_frame().T
+            recourse_set = self.extract_recourses_x(x)
+            results_x = self.results_recourse_rules_x(recourse_set, x, data, model)
+            self.add_results(results_x)
+            end_time = time.time()
+            print(f'Dataset: {data.name}. Instance {x_fn_idx} ({counter}/{len(set_instances)}) done (time: {np.round(end_time - start_time, 2)} s)')
+            counter += 1
+    
     def get_recourses_for_centroids(self, data, model):
         """
         Obtains the best recourses for centroids
@@ -520,6 +472,22 @@ class ARES:
             best_recourse_x_df = pd.DataFrame(data=[best_recourse_x], columns=self.best_recourse_df.columns)
             self.best_recourse_df = pd.concat((self.best_recourse_df, best_recourse_x_df))
 
+
+    def get_best_recourse_rule_x_old(self):
+        """
+        Selects the best recourse rule for every instance x in the set of false negatives
+        """
+        for x_idx in self.results_df['x_idx'].unique():
+            filter_x_correct_result_df = self.results_df[(self.results_df['x_idx'] == x_idx) & (self.results_df['correctness'] == 1)]
+            for best_q_c_c_prime in list(self.correctness_df['q_c_c_prime']):
+                if best_q_c_c_prime in list(filter_x_correct_result_df['q_c_c_prime']):
+                    found_best_q_c_c_prime = best_q_c_c_prime
+                    feat_change_best_q_c_c_prime = filter_x_correct_result_df[filter_x_correct_result_df['q_c_c_prime'] == found_best_q_c_c_prime]['feat_change'].values[0]
+                    break
+            best_recourse_x = [x_idx, found_best_q_c_c_prime, 1, feat_change_best_q_c_c_prime]
+            best_recourse_x_df = pd.DataFrame(data=[best_recourse_x], columns=self.best_recourse_df.columns)
+            self.best_recourse_df = pd.concat((self.best_recourse_df, best_recourse_x_df))
+
     def get_unique_recourse_rules(self):
         """
         Obtains the unique rules used
@@ -537,20 +505,16 @@ class ARES:
             centroid = self.cluster.filtered_centroids_list[c_idx]
             original_centroid = pd.DataFrame(data=centroid.x.reshape(1,-1), index=[f'c_{c_idx}'], columns=data.features)
             x = data.discretize_df(original_centroid)
-
             if len(self.best_recourse_df[self.best_recourse_df['x_idx'] == idx]['best_q_c_c_prime']) == 0:
                 continue
             else:
                 q_c_c_prime = self.best_recourse_df[self.best_recourse_df['x_idx'] == idx]['best_q_c_c_prime'][0]
             c_prime = q_c_c_prime[-1]
-            # c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
-            c_prime_key = tuple(c_prime)
-            # len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
+            c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
+            len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
             x_prime = self.change_x_to_x_prime(x, q_c_c_prime)
             x_prime_normal = self.transform_to_normal_x(x_prime, data)
-            # Zed -> there should have been [0] when the feature size is > 1
-            # c_prime_key_name_list = [c_prime_key.split('_')[0]] if len_c_prime_key == 1 else [i.split('_') for i in c_prime_key]
-            c_prime_key_name_list =  [i.split('_')[0] for i in c_prime_key]
+            c_prime_key_name_list = [c_prime_key.split('_')[0]] if len_c_prime_key == 1 else [i.split('_') for i in c_prime_key]
             for cont_feat in data.continuous:
                 if cont_feat not in c_prime_key_name_list:
                     x_prime_normal[cont_feat] = centroid.normal_x_df[cont_feat].values
@@ -564,20 +528,16 @@ class ARES:
         normal_x_cf = dict()
         for idx in list(self.best_recourse_df['x_idx']):
             q_c_c_prime_idx = self.best_recourse_df[self.best_recourse_df['x_idx'] == idx]['best_q_c_c_prime'][0]
-            c_prime = q_c_c_prime_idx[-1]
-            # c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
-            c_prime_key = c_prime
-            # len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
+            c_prime = [q_c_c_prime_idx[-1]]
+            c_prime_key = tuple(c_prime)[0] if len(c_prime) == 1 else tuple(c_prime)
+            len_c_prime_key = 1 if isinstance(c_prime_key, str) else len(c_prime_key)
             if isinstance(idx,str):
                 continue
             else:
                 x_idx = self.discretized_test_df.loc[idx].to_frame().T
             x_prime = self.change_x_to_x_prime(x_idx, q_c_c_prime_idx)
             x_prime_normal = self.transform_to_normal_x(x_prime, data)
-            # c_prime_key_name_list = [c_prime_key.split('_')[0]] if len_c_prime_key == 1 else [i.split('_') for i in c_prime_key]
-            # print(c_prime_key)
-            c_prime_key_name_list = [i.split('_')[0] for i in c_prime_key]
-            
+            c_prime_key_name_list = [c_prime_key.split('_')[0]] if len_c_prime_key == 1 else [i.split('_') for i in c_prime_key]
             for cont_feat in data.continuous:
                 if cont_feat not in c_prime_key_name_list:
                     x_prime_normal[cont_feat] = self.transformed_test_df.loc[idx][cont_feat]

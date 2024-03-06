@@ -15,8 +15,9 @@ import os
 import time
 
 # LIST OF DATASETS TO RUN: 'synthetic_athlete','compass','german','student','dutch','oulad','adult','credit'
+# ARES: No student
 datasets_zeus = ['dutch']
-datasets_home = ['synthetic_athlete','compass','german','student']
+datasets_home = ['synthetic_athlete','compass','german']
 datasets_thor = ['adult','credit']
 # Done for CounterFair dist: 'synthetic_athlete','compass','german','student'
 
@@ -32,7 +33,7 @@ if 'dsv' in os.getcwd():
 else:
     print('Selected Datasets and cores for Local run')
     datasets = datasets_home
-datasets = ['synthetic_athlete','compass','german','student']
+datasets = ['adult']
 methods_to_run = ['ARES'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -130,7 +131,7 @@ if __name__=='__main__':
             elif method == 'FACTS':
                 graph_obj = None
                 alpha, dev, eff = select_parameters(method, weight)
-                counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, dev, eff, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th, continuous_bins=continuous_bins)
+                counterfactual = Counterfactual(data, model, method, alpha, dev, eff, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th, continuous_bins=continuous_bins, cluster=clusters_obj)
                 cf_evaluator.add_cf_data_facts(counterfactual)
             end_time = time.time()
             print(f'---------------------------')
