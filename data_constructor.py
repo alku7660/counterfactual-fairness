@@ -164,6 +164,8 @@ class Dataset:
         """
         Performs a the inverse operation of the discretization of the df (uses the encoder and discretizer)
         """
+        
+        # print(encoded_df.to_frame().T)
         if len(self.continuous) > 0:
             encoded_continuous_cols = self.discretizer.get_feature_names_out(self.continuous)
         else:
