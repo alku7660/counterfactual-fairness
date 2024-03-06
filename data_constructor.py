@@ -462,9 +462,9 @@ class Dataset:
             feat = [feat_list[j] for j in idx_feat_protected]
             for j in feat:
                 feat_mutable[j] = 0
-        if self.name in ['adult','dutch']:
-            immutable_not_protected = ['MaritalStatus']
-        elif self.name == 'german':
+        # if self.name in ['adult','dutch']:
+        #     immutable_not_protected = ['MaritalStatus']
+        if self.name == 'german':
             immutable_not_protected = ['Single']
         elif self.name == 'student':
             immutable_not_protected = ['ParentStatus']
