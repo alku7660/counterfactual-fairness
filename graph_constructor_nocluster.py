@@ -239,7 +239,7 @@ def filter_nearest_neighbors(unique_closest_feasible_train_tuple_list, percentag
         threshold_position_idx = int(np.ceil(len(unique_closest_feasible_train_tuple_list)*percentage_train_cf_per_feat_value))
         distance_threshold_cf = unique_closest_feasible_train_tuple_list[threshold_position_idx][1]
         for cf_idx in range(len(unique_closest_feasible_train_tuple_list)):
-            if unique_closest_feasible_train_tuple_list[cf_idx][1] <= distance_threshold_cf:
+            if unique_closest_feasible_train_tuple_list[cf_idx][1] <= distance_threshold_cf and cf_idx <= threshold_position_idx:
                 filtered_closest_train_instances_list.append(unique_closest_feasible_train_tuple_list[cf_idx])
     else:
         filtered_closest_train_instances_list = unique_closest_feasible_train_tuple_list
