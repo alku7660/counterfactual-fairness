@@ -57,7 +57,7 @@ def percentage_close_train(dataset):
         percentage_close_train_cf = 1
         continuous_bins = 10
     elif dataset in ['dutch']:
-        percentage_close_train_cf = 0.025
+        percentage_close_train_cf = 0.02
         continuous_bins = 3
     elif dataset in ['adult']:
         percentage_close_train_cf = 0.1
