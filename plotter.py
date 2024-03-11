@@ -1308,7 +1308,7 @@ def proximity_across_alpha_counterfair(datasets):
     OUTPUT: (None: plot stored)
     """
     dataset_names = get_data_names(datasets)
-    fig, axes = plt.subplots(nrows=len(datasets), ncols=2, figsize=(7, 9), gridspec_kw={'width_ratios': [6.5, 3.5]})
+    fig, axes = plt.subplots(nrows=len(datasets), ncols=2, figsize=(8, 10.5), gridspec_kw={'width_ratios': [7, 3], 'height_ratios': [1.5, 1.5, 1.5, 1.5, 1.5, 2]})
     for dataset_idx in range(len(datasets)):
         data_str = datasets[dataset_idx]
         data_name = dataset_names[data_str]
@@ -1338,22 +1338,25 @@ def proximity_across_alpha_counterfair(datasets):
             n_different_cfs_alpha_01 = len(np.unique(np.concatenate((eval_alpha_01_df_sensitive_group['cf'].values), axis=0), axis=0))
             y_n_different_cfs = np.array([n_different_cfs_alpha_01, n_different_cfs_alpha_05, n_different_cfs_alpha_10]).astype(int)
             number_instances_group = len(eval_alpha_10_df[eval_alpha_10_df['Sensitive group'] == sensitive_group])
-            axes[dataset_idx, 1].plot(x_alphas, y_n_different_cfs, marker='d', markersize=5, linestyle='--', color=bar_colors_dict[sensitive_group])
+            axes[dataset_idx, 1].plot(x_alphas, y_n_different_cfs, marker='d', markersize=4, linestyle='--', color=bar_colors_dict[sensitive_group])
             if np.max(y_n_different_cfs) > max_y:
                 max_y = np.max(y_n_different_cfs)
             labels.append(f'{sensitive_group} ({number_instances_group} FNs)')
         axes[dataset_idx, 1].set_xlim(np.min(x_alphas)-0.2, np.max(x_alphas)+0.2)
-        axes[dataset_idx, 1].set_ylim(-0.5, max_y+5)
+        axes[dataset_idx, 1].set_ylim(-1, max_y+7)
         ticks = x_alphas
         xticklabels_alpha = x_alphas
         axes[dataset_idx, 1].set_xticks(ticks)
         axes[dataset_idx, 1].set_xticklabels(x_alphas)
         
         b0.legend([], [], frameon=False)
-        b0.legend(h, labels, frameon=False, prop={'size': 8})
-        axes[dataset_idx, 1].set_ylabel(f'{data_name} subgroups'+r' ($L^{s_k}$)', fontsize=12)
+        if data_str == 'adult':
+            b0.legend(h, labels, frameon=False, prop={'size': 7.5}, ncol=1, loc='upper left', bbox_to_anchor=(0.55,1.04))
+        else:
+            b0.legend(h, labels, frameon=False, prop={'size': 8})
+        axes[dataset_idx, 1].set_ylabel(f'Subgroups'+r' ($L^{s_k}$)', fontsize=12)
         b0.set_xlabel(None)
-        b0.set_ylabel(f'{data_name} burden'+r' ($AWB^{s_k}$)', fontsize=12)
+        b0.set_ylabel(f'{data_name}\nBurden'+r' ($AWB^{s_k}$)', fontsize=12)
         if dataset_idx == 0:
             b0.set_title(f'Burden vs. $\\alpha$', fontsize=12)
             axes[dataset_idx, 1].set_title('Number of different groups vs. $\\alpha$', fontsize=12)
@@ -1365,12 +1368,12 @@ def proximity_across_alpha_counterfair(datasets):
             b0.set_xlabel(f'$\\alpha$', fontsize=10)
             axes[dataset_idx, 1].set_xlabel(f'$\\alpha$', fontsize=10)
             b0.set_xticklabels(xticklabels_alpha)
-    fig.subplots_adjust(left=0.08,
+    fig.subplots_adjust(left=0.1,
                     bottom=0.05,
-                    right=0.99,
+                    right=0.98,
                     top=0.925,
                     wspace=0.175,
-                    hspace=0.15)
+                    hspace=0.175)
     fig.suptitle('CounterFair burden and number of subgroups identified', fontsize=15)
     plt.savefig(results_cf_plots_dir+'burden_subgroups_counterfair.pdf',format='pdf',dpi=400)
 
@@ -1387,7 +1390,7 @@ def actionability_oriented_fairness_plot(datasets, methods):
     methods_names = get_methods_names(methods)
     dataset_names = get_data_names(datasets)
     # fig, axes = plt.subplots(nrows=len(datasets), ncols=1, figsize=(7, 9), gridspec_kw={'width_ratios': [5, 5]})
-    fig, axes = plt.subplots(nrows=len(datasets), ncols=1, figsize=(7, 9))
+    fig, axes = plt.subplots(nrows=len(datasets), ncols=1, figsize=(7, 9), gridspec_kw={'height_ratios': [1.5, 1.5, 1.5, 1.5, 1.5, 2]})
     # ax_flatten = axes.flatten()
     x_alphas = ['$\\alpha=0.1$', '$\\alpha=0.5$', '$\\alpha=1.0$', 'Fair Recourse']
     for dataset_idx in range(len(datasets)):
@@ -1412,15 +1415,18 @@ def actionability_oriented_fairness_plot(datasets, methods):
         sns.barplot(x=all_df['alpha'], y=all_df['Distance'], hue=all_df['Sensitive group'], ax=axes[dataset_idx], estimator=sum, ci=None)
         xticklabels_dist = [methods_names['BIGRACE_dist'], methods_names['BIGRACE_dev_dist']]
         axes[dataset_idx].set_xticklabels(x_alphas)
-        axes[dataset_idx].legend(frameon=False, prop={'size': 8})
+        if data_str == 'adult':
+            axes[dataset_idx].legend(frameon=False, prop={'size': 7.5}, ncol=1, loc='upper left', bbox_to_anchor=(0.44,1.05))
+        else:
+            axes[dataset_idx].legend(frameon=False, prop={'size': 8})
         axes[dataset_idx].set_xlabel(None)
         if dataset_idx == len(datasets) - 1:
             axes[dataset_idx].set_xlabel('Model', fontsize=12)
-        axes[dataset_idx].set_ylabel(f'{data_name} burden'+r' ($AWB^{s_k}$)', fontsize=12)
+        axes[dataset_idx].set_ylabel(f'{data_name}\nBurden'+r' ($AWB^{s_k}$)', fontsize=12)
         # axes[dataset_idx].set_title(data_name, fontsize=12)
-    fig.subplots_adjust(left=0.12,
+    fig.subplots_adjust(left=0.11,
                     bottom=0.05,
-                    right=0.975,
+                    right=0.99,
                     top=0.95,
                     wspace=0.15,
                     hspace=0.175)
@@ -1717,8 +1723,8 @@ metric = 'proximity'
 # proximity_all_datasets_all_methods_plot(datasets, methods_to_run)
 # proximity_across_alpha_counterfair(datasets)
 # parallel_plots_alpha_01(datasets)
-actionability_oriented_fairness_plot(datasets, methods_to_run)
-# effectiveness_across_methods(datasets, methods_to_run)
+# actionability_oriented_fairness_plot(datasets, methods_to_run)
+effectiveness_across_methods(datasets, methods_to_run)
 
 
 
