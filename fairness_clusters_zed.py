@@ -34,7 +34,7 @@ else:
     print('Selected Datasets and cores for Local run')
     datasets = datasets_home
 datasets = ['adult']
-methods_to_run = ['ARES'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
+methods_to_run = ['FACTS'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -81,7 +81,7 @@ def support_threshold(dataset):
     elif dataset in ['bank','law']:
         support_th = 0.25
     elif dataset in ['student']:
-        support_th = 0.4
+        support_th = 0.3
     return support_th
 
 def select_parameters(method, weight):
@@ -101,9 +101,9 @@ def select_parameters(method, weight):
 if __name__=='__main__':
     for data_str in datasets:
         percentage_close_train_cf, continuous_bins = percentage_close_train(data_str)
-        support_th = 0.01
         data = load_dataset(data_str, train_fraction, seed_int, step)
         model = Model(data)
+        support_th = support_threshold(data_str)
         data.undesired_test(model)
         print(f'---------------------------------------')
         print(f'                    Dataset: {data_str}')
@@ -138,7 +138,7 @@ if __name__=='__main__':
             print(f'  DONE: {data_str}, method: {method}, time: {np.round(end_time - start_time, 2)}')
             print(f'---------------------------')
             if dev == False and eff == False:
-                save_obj(cf_evaluator, f'{data_str}_{method}_alpha_{alpha}_eval.pkl')
+                save_obj(cf_evaluator, f'{data_str}_{method}_alpha_{alpha}_support_{support_th}_eval.pkl')
             elif dev == True:
                 save_obj(cf_evaluator, f'{data_str}_{method}_dev_eval.pkl')
             elif eff == True:

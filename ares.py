@@ -392,7 +392,7 @@ class ARES:
         set_instances = self.fn_instances.index
         ins_idx = zip(set_instances, range(len(set_instances)))
 
-        pool = multiprocessing.Pool(processes=30) 
+        pool = multiprocessing.Pool(processes=60) 
         func = partial(self.get_recourses_for_fn_one_instance, data, model, len(set_instances))
         outputs = pool.starmap(func, ins_idx)
         pool.close()

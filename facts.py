@@ -331,9 +331,9 @@ class FACTS:
         """
         Estimates the effectiveness of each of the actions for each of the subgroups they apply to. Effectiveness here is simply whether they change the label or not (feasibility is not considered)
         """
+        cols = ['subgroup','sensitive_group','action','effectiveness']
         effectiveness_df = pd.DataFrame(columns=cols)
 
-        cols = ['subgroup','sensitive_group','action','effectiveness']
         actions_list = self.subgroup_same_cost_actions[subgroup]
         for sensitive_group in self.sensitive_groups:
             for action in actions_list:
