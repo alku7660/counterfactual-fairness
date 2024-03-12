@@ -1659,12 +1659,12 @@ def effectiveness_across_methods(datasets, methods):
             eval_ares = load_obj(f'{data_str}_ARES_alpha_0.0_eval.pkl')
         else:
             eval_ares = load_obj(f'{data_str}_ARES_alpha_0.0_eval.pkl')
-            eval_facts = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.05_eval.pkl')
+            eval_facts = load_obj(f'{data_str}_FACTS_alpha_0.0_eval.pkl')
         eval_counterfair_df = eval_counterfair.cf_df
         eval_ares_df = eval_ares.cf_df
         eval_facts_df = eval_facts.cf_df
-        eval_ares_df = effectiveness_fix_ares_facts(eval_ares_df, len(eval_counterfair_df))
-        eval_facts_df = effectiveness_fix_ares_facts(eval_facts_df, len(eval_counterfair_df))
+        # eval_ares_df = effectiveness_fix_ares_facts(eval_ares_df, len(eval_counterfair_df))
+        # eval_facts_df = effectiveness_fix_ares_facts(eval_facts_df, len(eval_counterfair_df))
         all_eval = pd.concat((eval_counterfair_df, eval_ares_df, eval_facts_df), axis=0)
         b0 = sns.barplot(x=all_eval['Method'], y=all_eval['Effectiveness'], hue=all_eval['Sensitive group'], ax=flatten_ax[dataset_idx], errwidth=0.5, capsize=0.1)
         h, l = b0.get_legend_handles_labels()

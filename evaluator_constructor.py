@@ -596,11 +596,12 @@ class Evaluator():
                 feat_val_instance_idx_list = feat_val_instance_idx[feat][feat_value]
                 for instance_idx, cf in cfs.items():
                     cumulative_eta = 0
+                    cf_normal = cf.values[0]
                     if instance_idx in feat_val_instance_idx_list:
                         instances_feat_value = data.transformed_false_undesired_test_df.loc[feat_val_instance_idx_list].values
                         len_sensitive_group = len(instances_feat_value)
                         for instance in instances_feat_value:
-                            cumulative_eta += verify_feasibility(instance, cf)/len_sensitive_group
+                            cumulative_eta += verify_feasibility(instance, cf_normal, data)/len_sensitive_group
                     else:
                         continue
                     eta[instance_idx] = cumulative_eta
