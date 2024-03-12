@@ -1637,8 +1637,8 @@ def effectiveness_across_methods(datasets, methods):
         data_str = datasets[dataset_idx]
         data_name = dataset_names[data_str]
         eval_counterfair = load_obj(f'{data_str}_BIGRACE_e_eff_eval.pkl')
-        eval_ares = load_obj(f'{data_str}_ARES_cluster_eval.pkl')
-        eval_facts = load_obj(f'{data_str}_FACTS_cluster_eval.pkl')
+        eval_ares = load_obj(f'{data_str}_ARES_alpha_0.0_eval.pkl')
+        eval_facts = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.05_eval.pkl')
         eval_counterfair_df = eval_counterfair.cf_df
         eval_ares_df = eval_ares.cf_df
         eval_facts_df = eval_facts.cf_df

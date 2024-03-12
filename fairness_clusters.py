@@ -32,7 +32,7 @@ if 'dsv' in os.getcwd():
 else:
     print('Selected Datasets and cores for Local run')
     datasets = datasets_home
-datasets = ['dutch','german','synthetic_athlete','student','compass','adult']
+datasets = ['dutch','german','synthetic_athlete','student','compass']
 methods_to_run = ['BIGRACE_e','ARES','FACTS'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS']
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
@@ -71,16 +71,10 @@ def support_threshold(dataset):
     """
     Selects the appropriate support threshold
     """
-    if dataset in ['compass','synthetic_athlete','synthetic_disease','credit','adult','kdd_census','diabetes']:
+    if dataset in ['compass','synthetic_athlete','german','adult','student','dutch']:
+        support_th = 0.01
+    elif dataset in []:
         support_th = 0.05
-    elif dataset in ['german']:
-        support_th = 0.05
-    elif dataset in ['dutch','oulad','law']:
-        support_th = 0.1
-    elif dataset in ['bank','law']:
-        support_th = 0.25
-    elif dataset in ['student']:
-        support_th = 0.4
     return support_th
 
 def select_parameters(method, weight):
