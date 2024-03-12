@@ -563,26 +563,47 @@ class Evaluator():
             rho[cf_key] = (sum_gaussian_kernel_col[cf_key_idx] - min_sum_gaussian_kernel_col)/(max_sum_gaussian_kernel_col - min_sum_gaussian_kernel_col)
         return rho
     
+    # def get_effectiveness(self, data, cfs):
+    #     """
+    #     Extracts the effectiveness of all the nodes obtained
+    #     """
+    #     eta = {}
+    #     len_cluster_instances = 0
+    #     for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
+    #         cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
+    #         len_cluster_instances += len(cluster_instances_list)
+    #     for cf_key in list(cfs.keys()):
+    #         sum_eta = 0
+    #         cf_k = cfs[cf_key]
+    #         cf_k = cf_k.values[0]
+    #         for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
+    #             cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
+    #             for instance_idx in cluster_instances_list:
+    #                 instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
+    #                 sum_eta += verify_feasibility(instance, cf_k, data)
+    #         eta[cf_key] = sum_eta/len_cluster_instances
+    #         print(f'Highest eta value: {np.max(list(eta.values()))}')
+    #     return eta
+
     def get_effectiveness(self, data, cfs):
         """
         Extracts the effectiveness of all the nodes obtained
         """
         eta = {}
-        len_cluster_instances = 0
-        for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
-            cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
-            len_cluster_instances += len(cluster_instances_list)
-        for cf_key in list(cfs.keys()):
-            sum_eta = 0
-            cf_k = cfs[cf_key]
-            cf_k = cf_k.values[0]
-            for c_idx in range(1, len(self.cluster.filtered_clusters_list) + 1):
-                cluster_instances_list = self.cluster.filtered_clusters_list[c_idx - 1]
-                for instance_idx in cluster_instances_list:
-                    instance = self.cluster.transformed_false_undesired_test_df.loc[instance_idx].values
-                    sum_eta += verify_feasibility(instance, cf_k, data)
-            eta[cf_key] = sum_eta/len_cluster_instances
-            print(f'Highest eta value: {np.max(list(eta.values()))}')
+        feat_val_instance_idx = self.cluster.sensitive_feat_idx_dict
+        for feat in list(feat_val_instance_idx.keys()):
+            for feat_value in feat_val_instance_idx[feat]:
+                feat_val_instance_idx_list = feat_val_instance_idx[feat][feat_value]
+                for instance_idx, cf in cfs.items():
+                    cumulative_eta = 0
+                    if instance_idx in feat_val_instance_idx_list:
+                        instances_feat_value = data.transformed_false_undesired_test_df.loc[feat_val_instance_idx_list].values
+                        len_sensitive_group = len(instances_feat_value)
+                        for instance in instances_feat_value:
+                            cumulative_eta += verify_feasibility(instance, cf)/len_sensitive_group
+                    else:
+                        continue
+                    eta[instance_idx] = cumulative_eta
         return eta
 
     def prepare_groups_clusters_analysis(self):

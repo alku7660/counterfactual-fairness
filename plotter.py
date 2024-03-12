@@ -1620,6 +1620,20 @@ def parallel_plots_alpha_01(datasets):
 #                     hspace=0.01)
 #         plt.savefig(results_cf_plots_dir+str(data_str)+'_subgroups_details_counterfair.pdf', format='pdf', dpi=400)
 
+def effectiveness_fix_ares_facts(df, len_instances):
+    """
+    Method that normalizes the effectiveness calculated for ARES and FACTS
+    """
+    df['Effectiveness'] = df['Effectiveness']*len(df)
+    df['Effectiveness'] = df['Effectiveness']/len_instances
+    unique_sensitive_groups = np.unique(df['Sensitive group'])
+    for sensitive_group in unique_sensitive_groups:
+        sensitive_group_instances = df[df['Sensitive group'] == sensitive_group]
+        effectiveness_sensitive_group_instances = df[df['Sensitive group'] == sensitive_group]['Effectiveness']/len(sensitive_group_instances)
+        effectiveness_sensitive_group_instances_values = effectiveness_sensitive_group_instances.values
+        df.loc[df['Sensitive group'] == sensitive_group, 'Effectiveness'] = effectiveness_sensitive_group_instances_values
+    return df
+
 def effectiveness_across_methods(datasets, methods):
     """
     DESCRIPTION:        Obtains the accuracy weighted burden for each method and each dataset
@@ -1631,17 +1645,26 @@ def effectiveness_across_methods(datasets, methods):
     """
     dataset_names = get_data_names(datasets)
     methods_names = get_methods_names(methods)
-    fig, axes = plt.subplots(nrows=int(len(datasets)/2), ncols=2, figsize=(7, 4))
+    fig, axes = plt.subplots(nrows=int(np.ceil((len(datasets)/2))), ncols=2, figsize=(7, 4))
     flatten_ax = axes.flatten()
     for dataset_idx in range(len(datasets)):
         data_str = datasets[dataset_idx]
         data_name = dataset_names[data_str]
         eval_counterfair = load_obj(f'{data_str}_BIGRACE_e_eff_eval.pkl')
-        eval_ares = load_obj(f'{data_str}_ARES_alpha_0.0_eval.pkl')
-        eval_facts = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.05_eval.pkl')
+        if data_str == 'student':
+            eval_ares = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.3_eval.pkl')
+            eval_facts = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.3_eval.pkl')
+        elif data_str == 'dutch':
+            eval_facts = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.1_eval.pkl')
+            eval_ares = load_obj(f'{data_str}_ARES_alpha_0.0_eval.pkl')
+        else:
+            eval_ares = load_obj(f'{data_str}_ARES_alpha_0.0_eval.pkl')
+            eval_facts = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.05_eval.pkl')
         eval_counterfair_df = eval_counterfair.cf_df
         eval_ares_df = eval_ares.cf_df
         eval_facts_df = eval_facts.cf_df
+        eval_ares_df = effectiveness_fix_ares_facts(eval_ares_df, len(eval_counterfair_df))
+        eval_facts_df = effectiveness_fix_ares_facts(eval_facts_df, len(eval_counterfair_df))
         all_eval = pd.concat((eval_counterfair_df, eval_ares_df, eval_facts_df), axis=0)
         b0 = sns.barplot(x=all_eval['Method'], y=all_eval['Effectiveness'], hue=all_eval['Sensitive group'], ax=flatten_ax[dataset_idx], errwidth=0.5, capsize=0.1)
         h, l = b0.get_legend_handles_labels()
@@ -1691,8 +1714,8 @@ def effectiveness_across_methods(datasets, methods):
                     bottom=0.05,
                     right=0.99,
                     top=0.925,
-                    wspace=0.175,
-                    hspace=0.15)
+                    wspace=0.2,
+                    hspace=0.2)
     fig.suptitle('Effectiveness'+r' ($E^{s_k}$)', fontsize=15)
     plt.savefig(results_cf_plots_dir+'effectiveness_all.pdf',format='pdf',dpi=400)        
 
