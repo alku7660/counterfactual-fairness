@@ -585,7 +585,7 @@ class Evaluator():
     #         print(f'Highest eta value: {np.max(list(eta.values()))}')
     #     return eta
 
-    def get_effectiveness(self, data, cfs):
+    def get_effectiveness(self, data, model, cfs):
         """
         Extracts the effectiveness of all the nodes obtained
         """
@@ -597,13 +597,14 @@ class Evaluator():
                 for instance_idx, cf in cfs.items():
                     cumulative_eta = 0
                     cf_normal = cf.values[0]
-                    if instance_idx in feat_val_instance_idx_list:
-                        instances_feat_value = data.transformed_false_undesired_test_df.loc[feat_val_instance_idx_list].values
-                        len_sensitive_group = len(instances_feat_value)
-                        for instance in instances_feat_value:
-                            cumulative_eta += verify_feasibility(instance, cf_normal, data)/len_sensitive_group
-                    else:
-                        continue
+                    if model.model.predict(cf_normal.reshape(1, -1)) == 1 - self.undesired_class:
+                        if instance_idx in feat_val_instance_idx_list:
+                            instances_feat_value = data.transformed_false_undesired_test_df.loc[feat_val_instance_idx_list].values
+                            len_sensitive_group = len(instances_feat_value)
+                            for instance in instances_feat_value:
+                                cumulative_eta += verify_feasibility(instance, cf_normal, data)/len_sensitive_group
+                        else:
+                            continue
                     eta[instance_idx] = cumulative_eta
         return eta
 
@@ -802,10 +803,11 @@ class Evaluator():
         cols = ['Method','alpha','beta','gamma','delta1','delta2','delta3','feature','feat_value','Sensitive group','q_c_c_prime','instance_idx','centroid_idx','normal_centroid','centroid',
                 'normal_cf','cf','Distance','Feasibility','Likelihood','Effectiveness','Time','model_status','obj_val']
         data = counterfactual.data
+        model = counterfactual.model
         cfs = counterfactual.cf_method.normal_x_cf
         run_time = counterfactual.cf_method.run_time
         rho = self.get_likelihood(data, cfs)
-        eta = self.get_effectiveness(data, cfs)
+        eta = self.get_effectiveness(data, model, cfs)
         for idx in range(len(counterfactual.cf_method.best_recourse_df)):
             instance = counterfactual.cf_method.best_recourse_df.iloc[idx]
             instance_idx = instance['x_idx']
@@ -819,9 +821,6 @@ class Evaluator():
             feat, feat_val = q.split('_')[0], int(float(q.split('_')[1]))
             len_positives_sensitive_group = self.find_centroid_for_ares(counterfactual, feat, feat_val)
             feat_val_name = counterfactual.data.feat_protected[feat][np.round(float(feat_val),2)] 
-            # q = q if isinstance(q,str) else list(q)
-            # c = c if isinstance(c,str) else list(c) 
-            # c_prime = c_prime if isinstance(c_prime,str) else list(c_prime)
             normal_cf_df = cfs[instance_idx]
             normal_cf = normal_cf_df.values[0]
             original_cf = self.inverse_transform_original(normal_cf_df).values
@@ -841,12 +840,13 @@ class Evaluator():
         cols = ['Method','alpha','beta','gamma','delta1','delta2','delta3','feature','feat_value','Sensitive group','q_c_c_prime','instance_idx','centroid_idx','normal_centroid','centroid',
                 'normal_cf','cf','Distance','Feasibility','Likelihood','Effectiveness','Time','model_status','obj_val']
         data = counterfactual.data
+        model = counterfactual.model
         cfs = counterfactual.cf_method.normal_x_cf
         actions = counterfactual.cf_method.actions_x
         run_time = counterfactual.cf_method.run_time
         effectiveness_df = counterfactual.cf_method.best_effectiveness_df
         rho = self.get_likelihood(data, cfs)
-        eta = self.get_effectiveness(data, cfs)
+        eta = self.get_effectiveness(data, model, cfs)
         for c_idx in range(len(counterfactual.cluster.filtered_centroids_list)):
             centroid = counterfactual.cluster.filtered_centroids_list[c_idx]
             len_positives_sensitive_group = centroid.positives_sensitive_group

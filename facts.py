@@ -355,7 +355,6 @@ class FACTS:
         count = 0
         subgroups = self.subgroup_same_cost_actions.keys()
         ins_idx = zip(subgroups, range(len(subgroups)))
-
         pool = multiprocessing.Pool(processes=40) 
         func = partial(self.estimate_effectiveness_per_action_per_sensitive_group_row, data, model)
         outputs = pool.starmap(func, ins_idx)
@@ -372,7 +371,8 @@ class FACTS:
         #             effectiveness_row = pd.DataFrame(data=[[subgroup, sensitive_group, action, effectiveness]], index = [count], columns=cols)
         #             effectiveness_df = pd.concat((effectiveness_df, effectiveness_row))
         #     print(f'Estimated effectiveness of subgroup actions in: {subgroup}. Total subgroups analyzed for actions effectiveness: {count}/{len(self.subgroup_same_cost_actions.keys())}')
-        effectiveness_df.sort_values('effectiveness', ascending=False)
+        effectiveness_df['effectiveness'] = pd.to_numeric(effectiveness_df['effectiveness'])
+        effectiveness_df = effectiveness_df.sort_values('effectiveness',ascending=False)
         return effectiveness_df
     
     def estimate_effectiveness_per_action_per_sensitive_group_old(self, data, model):
@@ -403,7 +403,7 @@ class FACTS:
         unique_subgroups = self.effectiveness_df['subgroup'].unique()
         for unique_subgroup in unique_subgroups:
             subgroup_effectiveness_df = self.effectiveness_df[self.effectiveness_df['subgroup'] == unique_subgroup]
-            subgroup_effectiveness_df.sort_values('effectiveness',ascending=False)
+            subgroup_effectiveness_df = subgroup_effectiveness_df.sort_values('effectiveness',ascending=False)
             best_effectiveness_for_subgroup = subgroup_effectiveness_df.iloc[0,:].to_frame().T
             best_effectiveness_action_df = pd.concat((best_effectiveness_action_df, best_effectiveness_for_subgroup))
         return best_effectiveness_action_df

@@ -1257,8 +1257,8 @@ def proximity_all_datasets_all_methods_plot(datasets, methods):
         eval_alpha_10 = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl').cf_df
         eval_alpha_05 = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl').cf_df
         eval_alpha_01 = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl').cf_df
-        eval_ares_df = load_obj(f'{data_str}_ares_cluster_eval.pkl').cf_df
-        eval_facts_df = load_obj(f'{data_str}_facts_cluster_eval.pkl').cf_df
+        eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_eval.pkl').cf_df
+        eval_facts_df = load_obj(f'{data_str}_FACTS_alpha_0.0_eval.pkl').cf_df
         all_alpha_10 = pd.concat((eval_alpha_10, eval_ares_df, eval_facts_df), axis=0)
         all_alpha_05 = pd.concat((eval_alpha_05, eval_ares_df, eval_facts_df), axis=0)
         all_alpha_01 = pd.concat((eval_alpha_01, eval_ares_df, eval_facts_df), axis=0)        
@@ -1296,7 +1296,7 @@ def proximity_all_datasets_all_methods_plot(datasets, methods):
                     wspace=0.3,
                     hspace=0.1)
     fig.suptitle('Proximity performance of CounterFair', fontsize=20)
-    plt.savefig(results_cf_plots_dir+'proximity_performance.pdf',format='pdf',dpi=400)
+    plt.savefig(results_cf_plots_dir+'proximity_performance2.pdf',format='pdf',dpi=400)
 
 def proximity_across_alpha_counterfair(datasets):
     """
@@ -1743,11 +1743,11 @@ metric = 'proximity'
 # plot_centroids_cf_proximity()
 # plot_centroids_cfs_ablation_lagrange_likelihood()
 # plot_centroids_cfs_ablation_alpha_beta_gamma('oulad')
-# proximity_all_datasets_all_methods_plot(datasets, methods_to_run)
+proximity_all_datasets_all_methods_plot(datasets, methods_to_run)
 # proximity_across_alpha_counterfair(datasets)
 # parallel_plots_alpha_01(datasets)
 # actionability_oriented_fairness_plot(datasets, methods_to_run)
-effectiveness_across_methods(datasets, methods_to_run)
+# effectiveness_across_methods(datasets, methods_to_run)
 
 
 

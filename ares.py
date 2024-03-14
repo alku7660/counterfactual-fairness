@@ -12,6 +12,7 @@ import copy
 import warnings
 warnings.filterwarnings("ignore")
 import multiprocessing
+import random
 """
 This method is based on:
 Rawal, Kaivalya, and Himabindu Lakkaraju. "Beyond individualized recourse: Interpretable and interactive summaries of actionable recourses." Advances in Neural Information Processing Systems 33 (2020): 12187-12198.
@@ -36,7 +37,7 @@ class ARES:
         self.sensitive_groups = self.get_sensitive_groups()
         self.apriori_df = self.get_apriori_df()
         self.recourse_predicates_per_group = self.get_recourse_predicates_per_sensitive_group()
-        self.fn_instances = self.get_fn_instances()
+        self.fn_instances = self.get_fn_instances(data)
         self.coverage_dict = self.preallocate_all_group_predicate_R()
         self.results_df = pd.DataFrame(columns=['x_idx', 'q', 'q_c', 'q_c_c_prime', 'correctness', 'feat_change'])
         self.best_recourse_df = pd.DataFrame(columns=['x_idx', 'best_q_c_c_prime', 'correctness', 'feat_change'])
@@ -80,13 +81,11 @@ class ARES:
             predicate_dict[sensitive_group] = itemset_list
         return predicate_dict
     
-    def get_fn_instances(self):
+    def get_fn_instances(self, data):
         """
         Obtains the set of instances that belong to the false negative class in the test set.
         """
-        prediction_label_df = pd.DataFrame(index=self.transformed_test_df.index, data=np.array([self.model.model.predict(self.transformed_test_np), self.test_target]).T, columns=['prediction','label'])
-        false_negatives_label_df = prediction_label_df.loc[(prediction_label_df['prediction'] == self.undesired_class) & (prediction_label_df['label'] != self.undesired_class)]
-        false_negatives_idx = false_negatives_label_df.index
+        false_negatives_idx = data.transformed_false_undesired_test_df.index
         false_negatives_instances = self.discretized_test_df.loc[false_negatives_idx,:]
         return false_negatives_instances
     
@@ -467,7 +466,9 @@ class ARES:
                     feat_change_best_q_c_c_prime = filter_x_correct_result_df[filter_x_correct_result_df['q_c_c_prime'] == found_best_q_c_c_prime]['feat_change'].values[0]
                     break
             if found_best_q_c_c_prime == None:
-                continue
+                filter_x_result_df = self.results_df[(self.results_df['x_idx'] == x_idx)]
+                found_best_q_c_c_prime = random.choice(list(filter_x_result_df['q_c_c_prime']))
+                feat_change_best_q_c_c_prime = filter_x_result_df[filter_x_result_df['q_c_c_prime'] == found_best_q_c_c_prime]['feat_change'].values[0]
             best_recourse_x = [x_idx, found_best_q_c_c_prime, 1, feat_change_best_q_c_c_prime]
             best_recourse_x_df = pd.DataFrame(data=[best_recourse_x], columns=self.best_recourse_df.columns)
             self.best_recourse_df = pd.concat((self.best_recourse_df, best_recourse_x_df))
