@@ -404,7 +404,14 @@ class FACTS:
         for unique_subgroup in unique_subgroups:
             subgroup_effectiveness_df = self.effectiveness_df[self.effectiveness_df['subgroup'] == unique_subgroup]
             subgroup_effectiveness_df = subgroup_effectiveness_df.sort_values('effectiveness',ascending=False)
-            best_effectiveness_for_subgroup = subgroup_effectiveness_df.iloc[0,:].to_frame().T
+            not_with_sensitive_feature = False
+            idx = 0
+            while not_with_sensitive_feature == False:
+                best_effectiveness_for_subgroup = subgroup_effectiveness_df.iloc[idx,:].to_frame().T
+                if any(feat in best_effectiveness_for_subgroup for feat in list(self.protected_groups.keys())):
+                    idx += 1
+                else:
+                    not_with_sensitive_feature = True
             best_effectiveness_action_df = pd.concat((best_effectiveness_action_df, best_effectiveness_for_subgroup))
         return best_effectiveness_action_df
 
