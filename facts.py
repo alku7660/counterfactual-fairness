@@ -45,7 +45,7 @@ class FACTS:
         self.sensitive_groups = self.get_sensitive_groups()
         self.fpgrowth_df = self.get_fpgrowth_df(data)
         self.fpgrowth_per_feat = self.get_common_fpgrowth_per_sensitive_feature()
-        self.actions_fpgrowth_set = self.get_actions_fpgrowth_set()
+        self.actions_fpgrowth_set = self.get_actions_fpgrowth_set(data)
         self.subgroup_same_cost_actions = self.get_same_cost_actions_per_subgroup(data)
         self.effectiveness_df = self.estimate_effectiveness_per_action_per_sensitive_group(data, model)
         print("G")
@@ -130,7 +130,33 @@ class FACTS:
             list_values_subgroups.append(val_split)
         return list_features_subgroups, list_values_subgroups
 
-    def get_actions_fpgrowth_set(self):
+    def verify_not_changing_protected(self, action):
+        """
+        Verifies that the action does not change a protected feature
+        """
+        if any(feat in action for feat in list(self.protected_groups.keys())):
+            return False
+        else:
+            return True
+
+    def verify_action_directionality(self, data, subgroup_value, action, action_value):
+        """
+        Verifies the directionality of the action
+        """
+        feasibility = True
+        vector = float(action_value) - float(subgroup_value)
+        action_dir = [feat for feat in list(self.protected_groups.keys()) if action[0] in feat]
+        if len(action_dir) > 0:
+            action_feat = action_dir[0]
+            if data.feat_dir[action_feat] == 0 and vector != 0:
+                feasibility = False
+            elif data.feat_dir[action_feat] == 'pos' and vector < 0:
+                feasibility = False
+            elif data.feat_dir[action_feat] == 'neg' and vector > 0:
+                feasibility = False
+        return feasibility
+
+    def get_actions_fpgrowth_set(self, data):
         """
         Obtains actions from the unaffected training set
         """
@@ -155,9 +181,10 @@ class FACTS:
                     for ind_action, feat_action in enumerate(action_feat):
                         for ind_subgroup, feat_subgroup in enumerate(subgroup_feat):
                             if feat_action == feat_subgroup:
-                                if int(float(action_value[ind_action])) != int(float(subgroup_val[ind_subgroup])):
-                                    found_equal_feat_different_value = True
-                                    break
+                                if int(float(action_value[ind_action])) != int(float(subgroup_val[ind_subgroup])) and self.verify_not_changing_protected(feat_action):
+                                    if self.verify_action_directionality(data, subgroup_val[ind_subgroup], action_feat, action_value[ind_action]):
+                                        found_equal_feat_different_value = True
+                                        break
                         if found_equal_feat_different_value:
                             break
                     if found_equal_feat_different_value:
@@ -247,8 +274,7 @@ class FACTS:
         same_cost_actions_list = []
         for action in self.actions_fpgrowth_set:
             if self.verify_same_cost_subgroup_action(subgroup_instances, action, data):
-                same_cost_actions_list.append(action)
-        
+                same_cost_actions_list.append(action) 
         print(f'Analyzing sensitive feature: {sensitive_feat}, Subgroup: {subgroup}. Total subgroups analyzed: {counter}/{len(subgroups)}')
         return same_cost_actions_list, subgroup
 
@@ -344,8 +370,6 @@ class FACTS:
         
         return effectiveness_df
     
-        return effectiveness_df
-    
     def estimate_effectiveness_per_action_per_sensitive_group(self, data, model):
         """
         Estimates the effectiveness of each of the actions for each of the subgroups they apply to. Effectiveness here is simply whether they change the label or not (feasibility is not considered)
@@ -403,15 +427,16 @@ class FACTS:
         unique_subgroups = self.effectiveness_df['subgroup'].unique()
         for unique_subgroup in unique_subgroups:
             subgroup_effectiveness_df = self.effectiveness_df[self.effectiveness_df['subgroup'] == unique_subgroup]
-            subgroup_effectiveness_df = subgroup_effectiveness_df.sort_values('effectiveness',ascending=False)
-            not_with_sensitive_feature = False
-            idx = 0
-            while not_with_sensitive_feature == False:
-                best_effectiveness_for_subgroup = subgroup_effectiveness_df.iloc[idx,:].to_frame().T
-                if any(feat in best_effectiveness_for_subgroup for feat in list(self.protected_groups.keys())):
-                    idx += 1
-                else:
-                    not_with_sensitive_feature = True
+            best_effectiveness_for_subgroup = subgroup_effectiveness_df.iloc[0,:].to_frame().T
+            # subgroup_effectiveness_df = subgroup_effectiveness_df.sort_values('effectiveness',ascending=False)
+            # not_with_sensitive_feature = False
+            # idx = 0
+            # while not_with_sensitive_feature == False:
+            #     best_effectiveness_for_subgroup = subgroup_effectiveness_df.iloc[idx,:].to_frame().T
+            #     if any(feat in best_effectiveness_for_subgroup for feat in list(self.protected_groups.keys())):
+            #         idx += 1
+            #     else:
+            #         not_with_sensitive_feature = True
             best_effectiveness_action_df = pd.concat((best_effectiveness_action_df, best_effectiveness_for_subgroup))
         return best_effectiveness_action_df
 

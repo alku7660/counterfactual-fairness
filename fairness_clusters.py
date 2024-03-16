@@ -72,7 +72,7 @@ def support_threshold(dataset):
     Selects the appropriate support threshold
     """
     if dataset in ['compass','synthetic_athlete','german','adult']:
-        support_th = 0.1
+        support_th = 0.01
     elif dataset in ['dutch']:
         support_th = 0.1
     elif dataset in ['student']:
