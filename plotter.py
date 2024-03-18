@@ -19,7 +19,7 @@ import matplotlib.patches as patches
 from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
-from fairness_clusters import datasets, methods_to_run, lagranges, likelihood_factors 
+from fairness_clusters import datasets, methods_to_run, lagranges, likelihood_factors
 import seaborn as sns
 # import plotly.express as px
 import matplotlib.ticker as ticker
@@ -1168,7 +1168,7 @@ def get_all_mean_variance_values(data_str):
     min_dataset_mean_proximity, max_dataset_mean_proximity = min(dataset_mean_proximity)-0.01, max(dataset_mean_proximity)+0.01
     min_dataset_cf_differences, max_dataset_cf_differences = min(dataset_all_cf_differences)-0.01, max(dataset_all_cf_differences)+0.01
     return min_dataset_mean_proximity, max_dataset_mean_proximity, min_dataset_cf_differences, max_dataset_cf_differences
-        
+
 def plot_centroids_cfs_ablation_lagrange_likelihood():
     """
     Plots the ablation with respect to the lagrange factor
@@ -1261,7 +1261,7 @@ def proximity_all_datasets_all_methods_plot(datasets, methods):
         eval_facts_df = load_obj(f'{data_str}_FACTS_alpha_0.0_eval.pkl').cf_df
         all_alpha_10 = pd.concat((eval_alpha_10, eval_ares_df, eval_facts_df), axis=0)
         all_alpha_05 = pd.concat((eval_alpha_05, eval_ares_df, eval_facts_df), axis=0)
-        all_alpha_01 = pd.concat((eval_alpha_01, eval_ares_df, eval_facts_df), axis=0)        
+        all_alpha_01 = pd.concat((eval_alpha_01, eval_ares_df, eval_facts_df), axis=0)
         b0 = sns.barplot(x=all_alpha_10['Method'], y=all_alpha_10['Distance'], hue=all_alpha_10['Sensitive group'], ax=axes[dataset_idx, 0], errwidth=0.5, capsize=0.1, estimator=sum)
         b1 = sns.barplot(x=all_alpha_05['Method'], y=all_alpha_05['Distance'], hue=all_alpha_05['Sensitive group'], ax=axes[dataset_idx, 1], errwidth=0.5, capsize=0.1, estimator=sum)
         b2 = sns.barplot(x=all_alpha_01['Method'], y=all_alpha_01['Distance'], hue=all_alpha_01['Sensitive group'], ax=axes[dataset_idx, 2], errwidth=0.5, capsize=0.1, estimator=sum)
@@ -1308,7 +1308,7 @@ def proximity_across_alpha_counterfair(datasets):
     OUTPUT: (None: plot stored)
     """
     dataset_names = get_data_names(datasets)
-    fig, axes = plt.subplots(nrows=len(datasets), ncols=2, figsize=(8, 10.5), gridspec_kw={'width_ratios': [7, 3], 'height_ratios': [1.5, 1.5, 1.5, 1.5, 1.5, 2]})
+    fig, axes = plt.subplots(nrows=len(datasets), ncols=2, figsize=(8, 9.5), gridspec_kw={'width_ratios': [7, 3], 'height_ratios': [1.5, 1.5, 1.5, 1.5, 1.5, 2]})
     for dataset_idx in range(len(datasets)):
         data_str = datasets[dataset_idx]
         data_name = dataset_names[data_str]
@@ -1348,7 +1348,7 @@ def proximity_across_alpha_counterfair(datasets):
         xticklabels_alpha = x_alphas
         axes[dataset_idx, 1].set_xticks(ticks)
         axes[dataset_idx, 1].set_xticklabels(x_alphas)
-        
+
         b0.legend([], [], frameon=False)
         if data_str == 'adult':
             b0.legend(h, labels, frameon=False, prop={'size': 7.5}, ncol=1, loc='upper left', bbox_to_anchor=(0.55,1.04))
@@ -1357,9 +1357,9 @@ def proximity_across_alpha_counterfair(datasets):
         axes[dataset_idx, 1].set_ylabel(f'Subgroups'+r' ($L^{s_k}$)', fontsize=12)
         b0.set_xlabel(None)
         b0.set_ylabel(f'{data_name}\nBurden'+r' ($AWB^{s_k}$)', fontsize=12)
-        if dataset_idx == 0:
-            b0.set_title(f'Burden vs. $\\alpha$', fontsize=12)
-            axes[dataset_idx, 1].set_title('Number of different groups vs. $\\alpha$', fontsize=12)
+        # if dataset_idx == 0:
+            # b0.set_title(f'Burden vs. $\\alpha$', fontsize=12)
+            # axes[dataset_idx, 1].set_title('Number of different groups vs. $\\alpha$', fontsize=12)
         # if dataset_idx < len(datasets) - 1:
             # b0.set_xticklabels([])
             # axes[dataset_idx, 1].set_xticklabels([])
@@ -1371,11 +1371,118 @@ def proximity_across_alpha_counterfair(datasets):
     fig.subplots_adjust(left=0.1,
                     bottom=0.05,
                     right=0.98,
-                    top=0.925,
+                    top=0.99,
                     wspace=0.175,
                     hspace=0.175)
-    fig.suptitle('CounterFair burden and number of subgroups identified', fontsize=15)
+    # fig.suptitle('CounterFair burden and number of subgroups identified', fontsize=15)
     plt.savefig(results_cf_plots_dir+'burden_subgroups_counterfair.pdf',format='pdf',dpi=400)
+
+def proximity_across_alpha_counterfair2(datasets):
+    """
+    DESCRIPTION:        Obtains the accuracy weighted burden for each method and each dataset
+
+    INPUT:
+    datasets:           Names of the datasets
+
+    OUTPUT: (None: plot stored)
+    """
+    dataset_names = get_data_names(datasets)
+    for dataset_idx in range(len(datasets)):
+        data_str = datasets[dataset_idx]
+        data_name = dataset_names[data_str]
+        eval_alpha_10_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl').cf_df
+        eval_alpha_05_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl').cf_df
+        eval_alpha_01_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl').cf_df
+        all_alphas = pd.concat((eval_alpha_10_df, eval_alpha_05_df, eval_alpha_01_df), axis=0)
+        unique_sensitive_features = np.unique(all_alphas['feature'].values)
+        size = (len(unique_sensitive_features)*1.5, 1.5)
+        fig, axes = plt.subplots(figsize=size, nrows=1, ncols=len(unique_sensitive_features), sharey=True)
+        for sensitive_feature_idx in range(len(unique_sensitive_features)):
+            sensitive_feature = unique_sensitive_features[sensitive_feature_idx]
+            all_alphas_feat = all_alphas[all_alphas['feature'] == sensitive_feature]
+            if len(unique_sensitive_features) == 1:
+                b0 = sns.barplot(x=all_alphas_feat['alpha'], y=all_alphas_feat['Distance'], hue=all_alphas_feat['Sensitive group'], ax=axes, estimator=sum, ci=None)
+            else:
+                b0 = sns.barplot(x=all_alphas_feat['alpha'], y=all_alphas_feat['Distance'], hue=all_alphas_feat['Sensitive group'], ax=axes[sensitive_feature_idx], estimator=sum, ci=None)
+            h, l = b0.get_legend_handles_labels()
+        # bar_colors_dict = {}
+        # for idx, sensitive_group in enumerate(l):
+        #     bar_colors_dict[sensitive_group] = h[idx][0].get_facecolor()
+
+            x_alphas = np.array([0.1, 0.5, 1.0]).astype(float)
+        # max_y = -100
+
+            labels = []
+            for sensitive_group in l:
+        #     eval_alpha_10_df_sensitive_group = eval_alpha_10_df[eval_alpha_10_df['Sensitive group'] == sensitive_group]
+        #     eval_alpha_05_df_sensitive_group = eval_alpha_05_df[eval_alpha_05_df['Sensitive group'] == sensitive_group]
+        #     eval_alpha_01_df_sensitive_group = eval_alpha_01_df[eval_alpha_01_df['Sensitive group'] == sensitive_group]
+        #     n_different_cfs_alpha_10 = len(np.unique(np.concatenate((eval_alpha_10_df_sensitive_group['cf'].values), axis=0), axis=0))
+        #     n_different_cfs_alpha_05 = len(np.unique(np.concatenate((eval_alpha_05_df_sensitive_group['cf'].values), axis=0), axis=0))
+        #     n_different_cfs_alpha_01 = len(np.unique(np.concatenate((eval_alpha_01_df_sensitive_group['cf'].values), axis=0), axis=0))
+        #     y_n_different_cfs = np.array([n_different_cfs_alpha_01, n_different_cfs_alpha_05, n_different_cfs_alpha_10]).astype(int)
+                number_instances_group = len(eval_alpha_10_df[eval_alpha_10_df['Sensitive group'] == sensitive_group])
+        #     axes[dataset_idx, 1].plot(x_alphas, y_n_different_cfs, marker='d', markersize=4, linestyle='--', color=bar_colors_dict[sensitive_group])
+        #     if np.max(y_n_different_cfs) > max_y:
+        #         max_y = np.max(y_n_different_cfs)
+                sensitive_group_name = sensitive_group.replace(f'{sensitive_feature}: ','')
+                labels.append(f'{sensitive_group_name}')
+        # axes[dataset_idx, 1].set_xlim(np.min(x_alphas)-0.2, np.max(x_alphas)+0.2)
+        # axes[dataset_idx, 1].set_ylim(-1, max_y+7)
+        # ticks = x_alphas
+            xticklabels_alpha = x_alphas
+        # axes[dataset_idx, 1].set_xticks(ticks)
+        # axes[dataset_idx, 1].set_xticklabels(x_alphas)
+
+            b0.legend([], [], frameon=False)
+            b0.legend(h, labels, frameon=False, prop={'size': 5}, ncols=len(l), handletextpad=0.2, handlelength=0.5)
+            b0.set_title(sensitive_feature, fontsize=7)
+            # axes[dataset_idx, 1].set_ylabel(f'Subgroups'+r' ($L^{s_k}$)', fontsize=12)
+            b0.set_xlabel(None)
+            if sensitive_feature_idx == 0:
+                b0.set_ylabel(f'{data_name}\nBurden'+r' ($AWB^{s_k}$)', fontsize=7)
+            else:
+                b0.set_ylabel('')
+        # if dataset_idx == 0:
+            # b0.set_title(f'Burden vs. $\\alpha$', fontsize=12)
+            # axes[dataset_idx, 1].set_title('Number of different groups vs. $\\alpha$', fontsize=12)
+        # if dataset_idx < len(datasets) - 1:
+            # b0.set_xticklabels([])
+            # axes[dataset_idx, 1].set_xticklabels([])
+            # axes[dataset_idx, 1].axes.get_xaxis().set_visible(False)
+            # b0.set_xlabel(f'$\\alpha$', fontsize=7)
+            b0.set_xticklabels(xticklabels_alpha)
+        fig.supxlabel(f'$\\alpha$', fontsize=7)
+        if len(unique_sensitive_features) == 3:
+            left_m = 0.15
+            bottom_m = 0.25
+            right_m = 0.99
+            top_m = 0.9
+            wspace_m = 0.1
+            hspace_m = 0.175
+        elif len(unique_sensitive_features) == 2:
+            left_m = 0.175
+            bottom_m = 0.275
+            right_m = 0.99
+            top_m = 0.9
+            wspace_m = 0.1
+            hspace_m = 0.175
+        elif len(unique_sensitive_features) == 1:
+            left_m = 0.2
+            bottom_m = 0.3
+            right_m = 0.99
+            top_m = 0.9
+            wspace_m = 0.1
+            hspace_m = 0.175
+        fig.subplots_adjust(left=left_m,
+                    bottom=bottom_m,
+                    right=right_m,
+                    top=top_m,
+                    wspace=wspace_m,
+                    hspace=hspace_m)
+        # fig.tight_layout()
+    # fig.suptitle('CounterFair burden and number of subgroups identified', fontsize=15)
+        plt.savefig(results_cf_plots_dir+f'{data_str}_burden_subgroups_counterfair.pdf',format='pdf',dpi=400)
 
 def actionability_oriented_fairness_plot(datasets, methods):
     """
@@ -1390,7 +1497,7 @@ def actionability_oriented_fairness_plot(datasets, methods):
     methods_names = get_methods_names(methods)
     dataset_names = get_data_names(datasets)
     # fig, axes = plt.subplots(nrows=len(datasets), ncols=1, figsize=(7, 9), gridspec_kw={'width_ratios': [5, 5]})
-    fig, axes = plt.subplots(nrows=len(datasets), ncols=1, figsize=(7, 9), gridspec_kw={'height_ratios': [1.5, 1.5, 1.5, 1.5, 1.5, 2]})
+    fig, axes = plt.subplots(nrows=len(datasets), ncols=1, figsize=(7, 8), gridspec_kw={'height_ratios': [1.5, 1.5, 1.5, 1.5, 1.5, 2]})
     # ax_flatten = axes.flatten()
     x_alphas = ['$\\alpha=0.1$', '$\\alpha=0.5$', '$\\alpha=1.0$', 'Fair Recourse']
     for dataset_idx in range(len(datasets)):
@@ -1420,23 +1527,23 @@ def actionability_oriented_fairness_plot(datasets, methods):
         else:
             axes[dataset_idx].legend(frameon=False, prop={'size': 8})
         axes[dataset_idx].set_xlabel(None)
-        if dataset_idx == len(datasets) - 1:
-            axes[dataset_idx].set_xlabel('Model', fontsize=12)
+        # if dataset_idx == len(datasets) - 1:
+        #     axes[dataset_idx].set_xlabel('Model', fontsize=12)
         axes[dataset_idx].set_ylabel(f'{data_name}\nBurden'+r' ($AWB^{s_k}$)', fontsize=12)
         # axes[dataset_idx].set_title(data_name, fontsize=12)
     fig.subplots_adjust(left=0.11,
-                    bottom=0.05,
+                    bottom=0.03,
                     right=0.99,
-                    top=0.95,
+                    top=0.99,
                     wspace=0.15,
                     hspace=0.175)
-    fig.suptitle('Actionability-oriented CFs', fontsize=16)
+    # fig.suptitle('Actionability-oriented CFs', fontsize=16)
     plt.savefig(results_cf_plots_dir+'actionability_oriented_counterfair.pdf',format='pdf',dpi=400)
 
 def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_list_per_group, max_list_per_group):
 
     data_new = data[:,:-1]
-    fig, host = plt.subplots(figsize=(8, 5))
+    fig, host = plt.subplots(figsize=(7, 3))
 
     N = len(data_new)
     category_list = []
@@ -1488,9 +1595,9 @@ def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_pl
     host.tick_params(axis='x', which='major', pad=35)
     host.spines['right'].set_visible(False)
     host.xaxis.tick_bottom()
-    host.set_title(f'{data_name}: CounterFair subgroups with $\\alpha = 0.1$', fontsize=16)
+    # host.set_title(f'{data_name}: CounterFair subgroups with $\\alpha = 0.1$', fontsize=16)
 
-    colors = plt.cm.tab10.colors
+    colors = colors_list
     used_colors = []
     for j in range(N):
         color_to_use = colors[(category[j] - 1) % len(colors)]
@@ -1500,16 +1607,16 @@ def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_pl
     for i in range(len(used_colors)):
         host.fill_between(range(data_new.shape[1]), norm_mean_minus_std_np[i], norm_mean_plus_std_np[i], color=used_colors[i], alpha=0.2)
     handle_list = []
-    for i in range(len(used_colors)):
-        handle = Line2D([0], [0], color=used_colors[i], lw=2, label=f'Subgroup {int(i+1)}')
-        handle_list.append(handle)
+    # for i in range(len(used_colors)):
+    #     handle = Line2D([0], [0], color=used_colors[i], lw=2, label=f'Subgroup {int(i+1)}')
+    #     handle_list.append(handle)
+    # host.legend(handles=handle_list)
     # legend_elements = create_boxplot_handles(protected_feat, original_x_df, colors_list)
     # ax[dataset_idx, method_idx].legend(handles=legend_elements)
-    host.legend(handles=handle_list)
-    fig.subplots_adjust(left=0.05,
-                    bottom=0.15,
-                    right=0.9,
-                    top=0.9,
+    fig.subplots_adjust(left=0.025,
+                    bottom=0.2,
+                    right=0.94,
+                    top=0.99,
                     wspace=0.2,
                     hspace=0.2)
     return plt
@@ -1533,7 +1640,7 @@ def parallel_plots_alpha_01(datasets):
         original_instances_with_cf_with_sensitive_group = [np.concatenate([i,[sensitive_group]]) for i in original_instances_with_cf]
         original_instances_with_cf_with_sensitive_group = np.concatenate([original_instances_with_cf_with_sensitive_group], axis=0)
         return original_instances_with_cf_with_sensitive_group
-    
+
     dataset_names = get_data_names(datasets)
     for dataset_idx in range(len(datasets)):
         data_str = datasets[dataset_idx]
@@ -1552,7 +1659,9 @@ def parallel_plots_alpha_01(datasets):
         features_with_sensitive_group.extend(['sensitive_group'])
         compilation_mean_np_list, mean_minus_std_list, mean_plus_std_list, min_per_group_list, max_per_group_list = [], [], [], [], []
         compilation_all_df = pd.DataFrame(columns=original_features)
-        for unique_cf in unique_cfs_np_array:
+        len_unique_groups = len(unique_cfs_np_array) if len(unique_cfs_np_array) <= 25 else 25
+        for unique_cf_idx in range(len_unique_groups):
+            unique_cf = unique_cfs_np_array[unique_cf_idx]
             original_instances_with_cf_with_sensitive_group = get_original_instances_for_cf(unique_cf, eval_alpha_01_df, group_idx)
             original_instances_with_cf_with_sensitive_group_df = pd.DataFrame(data=original_instances_with_cf_with_sensitive_group, columns=features_with_sensitive_group)
             original_instances_with_cf_with_sensitive_group_df[original_features] = original_instances_with_cf_with_sensitive_group_df[original_features].apply(pd.to_numeric)
@@ -1567,7 +1676,7 @@ def parallel_plots_alpha_01(datasets):
             mean_plus_std_list.append(mean_plus_std_feature_value_per_group)
             min_per_group_list.append(min_feature_value_per_group)
             max_per_group_list.append(max_feature_value_per_group)
-            colors_dict.update({group_idx:colors_list[group_idx]})
+            colors_dict.update({group_idx:colors_list[group_idx - 1]})
             compilation_all_df = pd.concat([compilation_all_df, original_instances_with_cf_with_sensitive_group_df], axis=0)
             group_idx += 1
         min_all = np.min(compilation_all_df, axis=0).values
@@ -1593,7 +1702,7 @@ def parallel_plots_alpha_01(datasets):
 #             i[-1] = int(unique_cf_idx+1)
 #         original_instances_with_cf_df = pd.DataFrame(data=original_instances_with_cf, columns=original_features+['unique_cf_idx']).astype(int)
 #         return original_instances_with_cf_df
-    
+
 #     dataset_names = get_data_names(datasets)
 #     for dataset_idx in range(len(datasets)):
 #         data_str = datasets[dataset_idx]
@@ -1654,12 +1763,15 @@ def effectiveness_across_methods(datasets, methods):
         if data_str == 'student':
             eval_ares = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.3_eval.pkl')
             eval_facts = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.3_eval.pkl')
+        elif data_str == 'adult':
+            eval_ares = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.05_eval.pkl')
+            eval_facts = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.05_eval.pkl')
         elif data_str == 'dutch':
             eval_facts = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.1_eval.pkl')
             eval_ares = load_obj(f'{data_str}_ARES_alpha_0.0_eval.pkl')
         else:
-            eval_ares = load_obj(f'{data_str}_ARES_alpha_0.0_eval.pkl')
-            eval_facts = load_obj(f'{data_str}_FACTS_alpha_0.0_eval.pkl')
+            eval_ares = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.01_eval.pkl')
+            eval_facts = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.01_eval.pkl')
         eval_counterfair_df = eval_counterfair.cf_df
         eval_ares_df = eval_ares.cf_df
         eval_facts_df = eval_facts.cf_df
@@ -1695,11 +1807,12 @@ def effectiveness_across_methods(datasets, methods):
         # xticklabels_alpha = x_alphas
         # axes[dataset_idx, 1].set_xticks(ticks)
         # axes[dataset_idx, 1].set_xticklabels(x_alphas)
-        
+
         b0.legend([], [], frameon=False)
         b0.legend(frameon=False, prop={'size': 8})
         b0.set_xlabel(None)
-        b0.set_ylabel(f'{data_name}', fontsize=12)
+        b0.set_ylabel('Effectiveness'+r' ($E^{s_k}$)', fontsize=12)
+        b0.set_title(f'{data_name}', fontsize=12)
         # if dataset_idx == 0:
         #     b0.set_title(f'Burden vs. $\\alpha$', fontsize=12)
         #     axes[dataset_idx, 1].set_title('Number of different groups vs. $\\alpha$', fontsize=12)
@@ -1713,13 +1826,15 @@ def effectiveness_across_methods(datasets, methods):
     fig.subplots_adjust(left=0.08,
                     bottom=0.05,
                     right=0.99,
-                    top=0.925,
+                    top=0.99,
                     wspace=0.2,
                     hspace=0.2)
-    fig.suptitle('Effectiveness'+r' ($E^{s_k}$)', fontsize=15)
-    plt.savefig(results_cf_plots_dir+'effectiveness_all.pdf',format='pdf',dpi=400)        
+    # fig.suptitle('Effectiveness'+r' ($E^{s_k}$)', fontsize=15)
+    plt.savefig(results_cf_plots_dir+'effectiveness_all.pdf',format='pdf',dpi=400)
 
-colors_list = ['blue', 'orange', 'green', 'red', 'purple', 'lightgreen', 'tab:brown', 'cyan', 'pink', 'black']
+colors_list = ['blue', 'orange', 'green', 'red', 'purple', 'lightgreen', 'tab:brown', 'cyan', 'pink', 'black',
+               'dimgray','thistle','violet','yellow','peachpuff','peru','darkcyan','lightcoral','firebrick','lightgreen',
+               'limegreen','darkgreen','orangered','coral','saddlebrown']
 colors_dict = {'All':'black','Male':'red','Female':'blue','White':'gainsboro','Non-white':'dimgray',
                '<25':'thistle','25-60':'violet','>60':'purple','<18':'green','>=18':'yellow','Single':'peachpuff',
                'Married':'peru','Divorced':'saddlebrown','isMarried: True':'cyan','isMarried: False':'darkcyan',
@@ -1745,9 +1860,10 @@ metric = 'proximity'
 # plot_centroids_cfs_ablation_alpha_beta_gamma('oulad')
 # proximity_all_datasets_all_methods_plot(datasets, methods_to_run)
 # proximity_across_alpha_counterfair(datasets)
+proximity_across_alpha_counterfair2(datasets)
 # parallel_plots_alpha_01(datasets)
 # actionability_oriented_fairness_plot(datasets, methods_to_run)
-effectiveness_across_methods(datasets, methods_to_run)
+# effectiveness_across_methods(datasets, methods_to_run)
 
 
 
