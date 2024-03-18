@@ -1395,9 +1395,10 @@ def proximity_across_alpha_counterfair2(datasets):
         eval_alpha_01_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl').cf_df
         all_alphas = pd.concat((eval_alpha_10_df, eval_alpha_05_df, eval_alpha_01_df), axis=0)
         unique_sensitive_features = np.unique(all_alphas['feature'].values)
-        size = (len(unique_sensitive_features)*1.5, 1.5)
+        size = (len(unique_sensitive_features)*2.6, 2)
         fig, axes = plt.subplots(figsize=size, nrows=1, ncols=len(unique_sensitive_features), sharey=True)
         for sensitive_feature_idx in range(len(unique_sensitive_features)):
+            sec_axes_list = []
             sensitive_feature = unique_sensitive_features[sensitive_feature_idx]
             all_alphas_feat = all_alphas[all_alphas['feature'] == sensitive_feature]
             if len(unique_sensitive_features) == 1:
@@ -1405,39 +1406,39 @@ def proximity_across_alpha_counterfair2(datasets):
             else:
                 b0 = sns.barplot(x=all_alphas_feat['alpha'], y=all_alphas_feat['Distance'], hue=all_alphas_feat['Sensitive group'], ax=axes[sensitive_feature_idx], estimator=sum, ci=None)
             h, l = b0.get_legend_handles_labels()
-        # bar_colors_dict = {}
-        # for idx, sensitive_group in enumerate(l):
-        #     bar_colors_dict[sensitive_group] = h[idx][0].get_facecolor()
+            bar_colors_dict = {}
+            for idx, sensitive_group in enumerate(l):
+                bar_colors_dict[sensitive_group] = h[idx][0].get_facecolor()
 
-            x_alphas = np.array([0.1, 0.5, 1.0]).astype(float)
-        # max_y = -100
-
+            x_positions = np.array([0, 1, 2])
+            b0_twin = b0.twinx()
+            sec_axes_list.append(b0_twin)
+            b0_twin.set_xticks([])
+            b0_twin.set_xticks(x_positions)
+            b0_twin.set_xticklabels(b0.get_xticklabels())
             labels = []
             for sensitive_group in l:
-        #     eval_alpha_10_df_sensitive_group = eval_alpha_10_df[eval_alpha_10_df['Sensitive group'] == sensitive_group]
-        #     eval_alpha_05_df_sensitive_group = eval_alpha_05_df[eval_alpha_05_df['Sensitive group'] == sensitive_group]
-        #     eval_alpha_01_df_sensitive_group = eval_alpha_01_df[eval_alpha_01_df['Sensitive group'] == sensitive_group]
-        #     n_different_cfs_alpha_10 = len(np.unique(np.concatenate((eval_alpha_10_df_sensitive_group['cf'].values), axis=0), axis=0))
-        #     n_different_cfs_alpha_05 = len(np.unique(np.concatenate((eval_alpha_05_df_sensitive_group['cf'].values), axis=0), axis=0))
-        #     n_different_cfs_alpha_01 = len(np.unique(np.concatenate((eval_alpha_01_df_sensitive_group['cf'].values), axis=0), axis=0))
-        #     y_n_different_cfs = np.array([n_different_cfs_alpha_01, n_different_cfs_alpha_05, n_different_cfs_alpha_10]).astype(int)
+                eval_alpha_10_df_sensitive_group = eval_alpha_10_df[eval_alpha_10_df['Sensitive group'] == sensitive_group]
+                eval_alpha_05_df_sensitive_group = eval_alpha_05_df[eval_alpha_05_df['Sensitive group'] == sensitive_group]
+                eval_alpha_01_df_sensitive_group = eval_alpha_01_df[eval_alpha_01_df['Sensitive group'] == sensitive_group]
+                n_different_cfs_alpha_10 = len(np.unique(np.concatenate((eval_alpha_10_df_sensitive_group['cf'].values), axis=0), axis=0))
+                n_different_cfs_alpha_05 = len(np.unique(np.concatenate((eval_alpha_05_df_sensitive_group['cf'].values), axis=0), axis=0))
+                n_different_cfs_alpha_01 = len(np.unique(np.concatenate((eval_alpha_01_df_sensitive_group['cf'].values), axis=0), axis=0))
+                y_n_different_cfs = np.array([n_different_cfs_alpha_01, n_different_cfs_alpha_05, n_different_cfs_alpha_10]).astype(int)
                 number_instances_group = len(eval_alpha_10_df[eval_alpha_10_df['Sensitive group'] == sensitive_group])
-        #     axes[dataset_idx, 1].plot(x_alphas, y_n_different_cfs, marker='d', markersize=4, linestyle='--', color=bar_colors_dict[sensitive_group])
-        #     if np.max(y_n_different_cfs) > max_y:
-        #         max_y = np.max(y_n_different_cfs)
+                b0_twin.plot(x_positions, y_n_different_cfs, marker='d', markersize=5, markeredgecolor='black', markerfacecolor=bar_colors_dict[sensitive_group], linestyle=':', color='black')
+            if np.max(y_n_different_cfs) > max_y:
+                max_y = np.max(y_n_different_cfs)
+                min_y = np.min(y_n_different_cfs)
                 sensitive_group_name = sensitive_group.replace(f'{sensitive_feature}: ','')
                 labels.append(f'{sensitive_group_name}')
-        # axes[dataset_idx, 1].set_xlim(np.min(x_alphas)-0.2, np.max(x_alphas)+0.2)
-        # axes[dataset_idx, 1].set_ylim(-1, max_y+7)
-        # ticks = x_alphas
-            xticklabels_alpha = x_alphas
-        # axes[dataset_idx, 1].set_xticks(ticks)
-        # axes[dataset_idx, 1].set_xticklabels(x_alphas)
+            b0_twin.set_ylim(-5, max_y+int((max_y - min_y)*0.1))
 
             b0.legend([], [], frameon=False)
             b0.legend(h, labels, frameon=False, prop={'size': 5}, ncols=len(l), handletextpad=0.2, handlelength=0.5)
             b0.set_title(sensitive_feature, fontsize=7)
-            # axes[dataset_idx, 1].set_ylabel(f'Subgroups'+r' ($L^{s_k}$)', fontsize=12)
+            if sensitive_feature_idx == len(unique_sensitive_features) - 1:
+                b0_twin.set_ylabel(f'Subgroups'+r' ($L^{s_k}$)', fontsize=7)
             b0.set_xlabel(None)
             if sensitive_feature_idx == 0:
                 b0.set_ylabel(f'{data_name}\nBurden'+r' ($AWB^{s_k}$)', fontsize=7)
@@ -1451,29 +1452,30 @@ def proximity_across_alpha_counterfair2(datasets):
             # axes[dataset_idx, 1].set_xticklabels([])
             # axes[dataset_idx, 1].axes.get_xaxis().set_visible(False)
             # b0.set_xlabel(f'$\\alpha$', fontsize=7)
-            b0.set_xticklabels(xticklabels_alpha)
-        fig.supxlabel(f'$\\alpha$', fontsize=7)
         if len(unique_sensitive_features) == 3:
-            left_m = 0.15
+            left_m = 0.1
             bottom_m = 0.25
-            right_m = 0.99
+            right_m = 0.9
             top_m = 0.9
-            wspace_m = 0.1
+            wspace_m = 0.15
             hspace_m = 0.175
+            fig.supxlabel(f'$\\alpha$', fontsize=7)
         elif len(unique_sensitive_features) == 2:
-            left_m = 0.175
-            bottom_m = 0.275
-            right_m = 0.99
-            top_m = 0.9
-            wspace_m = 0.1
-            hspace_m = 0.175
-        elif len(unique_sensitive_features) == 1:
             left_m = 0.2
-            bottom_m = 0.3
-            right_m = 0.99
+            bottom_m = 0.275
+            right_m = 0.8
             top_m = 0.9
-            wspace_m = 0.1
+            wspace_m = 0.25
             hspace_m = 0.175
+            fig.supxlabel(f'$\\alpha$', fontsize=7)
+        elif len(unique_sensitive_features) == 1:
+            left_m = 0.3
+            bottom_m = 0.25
+            right_m = 0.7
+            top_m = 0.9
+            wspace_m = 0.25
+            hspace_m = 0.175
+            b0.set_xlabel(f'$\\alpha$', fontsize=7)
         fig.subplots_adjust(left=left_m,
                     bottom=bottom_m,
                     right=right_m,
