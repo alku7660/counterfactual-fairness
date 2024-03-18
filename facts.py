@@ -181,10 +181,11 @@ class FACTS:
                     for ind_action, feat_action in enumerate(action_feat):
                         for ind_subgroup, feat_subgroup in enumerate(subgroup_feat):
                             if feat_action == feat_subgroup:
-                                if int(float(action_value[ind_action])) != int(float(subgroup_val[ind_subgroup])) and self.verify_not_changing_protected(feat_action):
-                                    if self.verify_action_directionality(data, subgroup_val[ind_subgroup], action_feat, action_value[ind_action]):
-                                        found_equal_feat_different_value = True
-                                        break
+                                if self.verify_not_changing_protected(feat_action):
+                                    if int(float(action_value[ind_action])) != int(float(subgroup_val[ind_subgroup])):
+                                        if self.verify_action_directionality(data, subgroup_val[ind_subgroup], action_feat, action_value[ind_action]):
+                                            found_equal_feat_different_value = True
+                                            break
                         if found_equal_feat_different_value:
                             break
                     if found_equal_feat_different_value:
