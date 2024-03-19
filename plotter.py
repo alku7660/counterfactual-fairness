@@ -1377,7 +1377,7 @@ def proximity_across_alpha_counterfair(datasets):
     # fig.suptitle('CounterFair burden and number of subgroups identified', fontsize=15)
     plt.savefig(results_cf_plots_dir+'burden_subgroups_counterfair.pdf',format='pdf',dpi=400)
 
-def proximity_across_alpha_counterfair2(datasets):
+def proximity_fairness_across_alpha_counterfair(datasets):
     """
     DESCRIPTION:        Obtains the accuracy weighted burden for each method and each dataset
 
@@ -1393,10 +1393,14 @@ def proximity_across_alpha_counterfair2(datasets):
         eval_alpha_10_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl').cf_df
         eval_alpha_05_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl').cf_df
         eval_alpha_01_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl').cf_df
-        all_alphas = pd.concat((eval_alpha_10_df, eval_alpha_05_df, eval_alpha_01_df), axis=0)
+        eval_dev_df = load_obj(f'{data_str}_BIGRACE_dev_dist_dev_eval.pkl').cf_df
+        eval_dev_df['alpha'] = ['Fair CFs']*len(eval_dev_df)
+        all_alphas = pd.concat((eval_alpha_01_df, eval_alpha_05_df, eval_alpha_10_df, eval_dev_df), axis=0)
         unique_sensitive_features = np.unique(all_alphas['feature'].values)
         size = (len(unique_sensitive_features)*2.6, 2)
         fig, axes = plt.subplots(figsize=size, nrows=1, ncols=len(unique_sensitive_features), sharey=True)
+        max_y = -100
+        min_y = 100
         for sensitive_feature_idx in range(len(unique_sensitive_features)):
             sec_axes_list = []
             sensitive_feature = unique_sensitive_features[sensitive_feature_idx]
@@ -1409,8 +1413,7 @@ def proximity_across_alpha_counterfair2(datasets):
             bar_colors_dict = {}
             for idx, sensitive_group in enumerate(l):
                 bar_colors_dict[sensitive_group] = h[idx][0].get_facecolor()
-
-            x_positions = np.array([0, 1, 2])
+            x_positions = np.array([0, 1, 2, 3])
             b0_twin = b0.twinx()
             sec_axes_list.append(b0_twin)
             b0_twin.set_xticks([])
@@ -1418,30 +1421,34 @@ def proximity_across_alpha_counterfair2(datasets):
             b0_twin.set_xticklabels(b0.get_xticklabels())
             labels = []
             for sensitive_group in l:
-                eval_alpha_10_df_sensitive_group = eval_alpha_10_df[eval_alpha_10_df['Sensitive group'] == sensitive_group]
-                eval_alpha_05_df_sensitive_group = eval_alpha_05_df[eval_alpha_05_df['Sensitive group'] == sensitive_group]
                 eval_alpha_01_df_sensitive_group = eval_alpha_01_df[eval_alpha_01_df['Sensitive group'] == sensitive_group]
-                n_different_cfs_alpha_10 = len(np.unique(np.concatenate((eval_alpha_10_df_sensitive_group['cf'].values), axis=0), axis=0))
-                n_different_cfs_alpha_05 = len(np.unique(np.concatenate((eval_alpha_05_df_sensitive_group['cf'].values), axis=0), axis=0))
+                eval_alpha_05_df_sensitive_group = eval_alpha_05_df[eval_alpha_05_df['Sensitive group'] == sensitive_group]
+                eval_alpha_10_df_sensitive_group = eval_alpha_10_df[eval_alpha_10_df['Sensitive group'] == sensitive_group]
+                eval_dev_df_sensitive_group = eval_dev_df[eval_dev_df['Sensitive group'] == sensitive_group]
                 n_different_cfs_alpha_01 = len(np.unique(np.concatenate((eval_alpha_01_df_sensitive_group['cf'].values), axis=0), axis=0))
-                y_n_different_cfs = np.array([n_different_cfs_alpha_01, n_different_cfs_alpha_05, n_different_cfs_alpha_10]).astype(int)
+                n_different_cfs_alpha_05 = len(np.unique(np.concatenate((eval_alpha_05_df_sensitive_group['cf'].values), axis=0), axis=0))
+                n_different_cfs_alpha_10 = len(np.unique(np.concatenate((eval_alpha_10_df_sensitive_group['cf'].values), axis=0), axis=0))
+                n_different_cfs_eval = len(np.unique(np.concatenate((eval_dev_df_sensitive_group['cf'].values), axis=0), axis=0))
+                y_n_different_cfs = np.array([n_different_cfs_alpha_01, n_different_cfs_alpha_05, n_different_cfs_alpha_10, n_different_cfs_eval]).astype(int)
                 number_instances_group = len(eval_alpha_10_df[eval_alpha_10_df['Sensitive group'] == sensitive_group])
-                b0_twin.plot(x_positions, y_n_different_cfs, marker='d', markersize=5, markeredgecolor='black', markerfacecolor=bar_colors_dict[sensitive_group], linestyle=':', color='black')
-            if np.max(y_n_different_cfs) > max_y:
-                max_y = np.max(y_n_different_cfs)
-                min_y = np.min(y_n_different_cfs)
+                b0_twin.plot(x_positions, y_n_different_cfs, marker='d', markersize=6, markeredgecolor='black', markerfacecolor=bar_colors_dict[sensitive_group], linestyle=':', linewidth=0.05, color='black')
+                if np.max(y_n_different_cfs) > max_y:
+                    max_y = np.max(y_n_different_cfs)
+                if np.min(y_n_different_cfs) < min_y:
+                    min_y = np.min(y_n_different_cfs)
                 sensitive_group_name = sensitive_group.replace(f'{sensitive_feature}: ','')
-                labels.append(f'{sensitive_group_name}')
-            b0_twin.set_ylim(-5, max_y+int((max_y - min_y)*0.1))
-
+                labels.append(f'{sensitive_group_name} ({number_instances_group})')
+            b0_twin.set_ylim(min_y-int((max_y - min_y)*0.1), max_y+int((max_y - min_y)*0.1))
             b0.legend([], [], frameon=False)
-            b0.legend(h, labels, frameon=False, prop={'size': 5}, ncols=len(l), handletextpad=0.2, handlelength=0.5)
-            b0.set_title(sensitive_feature, fontsize=7)
+            b0.legend(h, labels, frameon=False, prop={'size': 8}, ncols=len(l), handletextpad=0.2, handlelength=0.5, loc='upper center', bbox_to_anchor=(0.5, -0.15))
+            b0.set_title(sensitive_feature, fontsize=9)
             if sensitive_feature_idx == len(unique_sensitive_features) - 1:
-                b0_twin.set_ylabel(f'Subgroups'+r' ($L^{s_k}$)', fontsize=7)
+                b0_twin.set_ylabel(f'Subgroups'+r' ($L^{s_k}$)', fontsize=9)
+            if sensitive_feature_idx < len(unique_sensitive_features) - 1:
+                b0_twin.set_yticklabels('')
             b0.set_xlabel(None)
             if sensitive_feature_idx == 0:
-                b0.set_ylabel(f'{data_name}\nBurden'+r' ($AWB^{s_k}$)', fontsize=7)
+                b0.set_ylabel(f'Burden'+r' ($AWB^{s_k}$)', fontsize=9)
             else:
                 b0.set_ylabel('')
         # if dataset_idx == 0:
@@ -1452,30 +1459,28 @@ def proximity_across_alpha_counterfair2(datasets):
             # axes[dataset_idx, 1].set_xticklabels([])
             # axes[dataset_idx, 1].axes.get_xaxis().set_visible(False)
             # b0.set_xlabel(f'$\\alpha$', fontsize=7)
+        fig.supxlabel(f'$\\alpha$', fontsize=9)
         if len(unique_sensitive_features) == 3:
-            left_m = 0.1
+            left_m = 0.075
             bottom_m = 0.25
-            right_m = 0.9
+            right_m = 0.925
             top_m = 0.9
             wspace_m = 0.15
             hspace_m = 0.175
-            fig.supxlabel(f'$\\alpha$', fontsize=7)
         elif len(unique_sensitive_features) == 2:
-            left_m = 0.2
+            left_m = 0.11
             bottom_m = 0.275
+            right_m = 0.92
+            top_m = 0.9
+            wspace_m = 0.15
+            hspace_m = 0.175
+        elif len(unique_sensitive_features) == 1:
+            left_m = 0.2
+            bottom_m = 0.25
             right_m = 0.8
             top_m = 0.9
-            wspace_m = 0.25
+            wspace_m = 0.15
             hspace_m = 0.175
-            fig.supxlabel(f'$\\alpha$', fontsize=7)
-        elif len(unique_sensitive_features) == 1:
-            left_m = 0.3
-            bottom_m = 0.25
-            right_m = 0.7
-            top_m = 0.9
-            wspace_m = 0.25
-            hspace_m = 0.175
-            b0.set_xlabel(f'$\\alpha$', fontsize=7)
         fig.subplots_adjust(left=left_m,
                     bottom=bottom_m,
                     right=right_m,
@@ -1484,7 +1489,7 @@ def proximity_across_alpha_counterfair2(datasets):
                     hspace=hspace_m)
         # fig.tight_layout()
     # fig.suptitle('CounterFair burden and number of subgroups identified', fontsize=15)
-        plt.savefig(results_cf_plots_dir+f'{data_str}_burden_subgroups_counterfair.pdf',format='pdf',dpi=400)
+        plt.savefig(results_cf_plots_dir+f'{data_str}_burden_subgroups_fairness_counterfair.pdf',format='pdf',dpi=400)
 
 def actionability_oriented_fairness_plot(datasets, methods):
     """
@@ -1862,7 +1867,7 @@ metric = 'proximity'
 # plot_centroids_cfs_ablation_alpha_beta_gamma('oulad')
 # proximity_all_datasets_all_methods_plot(datasets, methods_to_run)
 # proximity_across_alpha_counterfair(datasets)
-proximity_across_alpha_counterfair2(datasets)
+proximity_fairness_across_alpha_counterfair(datasets)
 # parallel_plots_alpha_01(datasets)
 # actionability_oriented_fairness_plot(datasets, methods_to_run)
 # effectiveness_across_methods(datasets, methods_to_run)
