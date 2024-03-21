@@ -1625,12 +1625,68 @@ def actionability_oriented_fairness_plot(datasets, methods):
                     hspace=0.175)
     plt.savefig(results_cf_plots_dir+'actionability_oriented_counterfair.pdf',format='pdf',dpi=400)
 
-def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_list_per_group, max_list_per_group):
+def parallel_coordinates(data_name, data, data_mode, features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_list_per_group, max_list_per_group):
 
-    data_new = data[:,:-1]
+    bin_cat_feat = {}
+    if data_name == 'Dutch':
+        bin_cat_feat['Sex'] = ['Male','Female']
+        bin_cat_feat['HouseholdPosition'] = ['Spouse1','Partner','Married','Reference1','Reference2','Spouse2','Parent','Spouse3']
+        bin_cat_feat['HouseholdSize'] = ['1p','2p','3p','4p','5p','6p']
+        bin_cat_feat['Country'] = ['NL','EU','World']
+        bin_cat_feat['EconomicStatus'] = ['WorkStudent','WorkNotCurrently','WorkHouse']
+        bin_cat_feat['CurEcoActivity'] = ['Retail','RealState','Health','Industry','Education',
+                                          'Public','Transport','Community','Tourism','Finance',
+                                          'Agriculture','Construction']
+        bin_cat_feat['MaritalStatus'] = ['Single','Married','Widowed','Divorced']
+    elif data_name == 'German':
+        bin_cat_feat['Sex'] = ['Male','Female']
+        bin_cat_feat['Single'] = ['No','Yes']
+        bin_cat_feat['Unemployed'] = ['No','Yes']
+        bin_cat_feat['PurposeOfLoan'] = ['Business','Education','Electronics','Furniture','HomeAppliances',
+                                         'NewCar','Other','Repairs','Retraining','UsedCar']
+        bin_cat_feat['InstallmentRate'] = ['1%','2%','3%','4%']
+        bin_cat_feat['Housing'] = ['Owns','Rents','Other']
+    elif data_name == 'Athlete':
+        bin_cat_feat['Sex'] = ['Male','Female']
+        bin_cat_feat['Diet'] = ['Vegan','Vegetarian','Pescetarian','Omnivore']
+        bin_cat_feat['Sport'] = ['Football','Running','Swimming','Shooting']
+        bin_cat_feat['TrainingTime'] = ['3/week','4/week','5/week','6/week']
+    elif data_name == 'Student':
+        bin_cat_feat['School'] = ['GP','MS']
+        bin_cat_feat['Sex'] = ['Male','Female']
+        bin_cat_feat['AgeGroup'] = ['<18','>=18']
+        bin_cat_feat['FamilySize'] = ['LE3','GE3']
+        bin_cat_feat['ParentStatus'] = ['A','T']
+        bin_cat_feat['SchoolSupport'] = ['No','Yes']
+        bin_cat_feat['FamilySupport'] = ['No','Yes']
+        bin_cat_feat['ExtraPaid'] = ['No','Yes']
+        bin_cat_feat['ExtraActivities'] = ['No','Yes']
+        bin_cat_feat['Nursery'] = ['No','Yes']
+        bin_cat_feat['HigherEdu'] = ['No','Yes']
+        bin_cat_feat['Internet'] = ['No','Yes']
+        bin_cat_feat['Romantic'] = ['No','Yes']
+        bin_cat_feat['MotherJob'] = ['AtHome','Health','Other','Services','Teacher']
+        bin_cat_feat['FatherJob'] = ['AtHome','Health','Other','Services','Teacher']
+        bin_cat_feat['SchoolReason'] = ['Course','Home','Other','Reputation']
+    elif data_name == 'Compas':
+        bin_cat_feat['Race'] = ['Caucasian','African-American']
+        bin_cat_feat['Sex'] = ['Male','Female']
+        bin_cat_feat['ChargeDegree'] = ['F','M']
+    elif data_name == 'Adult':
+        bin_cat_feat['Sex'] = ['Male','Female']
+        bin_cat_feat['NativeCountry'] = ['US','Non-US']
+        bin_cat_feat['Race'] = ['White','Non-white']
+        bin_cat_feat['WorkClass'] = ['Federal-gov','Local-gov','Private','Self-emp-inc','Self-emp-not-inc','State-gov','Without-pay']
+        bin_cat_feat['MaritalStatus'] = ['Divorced','Married-AF-spouse','Married-civ-spouse','Married-spouse-absent','Never-married','Separated','Widowed']
+        bin_cat_feat['Occupation'] = ['Adm-clerical','Armed-Forces','Craft-repair','Exec-managerial','Farming-fishing','Handlers-cleaners','Machine-op-inspct',
+                                      'Other-service','Priv-house-serv','Prof-specialty','Protective-serv','Sales','Tech-support','Transport-moving']
+        bin_cat_feat['Relationship'] = ['Husband','Not-in-family','Other-relative','Own-child','Unmarried','Wife']
+        
+    data_new_mean = data[:,:-1]
+    data_new_mode = data_mode[:,:-1]
     fig, host = plt.subplots(figsize=(7, 3))
 
-    N = len(data_new)
+    N = len(data_new_mean)
     category_list = []
     group_values = np.unique(data[:,-1])
     for group_value in group_values:
@@ -1650,9 +1706,25 @@ def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_pl
     data_new_max += data_new_range * 0.05
     data_new_range = data_new_max - data_new_min
 
-    norm_data = np.zeros_like(data_new)
-    norm_data[:, 0] = data_new[:, 0]
-    norm_data[:, 1:] = (data_new[:, 1:] - data_new_min[1:]) / data_new_range[1:] * data_new_range[0] + data_new_min[0]
+    norm_data = np.zeros_like(data_new_mean)
+    norm_data_mean = np.zeros_like(data_new_mean)
+    norm_data_mode = np.zeros_like(data_new_mode)
+    norm_data_mean[:, 0] = data_new_mean[:, 0]
+    norm_data_mode[:, 0] = data_new_mode[:, 0]
+
+    # norm_data[:, 1:] = (data_new[:, 1:] - data_new_min[1:]) / data_new_range[1:] * data_new_range[0] + data_new_min[0]
+
+    for feat_idx in range(len(features)):
+        norm_data_mean[:, feat_idx+1] = (data_new_mean[:, feat_idx+1] - data_new_min[feat_idx+1]) / data_new_range[feat_idx+1] * data_new_range[feat_idx] + data_new_min[feat_idx]
+        norm_data_mode[:, feat_idx+1] = (data_new_mode[:, feat_idx+1] - data_new_min[feat_idx+1]) / data_new_range[feat_idx+1] * data_new_range[feat_idx] + data_new_min[feat_idx]
+    
+    for feat_idx in range(len(features)):
+        feat_i = features[i]
+        if feat_i in bin_cat_feat.keys():
+            norm_data[:, feat_idx+1] = norm_data_mode[:, feat_idx+1]
+        else:
+            norm_data[:, feat_idx+1] = norm_data_mean[:, feat_idx+1]            
+    
     norm_mean_minus_std_list, norm_mean_plus_std_list = [], []
     for group in mean_minus_std_list:
         group = (group[:-1] - data_new_min) / data_new_range * data_new_range[0] + data_new_min[0]
@@ -1667,6 +1739,7 @@ def parallel_coordinates(data_name, data, features, mean_minus_std_list, mean_pl
 
     axes = [host] + [host.twinx() for i in range(data_new.shape[1] - 1)]
     for i, ax in enumerate(axes):
+        feat_i = features[i]
         ax.set_ylim(data_new_min[i], data_new_max[i])
         ax.spines['top'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
@@ -1751,6 +1824,7 @@ def parallel_plots_alpha_01(datasets):
             original_instances_with_cf_with_sensitive_group_df = pd.DataFrame(data=original_instances_with_cf_with_sensitive_group, columns=features_with_sensitive_group)
             original_instances_with_cf_with_sensitive_group_df[original_features] = original_instances_with_cf_with_sensitive_group_df[original_features].apply(pd.to_numeric)
             mean_feature_value_per_group = np.mean(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
+            mode_feature_value_per_group = original_instances_with_cf_with_sensitive_group_df.mode(axis=0)
             std_feature_value_per_group = np.std(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
             min_feature_value_per_group = np.min(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
             max_feature_value_per_group = np.max(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
