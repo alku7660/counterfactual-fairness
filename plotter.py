@@ -1496,14 +1496,14 @@ def burden_effectiveness_benchmark(datasets):
         eval_alpha_10_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl').cf_df
         eval_eff_df = load_obj(f'{data_str}_BIGRACE_e_eff_eval.pkl').cf_df
         if data_str == 'student':
-            eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.3_eval.pkl').cf_df
+            eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.2_eval.pkl').cf_df
             eval_facts_df = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.3_eval.pkl').cf_df
         elif data_str == 'adult':
             eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.05_eval.pkl').cf_df
             eval_facts_df = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.05_eval.pkl').cf_df
         elif data_str == 'dutch':
             eval_facts_df = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.1_eval.pkl').cf_df
-            eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.1_eval.pkl').cf_df
+            eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.01_eval.pkl').cf_df
         else:
             eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.01_eval.pkl').cf_df
             eval_facts_df = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.01_eval.pkl').cf_df
@@ -1516,18 +1516,29 @@ def burden_effectiveness_benchmark(datasets):
         min_y = 100
         x_burden = [methods_names['BIGRACE_dist'], methods_names['ARES'], methods_names['FACTS']]
         x_eff = [methods_names['BIGRACE_e'], methods_names['ARES'], methods_names['FACTS']]
+        color_palette = ['C0','C1','C2','C3','C4','C5','C6','C7','C8','C9','C10','C11']
+        count_sensitive_groups = 0
         for sensitive_feature_idx in range(len(unique_sensitive_features)):
             sensitive_feature = unique_sensitive_features[sensitive_feature_idx]
             burden_df_feat = burden_df[burden_df['feature'] == sensitive_feature]
             eff_df_feat = eff_df[eff_df['feature'] == sensitive_feature]
-            b0 = sns.barplot(x=burden_df_feat['Method'], y=burden_df_feat['Distance'], hue=burden_df_feat['Sensitive group'], ax=axes[sensitive_feature_idx*2], estimator=sum, ci=None)
-            b0.set_title(sensitive_feature, fontsize=9)
-            b0.set_ylabel(f'Burden'+r' ($AWB^{s_k}$)', fontsize=9)
-            b0.set_xticklabels(x_burden)
-            b1 = sns.barplot(x=eff_df_feat['Method'], y=eff_df_feat['Effectiveness'], hue=eff_df_feat['Sensitive group'], ax=axes[sensitive_feature_idx*2 + 1], ci=None)
-            b1.set_title(sensitive_feature, fontsize=9)
-            b1.set_ylabel('Effectiveness'+r' ($E^{s_k}$)', fontsize=9)
-            b1.set_xticklabels(x_eff)
+            b0 = sns.barplot(x=burden_df_feat['Method'], y=burden_df_feat['Distance'], hue=burden_df_feat['Sensitive group'], ax=axes[sensitive_feature_idx*2], estimator=sum, ci=None, palette=color_palette[count_sensitive_groups:count_sensitive_groups+len(np.unique(burden_df_feat['Sensitive group'].values))])
+            b0.set_title(f'Burden'+r' ($AWB^{s_k}$)', fontsize=9)
+            b0.set_ylabel('')
+            b0.set_xlabel('')
+            b0.set_xticklabels(x_burden, fontsize=7, rotation=25, va='top', ha='center')
+            text_kwargs = dict(ha='center', va='center', fontsize=10, transform=axes[sensitive_feature_idx*2].transAxes)
+            b0.text(x=1.125, y=1.25, s=sensitive_feature, **text_kwargs)
+            # b0.yaxis.get_label().set_fontsize(8)
+            b0.tick_params(axis='y', labelsize=8)
+            b1 = sns.barplot(x=eff_df_feat['Method'], y=eff_df_feat['Effectiveness'], hue=eff_df_feat['Sensitive group'], ax=axes[sensitive_feature_idx*2 + 1], ci=None, palette=color_palette[count_sensitive_groups:count_sensitive_groups+len(np.unique(burden_df_feat['Sensitive group'].values))])
+            count_sensitive_groups += len(np.unique(burden_df_feat['Sensitive group'].values))
+            b1.set_title('Effectiveness'+r' ($E^{s_k}$)', fontsize=9)
+            b1.set_ylabel('')
+            b1.set_xlabel('')
+            b1.set_xticklabels(x_eff, fontsize=7, rotation=25, va='top', ha='center')
+            # b1.yaxis.get_label().set_fontsize(8)
+            b1.tick_params(axis='y', labelsize=8)
             h, l = b0.get_legend_handles_labels()
             labels = []
             for sensitive_group in l:
@@ -1535,30 +1546,30 @@ def burden_effectiveness_benchmark(datasets):
                 sensitive_group_name = sensitive_group.replace(f'{sensitive_feature}: ','')
                 labels.append(f'{sensitive_group_name} ({number_instances_group})')
             b0.legend([], [], frameon=False)
-            b0.legend(h, labels, frameon=False, prop={'size': 8}, ncols=len(l), handletextpad=0.2, handlelength=0.5, loc='upper center', bbox_to_anchor=(0.5, -0.15))
+            b0.legend(h, labels, frameon=False, prop={'size': 8}, ncols=len(l), handletextpad=0.2, handlelength=0.5, loc='upper center', bbox_to_anchor=(1.13, -0.25))
             b1.legend([], [], frameon=False)
-            b1.legend(h, labels, frameon=False, prop={'size': 8}, ncols=len(l), handletextpad=0.2, handlelength=0.5, loc='upper center', bbox_to_anchor=(0.5, -0.15))
-        fig.supxlabel(f'CF generation model', fontsize=9)
+            # b1.legend(h, labels, frameon=False, prop={'size': 8}, ncols=len(l), handletextpad=0.2, handlelength=0.5, loc='upper center', bbox_to_anchor=(0.5, -0.15))
+        # fig.supxlabel(f'CF generation model', fontsize=9)
         if len(unique_sensitive_features) == 3:
-            left_m = 0.075
+            left_m = 0.06
             bottom_m = 0.25
-            right_m = 0.925
-            top_m = 0.9
-            wspace_m = 0.15
+            right_m = 0.975
+            top_m = 0.8
+            wspace_m = 0.275
             hspace_m = 0.175
         elif len(unique_sensitive_features) == 2:
-            left_m = 0.11
-            bottom_m = 0.275
-            right_m = 0.92
-            top_m = 0.9
-            wspace_m = 0.15
+            left_m = 0.07
+            bottom_m = 0.25
+            right_m = 0.975
+            top_m = 0.8
+            wspace_m = 0.325
             hspace_m = 0.175
         elif len(unique_sensitive_features) == 1:
-            left_m = 0.2
+            left_m = 0.12
             bottom_m = 0.25
-            right_m = 0.8
-            top_m = 0.9
-            wspace_m = 0.15
+            right_m = 0.975
+            top_m = 0.8
+            wspace_m = 0.275
             hspace_m = 0.175
         fig.subplots_adjust(left=left_m,
                     bottom=bottom_m,
