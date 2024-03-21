@@ -1394,7 +1394,10 @@ def proximity_fairness_across_alpha_counterfair(datasets):
         eval_alpha_05_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl').cf_df
         eval_alpha_01_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl').cf_df
         eval_dev_df = load_obj(f'{data_str}_BIGRACE_dev_dist_dev_eval.pkl').cf_df
-        eval_dev_df['alpha'] = ['Fair CFs']*len(eval_dev_df)
+        eval_alpha_10_df['alpha'] = [f'$\\alpha=1.0$']*len(eval_alpha_10_df)
+        eval_alpha_05_df['alpha'] = [f'$\\alpha=0.5$']*len(eval_alpha_05_df)
+        eval_alpha_01_df['alpha'] = [f'$\\alpha=0.1$']*len(eval_alpha_01_df)
+        eval_dev_df['alpha'] = ['Fair']*len(eval_dev_df)
         all_alphas = pd.concat((eval_alpha_01_df, eval_alpha_05_df, eval_alpha_10_df, eval_dev_df), axis=0)
         unique_sensitive_features = np.unique(all_alphas['feature'].values)
         size = (len(unique_sensitive_features)*2.6, 2)
@@ -1449,24 +1452,24 @@ def proximity_fairness_across_alpha_counterfair(datasets):
                 b0.set_ylabel(f'Burden'+r' ($AWB^{s_k}$)', fontsize=9)
             else:
                 b0.set_ylabel('')
-        fig.supxlabel(f'$\\alpha$', fontsize=9)
+        # fig.supxlabel(f'$\\alpha$', fontsize=9)
         if len(unique_sensitive_features) == 3:
             left_m = 0.075
-            bottom_m = 0.25
+            bottom_m = 0.2
             right_m = 0.925
             top_m = 0.9
             wspace_m = 0.15
             hspace_m = 0.175
         elif len(unique_sensitive_features) == 2:
             left_m = 0.11
-            bottom_m = 0.275
+            bottom_m = 0.225
             right_m = 0.92
             top_m = 0.9
             wspace_m = 0.15
             hspace_m = 0.175
         elif len(unique_sensitive_features) == 1:
             left_m = 0.2
-            bottom_m = 0.25
+            bottom_m = 0.2
             right_m = 0.8
             top_m = 0.9
             wspace_m = 0.15
@@ -1510,7 +1513,7 @@ def burden_effectiveness_benchmark(datasets):
         burden_df = pd.concat((eval_alpha_10_df, eval_ares_df, eval_facts_df), axis=0)
         eff_df = pd.concat((eval_eff_df, eval_ares_df, eval_facts_df), axis=0)
         unique_sensitive_features = np.unique(burden_df['feature'].values)
-        size = (len(unique_sensitive_features)*2.67, 2)
+        size = (len(unique_sensitive_features)*2.5, 1.6)
         fig, axes = plt.subplots(figsize=size, nrows=1, ncols=int(2*len(unique_sensitive_features)))
         max_y = -100
         min_y = 100
@@ -1526,9 +1529,9 @@ def burden_effectiveness_benchmark(datasets):
             b0.set_title(f'Burden'+r' ($AWB^{s_k}$)', fontsize=9)
             b0.set_ylabel('')
             b0.set_xlabel('')
-            b0.set_xticklabels(x_burden, fontsize=7, rotation=25, va='top', ha='center')
-            text_kwargs = dict(ha='center', va='center', fontsize=10, transform=axes[sensitive_feature_idx*2].transAxes)
-            b0.text(x=1.125, y=1.25, s=sensitive_feature, **text_kwargs)
+            b0.set_xticklabels(x_burden, fontsize=6, rotation=22, va='top', ha='center')
+            # text_kwargs = dict(ha='center', va='center', fontsize=10, transform=axes[sensitive_feature_idx*2].transAxes)
+            # b0.text(x=1.125, y=1.25, s=sensitive_feature, **text_kwargs)
             # b0.yaxis.get_label().set_fontsize(8)
             b0.tick_params(axis='y', labelsize=8)
             b1 = sns.barplot(x=eff_df_feat['Method'], y=eff_df_feat['Effectiveness'], hue=eff_df_feat['Sensitive group'], ax=axes[sensitive_feature_idx*2 + 1], ci=None, palette=color_palette[count_sensitive_groups:count_sensitive_groups+len(np.unique(burden_df_feat['Sensitive group'].values))])
@@ -1546,30 +1549,30 @@ def burden_effectiveness_benchmark(datasets):
                 sensitive_group_name = sensitive_group.replace(f'{sensitive_feature}: ','')
                 labels.append(f'{sensitive_group_name} ({number_instances_group})')
             b0.legend([], [], frameon=False)
-            b0.legend(h, labels, frameon=False, prop={'size': 8}, ncols=len(l), handletextpad=0.2, handlelength=0.5, loc='upper center', bbox_to_anchor=(1.13, -0.25))
+            b0.legend(h, labels, frameon=False, prop={'size': 8}, ncols=len(l), handletextpad=0.2, handlelength=0.5, loc='upper center', bbox_to_anchor=(1.13, -0.29))
             b1.legend([], [], frameon=False)
             # b1.legend(h, labels, frameon=False, prop={'size': 8}, ncols=len(l), handletextpad=0.2, handlelength=0.5, loc='upper center', bbox_to_anchor=(0.5, -0.15))
         # fig.supxlabel(f'CF generation model', fontsize=9)
         if len(unique_sensitive_features) == 3:
             left_m = 0.06
-            bottom_m = 0.25
+            bottom_m = 0.3
             right_m = 0.975
-            top_m = 0.8
-            wspace_m = 0.275
+            top_m = 0.85
+            wspace_m = 0.35
             hspace_m = 0.175
         elif len(unique_sensitive_features) == 2:
             left_m = 0.07
-            bottom_m = 0.25
+            bottom_m = 0.3
             right_m = 0.975
-            top_m = 0.8
-            wspace_m = 0.325
+            top_m = 0.85
+            wspace_m = 0.35
             hspace_m = 0.175
         elif len(unique_sensitive_features) == 1:
             left_m = 0.12
-            bottom_m = 0.25
+            bottom_m = 0.3
             right_m = 0.975
-            top_m = 0.8
-            wspace_m = 0.275
+            top_m = 0.85
+            wspace_m = 0.35
             hspace_m = 0.175
         fig.subplots_adjust(left=left_m,
                     bottom=bottom_m,
@@ -1861,8 +1864,8 @@ metric = 'proximity'
 # plot_centroids_cfs_ablation_alpha_beta_gamma('oulad')
 # proximity_all_datasets_all_methods_plot(datasets, methods_to_run)
 # proximity_across_alpha_counterfair(datasets)
-# proximity_fairness_across_alpha_counterfair(datasets)
-burden_effectiveness_benchmark(datasets)
+proximity_fairness_across_alpha_counterfair(datasets)
+# burden_effectiveness_benchmark(datasets)
 # parallel_plots_alpha_01(datasets)
 # actionability_oriented_fairness_plot(datasets, methods_to_run)
 # effectiveness_across_methods(datasets, methods_to_run)
