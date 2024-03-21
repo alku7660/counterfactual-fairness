@@ -145,7 +145,7 @@ class FACTS:
         """
         feasibility = True
         vector = float(action_value) - float(subgroup_value)
-        action_dir = [feat for feat in list(self.protected_groups.keys()) if action[0] in feat]
+        action_dir = [feat for feat in list(data.feat_dir.keys()) if action[0] in feat]
         if len(action_dir) > 0:
             action_feat = action_dir[0]
             if data.feat_dir[action_feat] == 0 and vector != 0:
@@ -181,10 +181,11 @@ class FACTS:
                     for ind_action, feat_action in enumerate(action_feat):
                         for ind_subgroup, feat_subgroup in enumerate(subgroup_feat):
                             if feat_action == feat_subgroup:
-                                if int(float(action_value[ind_action])) != int(float(subgroup_val[ind_subgroup])) and self.verify_not_changing_protected(feat_action):
-                                    if self.verify_action_directionality(data, subgroup_val[ind_subgroup], action_feat, action_value[ind_action]):
-                                        found_equal_feat_different_value = True
-                                        break
+                                if self.verify_not_changing_protected(feat_action):
+                                    if int(float(action_value[ind_action])) != int(float(subgroup_val[ind_subgroup])):
+                                        if self.verify_action_directionality(data, subgroup_val[ind_subgroup], action_feat, action_value[ind_action]):
+                                            found_equal_feat_different_value = True
+                                            break
                         if found_equal_feat_different_value:
                             break
                     if found_equal_feat_different_value:
