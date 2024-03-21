@@ -1727,28 +1727,44 @@ def parallel_coordinates(data_name, data, data_mode, features, mean_minus_std_li
     
     norm_mean_minus_std_list, norm_mean_plus_std_list = [], []
     for group in mean_minus_std_list:
-        group = (group[:-1] - data_new_min) / data_new_range * data_new_range[0] + data_new_min[0]
+        # group = (group[:-1] - data_new_min) / data_new_range * data_new_range[0] + data_new_min[0]
+        group = group[:-1]
+        for feat_idx in range(len(features)):
+            feat_i = features[i]
+            if feat_i in bin_cat_feat.keys():
+                group[feat_idx] = norm_data[feat_idx]
+            else:
+                group[feat_idx] = (group[feat_idx] - data_new_min[feat_idx]) / data_new_range[feat_idx] * data_new_range[feat_idx] + data_new_min[feat_idx]
         group[group < 0.0] = 0.0
         norm_mean_minus_std_list.append(group)
     for group in mean_plus_std_list:
-        group = (group[:-1] - data_new_min) / data_new_range * data_new_range[0] + data_new_min[0]
+        # group = (group[:-1] - data_new_min) / data_new_range * data_new_range[0] + data_new_min[0]
+        group = group[:-1]
+        for feat_idx in range(len(features)):
+            feat_i = features[i]
+            if feat_i in bin_cat_feat.keys():
+                group[feat_idx] = norm_data[feat_idx]
+            else:
+                group[feat_idx] = (group[feat_idx] - data_new_min[feat_idx]) / data_new_range[feat_idx] * data_new_range[feat_idx] + data_new_min[feat_idx]
         group[group < 0.0] = 0.0
         norm_mean_plus_std_list.append(group)
     norm_mean_minus_std_np = np.concatenate([norm_mean_minus_std_list]).astype(float)
     norm_mean_plus_std_np = np.concatenate([norm_mean_plus_std_list]).astype(float)
 
-    axes = [host] + [host.twinx() for i in range(data_new.shape[1] - 1)]
+    axes = [host] + [host.twinx() for i in range(data_new_mean.shape[1] - 1)]
     for i, ax in enumerate(axes):
         feat_i = features[i]
+        if feat_i in bin_cat_feat.keys():
+
         ax.set_ylim(data_new_min[i], data_new_max[i])
         ax.spines['top'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
         if ax != axes:
             ax.yaxis.set_ticks_position('right')
-            ax.spines["right"].set_position(("axes", i / (data_new.shape[1] - 1)))
+            ax.spines["right"].set_position(("axes", i / (data_new_mean.shape[1] - 1)))
 
-    host.set_xlim(0, data_new.shape[1] - 1)
-    host.set_xticks(range(data_new.shape[1]))
+    host.set_xlim(0, data_new_mean.shape[1] - 1)
+    host.set_xticks(range(data_new_mean.shape[1]))
     host.set_xticklabels(features, fontsize=10, rotation=30, va='bottom')
     host.tick_params(axis='x', which='major', pad=35)
     host.spines['right'].set_visible(False)
@@ -1761,9 +1777,9 @@ def parallel_coordinates(data_name, data, data_mode, features, mean_minus_std_li
         color_to_use = colors[(category[j] - 1) % len(colors)]
         if color_to_use not in used_colors:
             used_colors.append(color_to_use)
-        host.plot(range(data_new.shape[1]), norm_data[j,:], c=color_to_use, linestyle=':', marker='o')
+        host.plot(range(data_new_mean.shape[1]), norm_data[j,:], c=color_to_use, linestyle=':', marker='o')
     for i in range(len(used_colors)):
-        host.fill_between(range(data_new.shape[1]), norm_mean_minus_std_np[i], norm_mean_plus_std_np[i], color=used_colors[i], alpha=0.2)
+        host.fill_between(range(data_new_mean.shape[1]), norm_mean_minus_std_np[i], norm_mean_plus_std_np[i], color=used_colors[i], alpha=0.2)
     handle_list = []
     # for i in range(len(used_colors)):
     #     handle = Line2D([0], [0], color=used_colors[i], lw=2, label=f'Subgroup {int(i+1)}')
