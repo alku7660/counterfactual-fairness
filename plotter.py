@@ -1394,7 +1394,7 @@ def proximity_fairness_across_alpha_counterfair(datasets):
         eval_alpha_10_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl').cf_df
         eval_alpha_05_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl').cf_df
         eval_alpha_01_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl').cf_df
-        eval_dev_df = load_obj(f'{data_str}_BIGRACE_dev_dist_dev_eval.pkl').cf_df
+        eval_dev_df = load_obj(f'{data_str}_BIGRACE_dev_dist_dev_eval_test.pkl').cf_df
         eval_alpha_10_df['alpha'] = [f'$\\alpha=1.0$']*len(eval_alpha_10_df)
         eval_alpha_05_df['alpha'] = [f'$\\alpha=0.5$']*len(eval_alpha_05_df)
         eval_alpha_01_df['alpha'] = [f'$\\alpha=0.1$']*len(eval_alpha_01_df)
@@ -2097,8 +2097,8 @@ metric = 'proximity'
 # plot_centroids_cfs_ablation_alpha_beta_gamma('oulad')
 # proximity_all_datasets_all_methods_plot(datasets, methods_to_run)
 # proximity_across_alpha_counterfair(datasets)
-# proximity_fairness_across_alpha_counterfair(datasets)
-burden_effectiveness_benchmark(datasets)
+proximity_fairness_across_alpha_counterfair(datasets)
+# burden_effectiveness_benchmark(datasets)
 # parallel_plots_alpha_01(datasets)
 # actionability_oriented_fairness_plot(datasets, methods_to_run)
 # effectiveness_across_methods(datasets, methods_to_run)
