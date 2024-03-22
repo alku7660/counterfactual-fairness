@@ -2098,8 +2098,8 @@ metric = 'proximity'
 # proximity_all_datasets_all_methods_plot(datasets, methods_to_run)
 # proximity_across_alpha_counterfair(datasets)
 # proximity_fairness_across_alpha_counterfair(datasets)
-# burden_effectiveness_benchmark(datasets)
-parallel_plots_alpha_01(datasets)
+burden_effectiveness_benchmark(datasets)
+# parallel_plots_alpha_01(datasets)
 # actionability_oriented_fairness_plot(datasets, methods_to_run)
 # effectiveness_across_methods(datasets, methods_to_run)
 
