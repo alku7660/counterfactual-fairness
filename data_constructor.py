@@ -78,11 +78,17 @@ class Dataset:
         Gets the indices of the processed features, and stores it as a dictionary
         """
         processed_features_idx_dict = {}
+        bin_cat_list = list(self.bin_enc_cols) + list(self.cat_enc_cols)
+        ord_con_list = self.ordinal + self.continuous
         for feature in self.features:
             feature_idx_list = []
-            for processed_feature_idx in range(len(self.processed_features)):
-                processed_feature = self.processed_features[processed_feature_idx]
-                if feature in processed_feature:
+            for processed_feature_idx in range(len(bin_cat_list)):
+                processed_feature = bin_cat_list[processed_feature_idx]
+                if f'{feature}_' in processed_feature:
+                    feature_idx_list.extend([processed_feature_idx])
+            for processed_feature_idx in range(len(bin_cat_list),len(self.processed_features)):
+                processed_feature = ord_con_list[processed_feature_idx-len(bin_cat_list)]
+                if f'{feature}' in processed_feature:
                     feature_idx_list.extend([processed_feature_idx])
             processed_features_idx_dict[feature] = feature_idx_list
         return processed_features_idx_dict

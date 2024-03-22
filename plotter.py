@@ -20,6 +20,7 @@ from support import load_obj
 matplotlib.rc('ytick', labelsize=9)
 matplotlib.rc('xtick', labelsize=9)
 from fairness_clusters import datasets, methods_to_run, lagranges, likelihood_factors
+from data_constructor import load_dataset
 import seaborn as sns
 # import plotly.express as px
 import matplotlib.ticker as ticker
@@ -1482,6 +1483,94 @@ def proximity_fairness_across_alpha_counterfair(datasets):
                     hspace=hspace_m)
         plt.savefig(results_cf_plots_dir+f'{data_str}_burden_subgroups_fairness_counterfair.pdf',format='pdf',dpi=400)
 
+def distance_calculation_correction(x, y, **kwargs):
+    if 'kwargs' in kwargs.keys():
+        data = kwargs['kwargs']['dat']
+        type = kwargs['kwargs']['type']
+    else:
+        data = kwargs['dat']
+        type = kwargs['type']
+    """
+    Method that calculates the distance between two points. Default is 'euclidean'. Other types are 'L1', 'mixed_L1' and 'mixed_L1_Linf'
+    """
+    def euclid(x, y):
+        """
+        Calculates the euclidean distance between the instances (inputs must be Numpy arrays)
+        """
+        return np.sqrt(np.sum((x - y)**2))
+
+    def L1(x, y):
+        """
+        Calculates the L1-Norm distance between the instances (inputs must be Numpy arrays)
+        """
+        return np.sum(np.abs(x - y))
+
+    def L0(x, y, data):
+        """
+        Calculates a simple matching distance between the features of the instances (pass only categortical features, inputs must be Numpy arrays)
+        """
+        not_match = 0
+        for binary_categorical_feature in data.binary+data.categorical:
+            binary_categorical_idx = data.processed_features_dict_idx[binary_categorical_feature]
+            x_categorical_np = x[binary_categorical_idx]
+            y_categorical_np = y[binary_categorical_idx]
+            if not np.array_equal(x_categorical_np, y_categorical_np):
+                not_match += 1
+        return not_match
+
+    def Linf(x, y):
+        """
+        Calculates the Linf distance
+        """
+        return np.max(np.abs(x - y))
+
+    def L1_L0(x, y, data):
+        """
+        Calculates the distance components according to Sharma et al.: Please see: https://arxiv.org/pdf/1905.07857.pdf
+        """
+        x_continuous_np = x[data.processed_ordinal_continuous_idx_list]
+        y_continuous_np = y[data.processed_ordinal_continuous_idx_list]
+        L1_distance = L1(x_continuous_np, y_continuous_np)
+        L0_distance = L0(x, y, data)
+        return L1_distance, L0_distance
+
+    if type == 'euclidean':
+        distance = euclid(x, y)
+    elif type == 'L1':
+        distance = L1(x, y)
+    elif type == 'L_inf':
+        distance = Linf(x, y)
+    elif type == 'L1_L0':
+        n_con, n_cat = len(data.numerical), len(data.binary + data.categorical)
+        n = n_con + n_cat
+        L1_distance, L0_distance = L1_L0(x, y, data)
+        """
+        Equation from Sharma et al.: Please see: https://arxiv.org/pdf/1905.07857.pdf
+        """
+        distance = (n_con/n)*L1_distance + (n_cat/n)*L0_distance
+    return distance
+
+def correct_eval_distance_df(eval_df, data_str):
+    """
+    Corrects the distance in eval_facts
+    """
+    train_fraction = 0.7
+    seed_int = 54321
+    step = 0.01 
+    data = load_dataset(data_str, train_fraction, seed_int, step)
+    type = 'L1_L0'
+    arg_dict = {'dat': data, 'type':type}
+    for idx in range(len(eval_df)):
+        x = eval_df['normal_centroid'][idx]
+        y = eval_df['normal_cf'][idx]
+        feat = eval_df['feature'][idx]
+        feat_val = eval_df['feat_value'][idx]
+        feat_num_val = [feat_num_value for feat_num_value in data.feat_protected[feat].keys() if data.feat_protected[feat][feat_num_value] == feat_val][0]
+        len_sensitive_group_df = len(data.test_df.loc[(data.test_df[feat] == feat_num_val) & (data.test_target == data.desired_class)])
+        dist = distance_calculation_correction(x, y, kwargs=arg_dict)
+        eval_df.loc[idx, 'Distance'] = dist/len_sensitive_group_df
+    return eval_df
+
 def burden_effectiveness_benchmark(datasets):
     """
     DESCRIPTION:        Obtains the accuracy weighted burden for each method and each dataset
@@ -1499,8 +1588,9 @@ def burden_effectiveness_benchmark(datasets):
         eval_alpha_10_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl').cf_df
         eval_eff_df = load_obj(f'{data_str}_BIGRACE_e_eff_eval.pkl').cf_df
         if data_str == 'student':
-            eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.2_eval.pkl').cf_df
-            eval_facts_df = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.3_eval.pkl').cf_df
+            eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.1_eval.pkl').cf_df
+            eval_facts_df = load_obj(f'{data_str}_FACTS_cluster_eval.pkl').cf_df
+            eval_facts_df = correct_eval_distance_df(eval_facts_df, data_str)
         elif data_str == 'adult':
             eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.05_eval.pkl').cf_df
             eval_facts_df = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.05_eval.pkl').cf_df
@@ -1625,7 +1715,7 @@ def actionability_oriented_fairness_plot(datasets, methods):
                     hspace=0.175)
     plt.savefig(results_cf_plots_dir+'actionability_oriented_counterfair.pdf',format='pdf',dpi=400)
 
-def parallel_coordinates(data_name, data, data_mode, features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_list_per_group, max_list_per_group):
+def parallel_coordinates(data_name, data, data_mode, features, mean_minus_std_list, mean_plus_std_list, min_all, max_all):
 
     bin_cat_feat = {}
     if data_name == 'Dutch':
@@ -1671,11 +1761,13 @@ def parallel_coordinates(data_name, data, data_mode, features, mean_minus_std_li
     elif data_name == 'Compas':
         bin_cat_feat['Race'] = ['Caucasian','African-American']
         bin_cat_feat['Sex'] = ['Male','Female']
-        bin_cat_feat['ChargeDegree'] = ['F','M']
+        bin_cat_feat['ChargeDegree'] = ['Misdemeanor','Felony']
+        bin_cat_feat['AgeGroup'] = ['Less than 25','25 - 45','Greater than 45']
     elif data_name == 'Adult':
         bin_cat_feat['Sex'] = ['Male','Female']
         bin_cat_feat['NativeCountry'] = ['US','Non-US']
         bin_cat_feat['Race'] = ['White','Non-white']
+        bin_cat_feat['AgeGroup'] = ['Less than 25','25 - 60','Greater than 60']
         bin_cat_feat['WorkClass'] = ['Federal-gov','Local-gov','Private','Self-emp-inc','Self-emp-not-inc','State-gov','Without-pay']
         bin_cat_feat['MaritalStatus'] = ['Divorced','Married-AF-spouse','Married-civ-spouse','Married-spouse-absent','Never-married','Separated','Widowed']
         bin_cat_feat['Occupation'] = ['Adm-clerical','Armed-Forces','Craft-repair','Exec-managerial','Farming-fishing','Handlers-cleaners','Machine-op-inspct',
@@ -1694,58 +1786,77 @@ def parallel_coordinates(data_name, data, data_mode, features, mean_minus_std_li
         category_list.append(np.full(N_group, int(group_value)))
     category = np.concatenate(category_list)
 
-    data_new_min = min_all[:-1]
-    data_new_max = max_all[:-1]
+    # data_new_min = min_all[:-1]
+    # data_new_max = max_all[:-1]
+    # data_new_range = data_new_max - data_new_min
+    # for feature_idx in range(len(data_new_range)):
+    #     if np.isclose(data_new_range[feature_idx], 0.0):
+    #         data_new_min[feature_idx] = 0.0
+    #         data_new_max[feature_idx] = 1.0
+    #         data_new_range[feature_idx] = 1.0
+    # data_new_min -= data_new_range * 0.05
+    # data_new_max += data_new_range * 0.05
+    # data_new_range = data_new_max - data_new_min
+
+    data_new_min = np.array([0]*data_new_mean.shape[1])
+    data_new_max = np.array([1]*data_new_mean.shape[1])
     data_new_range = data_new_max - data_new_min
     for feature_idx in range(len(data_new_range)):
+        feat_i = features[feature_idx]
+        if feat_i in bin_cat_feat.keys():
+            list_feat_val = bin_cat_feat[feat_i]
+            data_new_min[feature_idx] = min_all[feature_idx]
+            data_new_max[feature_idx] = 1 if ((data_name == 'Athlete') & (feature_idx == 0)) or ((data_name == 'German') & (feature_idx == 1)) else len(list_feat_val)
+        else:
+            data_new_min[feature_idx] = min_all[feature_idx]
+            data_new_max[feature_idx] = max_all[feature_idx]
         if np.isclose(data_new_range[feature_idx], 0.0):
             data_new_min[feature_idx] = 0.0
             data_new_max[feature_idx] = 1.0
-            data_new_range[feature_idx] = 1.0
-    data_new_min -= data_new_range * 0.05
-    data_new_max += data_new_range * 0.05
+    # data_new_min -= data_new_range * 0.01
+    # data_new_max += data_new_range * 0.01
     data_new_range = data_new_max - data_new_min
 
     norm_data = np.zeros_like(data_new_mean)
     norm_data_mean = np.zeros_like(data_new_mean)
     norm_data_mode = np.zeros_like(data_new_mode)
-    norm_data_mean[:, 0] = data_new_mean[:, 0]
-    norm_data_mode[:, 0] = data_new_mode[:, 0]
+    # norm_data_mean[:, 0] = data_new_mean[:, 0]
+    # norm_data_mode[:, 0] = data_new_mode[:, 0]
 
     # norm_data[:, 1:] = (data_new[:, 1:] - data_new_min[1:]) / data_new_range[1:] * data_new_range[0] + data_new_min[0]
 
     for feat_idx in range(len(features)):
-        norm_data_mean[:, feat_idx+1] = (data_new_mean[:, feat_idx+1] - data_new_min[feat_idx+1]) / data_new_range[feat_idx+1] * data_new_range[feat_idx] + data_new_min[feat_idx]
-        norm_data_mode[:, feat_idx+1] = (data_new_mode[:, feat_idx+1] - data_new_min[feat_idx+1]) / data_new_range[feat_idx+1] * data_new_range[feat_idx] + data_new_min[feat_idx]
+        norm_data_mean[:, feat_idx] = (data_new_mean[:, feat_idx] - data_new_min[feat_idx]) / data_new_range[feat_idx]
+        norm_data_mode[:, feat_idx] = (data_new_mode[:, feat_idx] - data_new_min[feat_idx]) / data_new_range[feat_idx]
     
     for feat_idx in range(len(features)):
-        feat_i = features[i]
+        feat_i = features[feat_idx]
         if feat_i in bin_cat_feat.keys():
-            norm_data[:, feat_idx+1] = norm_data_mode[:, feat_idx+1]
+            norm_data[:, feat_idx] = norm_data_mode[:, feat_idx]
         else:
-            norm_data[:, feat_idx+1] = norm_data_mean[:, feat_idx+1]            
+            norm_data[:, feat_idx] = norm_data_mean[:, feat_idx]            
     
     norm_mean_minus_std_list, norm_mean_plus_std_list = [], []
-    for group in mean_minus_std_list:
+    for group_idx, group in enumerate(mean_minus_std_list):
         # group = (group[:-1] - data_new_min) / data_new_range * data_new_range[0] + data_new_min[0]
         group = group[:-1]
         for feat_idx in range(len(features)):
-            feat_i = features[i]
+            feat_i = features[feat_idx]
             if feat_i in bin_cat_feat.keys():
-                group[feat_idx] = norm_data[feat_idx]
+                group[feat_idx] = norm_data[group_idx, feat_idx]
             else:
-                group[feat_idx] = (group[feat_idx] - data_new_min[feat_idx]) / data_new_range[feat_idx] * data_new_range[feat_idx] + data_new_min[feat_idx]
+                group[feat_idx] = (group[feat_idx] - data_new_min[feat_idx]) / data_new_range[feat_idx]
         group[group < 0.0] = 0.0
         norm_mean_minus_std_list.append(group)
-    for group in mean_plus_std_list:
+    for group_idx, group in enumerate(mean_plus_std_list):
         # group = (group[:-1] - data_new_min) / data_new_range * data_new_range[0] + data_new_min[0]
         group = group[:-1]
         for feat_idx in range(len(features)):
-            feat_i = features[i]
+            feat_i = features[feat_idx]
             if feat_i in bin_cat_feat.keys():
-                group[feat_idx] = norm_data[feat_idx]
+                group[feat_idx] = norm_data[group_idx, feat_idx]
             else:
-                group[feat_idx] = (group[feat_idx] - data_new_min[feat_idx]) / data_new_range[feat_idx] * data_new_range[feat_idx] + data_new_min[feat_idx]
+                group[feat_idx] = (group[feat_idx] - data_new_min[feat_idx]) / data_new_range[feat_idx]
         group[group < 0.0] = 0.0
         norm_mean_plus_std_list.append(group)
     norm_mean_minus_std_np = np.concatenate([norm_mean_minus_std_list]).astype(float)
@@ -1753,9 +1864,6 @@ def parallel_coordinates(data_name, data, data_mode, features, mean_minus_std_li
 
     axes = [host] + [host.twinx() for i in range(data_new_mean.shape[1] - 1)]
     for i, ax in enumerate(axes):
-        feat_i = features[i]
-        if feat_i in bin_cat_feat.keys():
-
         ax.set_ylim(data_new_min[i], data_new_max[i])
         ax.spines['top'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
@@ -1765,7 +1873,7 @@ def parallel_coordinates(data_name, data, data_mode, features, mean_minus_std_li
 
     host.set_xlim(0, data_new_mean.shape[1] - 1)
     host.set_xticks(range(data_new_mean.shape[1]))
-    host.set_xticklabels(features, fontsize=10, rotation=30, va='bottom')
+    host.set_xticklabels(features, fontsize=12, rotation=20, va='bottom')
     host.tick_params(axis='x', which='major', pad=35)
     host.spines['right'].set_visible(False)
     host.xaxis.tick_bottom()
@@ -1780,6 +1888,19 @@ def parallel_coordinates(data_name, data, data_mode, features, mean_minus_std_li
         host.plot(range(data_new_mean.shape[1]), norm_data[j,:], c=color_to_use, linestyle=':', marker='o')
     for i in range(len(used_colors)):
         host.fill_between(range(data_new_mean.shape[1]), norm_mean_minus_std_np[i], norm_mean_plus_std_np[i], color=used_colors[i], alpha=0.2)
+    
+    for feat_idx in range(len(features)):
+        feat_i = features[feat_idx]
+        if feat_i in bin_cat_feat.keys():
+            list_feat_val = bin_cat_feat[feat_i]
+        else:
+            list_feat_val = axes[feat_idx].get_yticklabels()
+        feat_val_positions = np.linspace(0, 1, len(list_feat_val))
+        axes[feat_idx].set_yticks([])
+        axes[feat_idx].set_yticks(feat_val_positions)
+        axes[feat_idx].set_yticklabels(list_feat_val, fontsize=10)
+        axes[feat_idx].set_ylim(min(feat_val_positions)-0.05, max(feat_val_positions)+0.05)
+
     handle_list = []
     # for i in range(len(used_colors)):
     #     handle = Line2D([0], [0], color=used_colors[i], lw=2, label=f'Subgroup {int(i+1)}')
@@ -1789,8 +1910,8 @@ def parallel_coordinates(data_name, data, data_mode, features, mean_minus_std_li
     # ax[dataset_idx, method_idx].legend(handles=legend_elements)
     fig.subplots_adjust(left=0.025,
                     bottom=0.2,
-                    right=0.94,
-                    top=0.99,
+                    right=0.85,
+                    top=0.95,
                     wspace=0.2,
                     hspace=0.2)
     return plt
@@ -1831,33 +1952,55 @@ def parallel_plots_alpha_01(datasets):
         group_idx = 1
         colors_dict = {}
         features_with_sensitive_group.extend(['sensitive_group'])
-        compilation_mean_np_list, mean_minus_std_list, mean_plus_std_list, min_per_group_list, max_per_group_list = [], [], [], [], []
+        compilation_mean_np_list, compilation_mode_np_list, mean_minus_std_list, mean_plus_std_list = [], [], [], []
         compilation_all_df = pd.DataFrame(columns=original_features)
         len_unique_groups = len(unique_cfs_np_array) if len(unique_cfs_np_array) <= 25 else 25
-        for unique_cf_idx in range(len_unique_groups):
-            unique_cf = unique_cfs_np_array[unique_cf_idx]
-            original_instances_with_cf_with_sensitive_group = get_original_instances_for_cf(unique_cf, eval_alpha_01_df, group_idx)
-            original_instances_with_cf_with_sensitive_group_df = pd.DataFrame(data=original_instances_with_cf_with_sensitive_group, columns=features_with_sensitive_group)
-            original_instances_with_cf_with_sensitive_group_df[original_features] = original_instances_with_cf_with_sensitive_group_df[original_features].apply(pd.to_numeric)
-            mean_feature_value_per_group = np.mean(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
-            mode_feature_value_per_group = original_instances_with_cf_with_sensitive_group_df.mode(axis=0)
-            std_feature_value_per_group = np.std(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
-            min_feature_value_per_group = np.min(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
-            max_feature_value_per_group = np.max(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
-            mean_minus_std_feature_value_per_group = mean_feature_value_per_group - 0.5*std_feature_value_per_group
-            mean_plus_std_feature_value_per_group = mean_feature_value_per_group + 0.5*std_feature_value_per_group
-            compilation_mean_np_list.append(mean_feature_value_per_group)
-            mean_minus_std_list.append(mean_minus_std_feature_value_per_group)
-            mean_plus_std_list.append(mean_plus_std_feature_value_per_group)
-            min_per_group_list.append(min_feature_value_per_group)
-            max_per_group_list.append(max_feature_value_per_group)
-            colors_dict.update({group_idx:colors_list[group_idx - 1]})
-            compilation_all_df = pd.concat([compilation_all_df, original_instances_with_cf_with_sensitive_group_df], axis=0)
-            group_idx += 1
-        min_all = np.min(compilation_all_df, axis=0).values
-        max_all = np.max(compilation_all_df, axis=0).values
-        compilation_mean_np = np.concatenate([compilation_mean_np_list])
-        parallel_coordinates(data_name, compilation_mean_np, original_features, mean_minus_std_list, mean_plus_std_list, min_all, max_all, min_per_group_list, max_per_group_list).savefig(results_cf_plots_dir+str(data_str)+'_subgroups_details_counterfair.pdf', format='pdf', dpi=400)
+        if data_name == 'Adult':
+            half_len_unique_groups = int(0.5*(len_unique_groups))
+            for unique_cf_idx in list(range(0,half_len_unique_groups)) + list(range(len(unique_cfs_np_array)-half_len_unique_groups,len(unique_cfs_np_array))):
+                unique_cf = unique_cfs_np_array[unique_cf_idx]
+                original_instances_with_cf_with_sensitive_group = get_original_instances_for_cf(unique_cf, eval_alpha_01_df, group_idx)
+                original_instances_with_cf_with_sensitive_group_df = pd.DataFrame(data=original_instances_with_cf_with_sensitive_group, columns=features_with_sensitive_group)
+                original_instances_with_cf_with_sensitive_group_df[original_features] = original_instances_with_cf_with_sensitive_group_df[original_features].apply(pd.to_numeric)
+                mean_feature_value_per_group = np.mean(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
+                mode_feature_value_per_group = original_instances_with_cf_with_sensitive_group_df.mode(axis=0).values[0]
+                std_feature_value_per_group = np.std(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
+                mean_minus_std_feature_value_per_group = mean_feature_value_per_group - 0.5*std_feature_value_per_group
+                mean_plus_std_feature_value_per_group = mean_feature_value_per_group + 0.5*std_feature_value_per_group
+                compilation_mean_np_list.append(mean_feature_value_per_group)
+                compilation_mode_np_list.append(mode_feature_value_per_group)
+                mean_minus_std_list.append(mean_minus_std_feature_value_per_group)
+                mean_plus_std_list.append(mean_plus_std_feature_value_per_group)
+                colors_dict.update({group_idx:colors_list[group_idx - 1]})
+                compilation_all_df = pd.concat([compilation_all_df, original_instances_with_cf_with_sensitive_group_df], axis=0)
+                group_idx += 1
+            min_all = np.min(compilation_all_df, axis=0).values
+            max_all = np.max(compilation_all_df, axis=0).values
+            compilation_mean_np = np.concatenate([compilation_mean_np_list])
+            compilation_mode_np = np.concatenate([compilation_mode_np_list])
+        else:
+            for unique_cf_idx in range(len_unique_groups):
+                unique_cf = unique_cfs_np_array[unique_cf_idx]
+                original_instances_with_cf_with_sensitive_group = get_original_instances_for_cf(unique_cf, eval_alpha_01_df, group_idx)
+                original_instances_with_cf_with_sensitive_group_df = pd.DataFrame(data=original_instances_with_cf_with_sensitive_group, columns=features_with_sensitive_group)
+                original_instances_with_cf_with_sensitive_group_df[original_features] = original_instances_with_cf_with_sensitive_group_df[original_features].apply(pd.to_numeric)
+                mean_feature_value_per_group = np.mean(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
+                mode_feature_value_per_group = original_instances_with_cf_with_sensitive_group_df.mode(axis=0).values[0]
+                std_feature_value_per_group = np.std(original_instances_with_cf_with_sensitive_group_df.values, axis=0)
+                mean_minus_std_feature_value_per_group = mean_feature_value_per_group - 0.5*std_feature_value_per_group
+                mean_plus_std_feature_value_per_group = mean_feature_value_per_group + 0.5*std_feature_value_per_group
+                compilation_mean_np_list.append(mean_feature_value_per_group)
+                compilation_mode_np_list.append(mode_feature_value_per_group)
+                mean_minus_std_list.append(mean_minus_std_feature_value_per_group)
+                mean_plus_std_list.append(mean_plus_std_feature_value_per_group)
+                colors_dict.update({group_idx:colors_list[group_idx - 1]})
+                compilation_all_df = pd.concat([compilation_all_df, original_instances_with_cf_with_sensitive_group_df], axis=0)
+                group_idx += 1
+            min_all = np.min(compilation_all_df, axis=0).values
+            max_all = np.max(compilation_all_df, axis=0).values
+            compilation_mean_np = np.concatenate([compilation_mean_np_list])
+            compilation_mode_np = np.concatenate([compilation_mode_np_list])
+        parallel_coordinates(data_name, compilation_mean_np, compilation_mode_np, original_features, mean_minus_std_list, mean_plus_std_list, min_all, max_all).savefig(results_cf_plots_dir+str(data_str)+'_subgroups_details_counterfair.pdf', format='pdf', dpi=400)
 
 def effectiveness_fix_ares_facts(df, len_instances):
     """
@@ -1954,9 +2097,9 @@ metric = 'proximity'
 # plot_centroids_cfs_ablation_alpha_beta_gamma('oulad')
 # proximity_all_datasets_all_methods_plot(datasets, methods_to_run)
 # proximity_across_alpha_counterfair(datasets)
-proximity_fairness_across_alpha_counterfair(datasets)
+# proximity_fairness_across_alpha_counterfair(datasets)
 # burden_effectiveness_benchmark(datasets)
-# parallel_plots_alpha_01(datasets)
+parallel_plots_alpha_01(datasets)
 # actionability_oriented_fairness_plot(datasets, methods_to_run)
 # effectiveness_across_methods(datasets, methods_to_run)
 
