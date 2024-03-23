@@ -32,8 +32,8 @@ if 'dsv' in os.getcwd():
 else:
     print('Selected Datasets and cores for Local run')
     datasets = datasets_home
-datasets = ['adult'] # 'dutch','german','synthetic_athlete','student','compass','adult'
-methods_to_run = ['FACTS'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS'] 'BIGRACE_dist','BIGRACE_e','ARES','FACTS'
+datasets = ['dutch','german','synthetic_athlete','compass'] # 'dutch','german','synthetic_athlete','student','compass','adult'
+methods_to_run = ['BIGRACE_dist','ARES','FACTS'] # ['BIGRACE_dist','BIGRACE_l','BIGRACE_e','BIGRACE_dev_dist','BIGRACE_dev_like','BIGRACE_dev_eff','ARES','FACTS'] 'BIGRACE_dist','BIGRACE_e','ARES','FACTS'
 step = 0.01                # Step size to change continuous features
 train_fraction = 0.7       # Percentage of examples to use for training
 n_feat = 50                # Number of examples to generate synthetically per feature
@@ -72,7 +72,7 @@ def support_threshold(dataset):
     Selects the appropriate support threshold
     """
     if dataset in ['compass','synthetic_athlete','german','adult']:
-        support_th = 0.1
+        support_th = 0.2
     elif dataset in ['dutch']:
         support_th = 0.1
     elif dataset in ['student']:

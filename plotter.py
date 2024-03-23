@@ -1672,6 +1672,62 @@ def burden_effectiveness_benchmark(datasets):
                     hspace=hspace_m)
         plt.savefig(results_cf_plots_dir+f'{data_str}_burden_effectiveness_benchmark.pdf',format='pdf',dpi=400)
 
+def time_benchmark(datasets):
+    """
+    DESCRIPTION:        Obtains the accuracy weighted burden for each method and each dataset
+
+    INPUT:
+    datasets:           Names of the datasets
+
+    OUTPUT: (None: plot stored)
+    """
+    dataset_names = get_data_names(datasets)
+    methods_names = get_methods_names(methods_to_run)
+    fig, axes = plt.subplots(figsize=(5.5, 1.5), nrows=1, ncols=len(datasets), sharey=True)
+    for dataset_idx in range(len(datasets)):
+        data_str = datasets[dataset_idx]
+        data_name = dataset_names[data_str]
+        eval_alpha_10_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl').cf_df
+        if data_str == 'student':
+            eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.1_eval.pkl').cf_df
+            eval_facts_df = load_obj(f'{data_str}_FACTS_cluster_eval.pkl').cf_df
+            eval_facts_df = correct_eval_distance_df(eval_facts_df, data_str)
+        elif data_str == 'adult':
+            eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.05_eval.pkl').cf_df
+            eval_facts_df = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.05_eval.pkl').cf_df
+        elif data_str == 'dutch':
+            eval_facts_df = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.1_eval.pkl').cf_df
+            eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.01_eval.pkl').cf_df
+        else:
+            eval_ares_df = load_obj(f'{data_str}_ARES_alpha_0.0_support_0.01_eval.pkl').cf_df
+            eval_facts_df = load_obj(f'{data_str}_FACTS_alpha_0.0_support_0.01_eval.pkl').cf_df
+        burden_df = pd.concat((eval_alpha_10_df, eval_ares_df, eval_facts_df), axis=0)
+        x_burden = [methods_names['BIGRACE_dist'], methods_names['ARES'], methods_names['FACTS']]
+        b0 = sns.barplot(x=burden_df['Method'], y=burden_df['Time'], ax=axes[dataset_idx], ci=None)
+        b0.set_yscale("log")
+        b0.set_title(f'{data_name}', fontsize=9)
+        if dataset_idx == 0:
+            b0.set_ylabel('Time (log) [s]')
+        else:
+            b0.set_ylabel('')
+        b0.set_xlabel('')
+        b0.set_xticklabels(x_burden, fontsize=7, va='top', ha='center')
+        b0.tick_params(axis='y', labelsize=9)
+        left_m = 0.09
+        bottom_m = 0.25
+        right_m = 0.99
+        top_m = 0.87
+        wspace_m = 0.125
+        hspace_m = 0.175
+        fig.supxlabel('Method')
+        fig.subplots_adjust(left=left_m,
+                    bottom=bottom_m,
+                    right=right_m,
+                    top=top_m,
+                    wspace=wspace_m,
+                    hspace=hspace_m)
+    plt.savefig(results_cf_plots_dir+f'time_benchmark.pdf',format='pdf',dpi=400)
+
 def actionability_oriented_fairness_plot(datasets, methods):
     """
     DESCRIPTION:        Obtains the plots of burden for the actionability-oriented CF obtained by CounterFair
@@ -2061,8 +2117,8 @@ def effectiveness_across_methods(datasets, methods):
         b0.set_xlabel(None)
         b0.set_ylabel('Effectiveness'+r' ($E^{s_k}$)', fontsize=12)
         b0.set_title(f'{data_name}', fontsize=12)
-    fig.subplots_adjust(left=0.08,
-                    bottom=0.05,
+    fig.subplots_adjust(left=0.01,
+                    bottom=0.02,
                     right=0.99,
                     top=0.99,
                     wspace=0.2,
@@ -2097,11 +2153,12 @@ metric = 'proximity'
 # plot_centroids_cfs_ablation_alpha_beta_gamma('oulad')
 # proximity_all_datasets_all_methods_plot(datasets, methods_to_run)
 # proximity_across_alpha_counterfair(datasets)
-proximity_fairness_across_alpha_counterfair(datasets)
+# proximity_fairness_across_alpha_counterfair(datasets)
 # burden_effectiveness_benchmark(datasets)
 # parallel_plots_alpha_01(datasets)
 # actionability_oriented_fairness_plot(datasets, methods_to_run)
 # effectiveness_across_methods(datasets, methods_to_run)
+time_benchmark(datasets)
 
 
 
