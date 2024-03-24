@@ -7,7 +7,7 @@ import gurobipy as gp
 from gurobipy import GRB
 from evaluator_constructor import verify_feasibility
 import time
-from graph_constructor_nocluster import Graph
+from graph_constructor import Graph
 
 class COUNTERFAIR:
 

@@ -1,26 +1,17 @@
+"""
+Imports
+"""
 import numpy as np
 from itertools import product
 from scipy.spatial import distance_matrix
 from evaluator_constructor import distance_calculation, verify_feasibility
 from joblib import Parallel, delayed
 from itertools import chain
-from sklearn.neighbors import NearestNeighbors
 import time
 from scipy.stats import norm
 import copy
-import os
 
-number_cores_zeus = 16
-number_cores_thor = 64
-number_cores_home = 12
-
-if 'dsv' in os.getcwd():
-    if '/data0/' in os.getcwd():
-        number_cores = number_cores_zeus
-    else:
-        number_cores = number_cores_thor
-else:
-    number_cores = number_cores_home
+number_cores = 12
 
 def find_sensitive_group_instances(data, feat_val, sensitive_group_dict):
     """
@@ -209,24 +200,6 @@ def get_graph_nodes_parallel(data, model, sensitive_feature_instances, distance_
                 if distance_calculation(instance, perm_i, kwargs={'dat':data, 'type':type}) < distance_threshold:
                     permutations_list.append(perm_i)
     return permutations_list
-
-# def filter_nearest_neighbors(closest_distances, closest_cf_idx, percentage_train_cf_per_feat_value):
-#     """
-#     Nearest neighbor filtering according to percentage train cf per feat value
-#     """
-#     filtered_closest_distances, filtered_closest_cf_idx = [], []
-#     if percentage_train_cf_per_feat_value < 1:
-#         print(f'Filtering to {percentage_train_cf_per_feat_value} of the training CFs found')
-#         closest_distances_sorted = np.sort(closest_distances, axis=0)
-#         threshold_position_idx = int(np.ceil(len(closest_distances_sorted)*percentage_train_cf_per_feat_value))
-#         distance_threshold_cf = closest_distances_sorted[threshold_position_idx]
-#         for cf_idx in range(len(closest_distances)):
-#             if closest_distances[cf_idx] < distance_threshold_cf:
-#                 filtered_closest_distances.append(closest_distances[cf_idx])
-#                 filtered_closest_cf_idx.append(closest_cf_idx[cf_idx])
-#     else:
-#         filtered_closest_distances, filtered_closest_cf_idx = closest_distances, closest_cf_idx
-#     return filtered_closest_distances, filtered_closest_cf_idx
 
 def filter_nearest_neighbors(unique_closest_feasible_train_tuple_list, percentage_train_cf_per_feat_value):
     """

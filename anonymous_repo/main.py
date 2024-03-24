@@ -83,23 +83,12 @@ if __name__=='__main__':
         for method in methods_to_run:
             start_time = time.time()
             cf_evaluator = Evaluator(data, n_feat, method, clusters_obj)
-            if 'BIGRACE' in method:
+            if 'CounterFair' in method:
                 cf_evaluator.add_fairness_measures(data, model)
                 cf_evaluator.add_fnr_data(data)
                 alpha, dev, eff = select_parameters(method, weight)
-                # counterfactual = Counterfactual(data, model, method, clusters_obj, alpha, dev, eff type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th)
                 counterfactual = Counterfactual(data, model, method, alpha, dev, eff, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th, continuous_bins=continuous_bins)
                 cf_evaluator.add_cf_data(counterfactual)
-            elif method == 'ARES':
-                graph_obj = None
-                alpha, dev, eff = select_parameters(method, weight)
-                counterfactual = Counterfactual(data, model, method, alpha, dev, eff, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th, continuous_bins=continuous_bins, cluster=clusters_obj)
-                cf_evaluator.add_cf_data_ares(counterfactual)
-            elif method == 'FACTS':
-                graph_obj = None
-                alpha, dev, eff = select_parameters(method, weight)
-                counterfactual = Counterfactual(data, model, method, alpha, dev, eff, type=dist, percentage_close_train_cf=percentage_close_train_cf, support_th=support_th, continuous_bins=continuous_bins, cluster=clusters_obj)
-                cf_evaluator.add_cf_data_facts(counterfactual)
             end_time = time.time()
             print(f'---------------------------')
             print(f'  DONE: {data_str}, method: {method}, time: {np.round(end_time - start_time, 2)}')

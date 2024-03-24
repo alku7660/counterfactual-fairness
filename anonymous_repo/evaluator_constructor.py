@@ -1,8 +1,4 @@
 """
-Evaluation algorithms
-"""
-
-"""
 Imports
 """
 import numpy as np
@@ -10,7 +6,6 @@ import pandas as pd
 from support import euclidean, sort_data_distance
 from support import verify_feasibility
 from scipy.spatial import distance_matrix
-from scipy.stats import norm
 import copy
 
 def distance_calculation(x, y, **kwargs):

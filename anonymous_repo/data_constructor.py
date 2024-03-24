@@ -1,12 +1,14 @@
+"""
+Imports
+"""
 import numpy as np
 import pandas as pd
 import copy
-from address import dataset_dir
+from support import dataset_dir
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import KBinsDiscretizer
-from mlxtend.preprocessing import TransactionEncoder
 import time
 
 def euclidean(x1,x2):
