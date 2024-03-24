@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import copy
 from sklearn.cluster import AgglomerativeClustering
 from centroid_constructor import Centroid
@@ -18,7 +17,6 @@ class Clusters:
         self.clusters, self.centroids = self.find_viable_clusters(model, clusters=2)
         self.clusters_dict, self.centroids_dict = self.clusters, self.centroids
         self.filtered_clusters_list, self.filtered_centroids_list, self.group_dict = self.filter_clusters_centroids(data, model)
-        # self.clusters_list, self.centroids_list = self.define_clusters_centroids(data, model)
 
     def select_instances_by_sensitive_group(self):
         """
@@ -58,54 +56,6 @@ class Clusters:
                     else:
                         centroid[feat] = instances_df[feat].mean()
         return centroid.to_frame().T
-
-    # def find_viable_clusters(self, model, clusters=2):
-    #     """
-    #     Finds the appropriate clusters so that the predicted label is still the negative class
-    #     """
-
-    #     def hierarchical_clusters(instances_df, clusters_instances_list=[], clusters_centroids_list=[]):
-    #         """
-    #         If centroid not of undesired class, start hierarchical clustering
-    #         """
-    #         clustering = AgglomerativeClustering(n_clusters = clusters, linkage=self.metric)
-    #         clustering.fit(instances_df)
-    #         instances_df['cluster'] = clustering.labels_
-    #         unique_clustering_labels = np.unique(clustering.labels_)
-    #         for j in unique_clustering_labels:
-    #             cluster_instances_df = instances_df.loc[instances_df['cluster'] == j]
-    #             cluster_instances_df_j_cluster = copy.deepcopy(cluster_instances_df)
-    #             del cluster_instances_df_j_cluster['cluster']
-    #             centroid = self.calculate_centroid(cluster_instances_df_j_cluster)
-    #             centroid_label = model.model.predict(centroid)
-    #             if centroid_label != self.undesired_class:
-    #                 clusters_instances_list, clusters_centroids_list = hierarchical_clusters(cluster_instances_df_j_cluster, clusters_instances_list, clusters_centroids_list)
-    #             else:
-    #                 clusters_instances_list.append(cluster_instances_df_j_cluster.index)
-    #                 clusters_centroids_list.append(centroid)
-    #         return clusters_instances_list, clusters_centroids_list
-
-    #     feature_cluster_instances_dict = dict()
-    #     feature_cluster_centroids_dict = dict()
-    #     for feat_name in self.sensitive_feat_idx_dict.keys():
-    #         idx_list_by_sensitive_group = self.sensitive_feat_idx_dict[feat_name]
-    #         sensitive_group_cluster_instances_dict = dict()
-    #         sensitive_group_cluster_centroids_dict = dict()
-    #         for feat_val in idx_list_by_sensitive_group:
-    #             clusters_instances_list, clusters_centroids_list = [], []
-    #             idx_list_feat_val = idx_list_by_sensitive_group[feat_val]
-    #             sensitive_group_instances_df = self.transformed_false_undesired_test_df.loc[idx_list_feat_val]
-    #             centroid = self.calculate_centroid(sensitive_group_instances_df)
-    #             centroid_label = model.model.predict(centroid)
-    #             if centroid_label != self.undesired_class:
-    #                 clusters_instances_list, clusters_centroids_list = hierarchical_clusters(sensitive_group_instances_df, clusters_instances_list=clusters_instances_list, clusters_centroids_list=clusters_centroids_list)
-    #             else:
-    #                 clusters_instances_list, clusters_centroids_list = [idx_list_feat_val], [centroid]
-    #             sensitive_group_cluster_instances_dict[feat_val] = clusters_instances_list
-    #             sensitive_group_cluster_centroids_dict[feat_val] = clusters_centroids_list
-    #         feature_cluster_instances_dict[feat_name] = sensitive_group_cluster_instances_dict
-    #         feature_cluster_centroids_dict[feat_name] = sensitive_group_cluster_centroids_dict
-    #     return feature_cluster_instances_dict, feature_cluster_centroids_dict
 
     def find_viable_clusters(self, model, clusters=2):
         """
@@ -189,22 +139,6 @@ class Clusters:
                 length_list = [len(i) for i in cluster_list]
                 tuples_centroids.sort(key=lambda x: x[1], reverse=True)
                 tuples_clusters.sort(key=lambda x: x[1], reverse=True)
-                # length_list_80_perc = 0.80*np.sum(length_list)
-                # length_list_80_perc = 0*np.sum(length_list)
-                # length_list_cum_sum = np.cumsum(length_list)
-                # if len(length_list_cum_sum) == 1 or length_list_80_perc == 0:
-                #     idx_list_80_perc = [0]
-                # else:
-                #     idx_list_80_perc = [idx for idx in range(len(length_list_cum_sum)) if length_list_cum_sum[idx] <= length_list_80_perc]
-                # print(f'Number of clusters found for {feat}:{feat_val}: {len(idx_list_80_perc)}')
-                # for num_idx in idx_list_80_perc:    
-                #     centroid_idx += 1
-                #     clusters = tuples_clusters[num_idx][0]
-                #     centroids = tuples_centroids[num_idx][0]
-                #     centroid = Centroid(centroid_idx, [centroids], len(clusters), feat_val, feat, data, model)
-                #     filtered_clusters_list.append(clusters)
-                #     filtered_centroid_obj_list.append(centroid)
-                #     group_dict[centroid_idx] = f'{feat}:{feat_val}'
                 length_list_cum_sum = np.cumsum(length_list)
                 idx_list = [idx for idx in range(len(length_list_cum_sum))]
                 print(f'Number of clusters found for {feat}:{feat_val}: {len(idx_list)}')
