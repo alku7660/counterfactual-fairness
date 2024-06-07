@@ -1394,7 +1394,7 @@ def proximity_fairness_across_alpha_counterfair(datasets):
         eval_alpha_10_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_1.0_eval.pkl').cf_df
         eval_alpha_05_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.5_eval.pkl').cf_df
         eval_alpha_01_df = load_obj(f'{data_str}_BIGRACE_dist_alpha_0.1_eval.pkl').cf_df
-        eval_dev_df = load_obj(f'{data_str}_BIGRACE_dev_dist_dev_eval_test.pkl').cf_df
+        eval_dev_df = load_obj(f'{data_str}_BIGRACE_dev_dist_dev_eval.pkl').cf_df
         eval_alpha_10_df['alpha'] = [f'$\\alpha=1.0$']*len(eval_alpha_10_df)
         eval_alpha_05_df['alpha'] = [f'$\\alpha=0.5$']*len(eval_alpha_05_df)
         eval_alpha_01_df['alpha'] = [f'$\\alpha=0.1$']*len(eval_alpha_01_df)
@@ -1446,8 +1446,8 @@ def proximity_fairness_across_alpha_counterfair(datasets):
             b0.set_title(sensitive_feature, fontsize=9)
             if sensitive_feature_idx == len(unique_sensitive_features) - 1:
                 b0_twin.set_ylabel(f'Subgroups'+r' ($L^{s_k}$)', fontsize=9)
-            if sensitive_feature_idx < len(unique_sensitive_features) - 1:
-                b0_twin.set_yticklabels('')
+            # if sensitive_feature_idx < len(unique_sensitive_features) - 1:
+            #     b0_twin.set_yticklabels('')
             b0.set_xlabel(None)
             if sensitive_feature_idx == 0:
                 b0.set_ylabel(f'Burden'+r' ($AWB^{s_k}$)', fontsize=9)
@@ -1459,14 +1459,14 @@ def proximity_fairness_across_alpha_counterfair(datasets):
             bottom_m = 0.2
             right_m = 0.925
             top_m = 0.9
-            wspace_m = 0.15
+            wspace_m = 0.2
             hspace_m = 0.175
         elif len(unique_sensitive_features) == 2:
             left_m = 0.11
             bottom_m = 0.225
             right_m = 0.92
             top_m = 0.9
-            wspace_m = 0.15
+            wspace_m = 0.25
             hspace_m = 0.175
         elif len(unique_sensitive_features) == 1:
             left_m = 0.2
@@ -2155,10 +2155,10 @@ metric = 'proximity'
 # proximity_across_alpha_counterfair(datasets)
 # proximity_fairness_across_alpha_counterfair(datasets)
 # burden_effectiveness_benchmark(datasets)
-# parallel_plots_alpha_01(datasets)
+parallel_plots_alpha_01(datasets)
 # actionability_oriented_fairness_plot(datasets, methods_to_run)
 # effectiveness_across_methods(datasets, methods_to_run)
-time_benchmark(datasets)
+# time_benchmark(datasets)
 
 
 
